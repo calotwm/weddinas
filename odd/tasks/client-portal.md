@@ -15,7 +15,7 @@ Branch: `feat/client-portal` · Delivery: ask-on-risk · Test runner: `npx vites
 ## Tasks
 
 - T1 [S1,S6] core domain, access codes, sessions, JSON repository + tests — inline — done (RED: missing modules; GREEN: 14 tests)
-- T2 [S2,S3,S5] couple portal: login, dashboard, public page — inline — pending
+- T2 [S2,S3,S5] couple portal: login, dashboard, public page — inline — done (tsc clean; smoke-tested in T3 build)
 - T3 [S4] planner admin — inline — pending
 
 ## Log

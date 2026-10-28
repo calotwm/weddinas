@@ -1,26 +1,47 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* Palette taken from weddinas.com */
+@theme {
+  --color-forest: #2b635a;
+  --color-teal: #0a8983;
+  --color-mint: #78c1b0;
+  --color-peach: #ffd3bd;
+  --color-peach-soft: #fff1e9;
+  --color-rust: #c6541a;
+  --color-ink: #273835;
+  --color-cream: #fffaf6;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-body), "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-heading), Georgia, serif;
+  --font-script: var(--font-script-face), cursive;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-cream);
+  color: var(--color-ink);
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold tracking-wide uppercase transition-colors disabled:opacity-60;
+}
+@utility btn-primary {
+  @apply btn bg-forest text-peach hover:bg-teal;
+}
+@utility btn-accent {
+  @apply btn bg-rust text-white hover:bg-forest;
+}
+@utility btn-ghost {
+  @apply btn border border-forest/30 text-forest hover:bg-forest/5;
+}
+@utility card {
+  @apply rounded-3xl bg-white p-6 shadow-[0_10px_30px_-15px_rgba(39,56,53,0.25)] sm:p-8;
+}
+@utility field {
+  @apply w-full rounded-2xl border border-forest/20 bg-white px-4 py-3 text-ink outline-none placeholder:text-ink/40 focus:border-teal focus:ring-2 focus:ring-mint/40;
+}
+@utility label {
+  @apply mb-1.5 block text-xs font-semibold tracking-[0.15em] text-forest uppercase;
+}
+@utility eyebrow {
+  @apply text-xs font-semibold tracking-[0.25em] text-teal uppercase;
 }
