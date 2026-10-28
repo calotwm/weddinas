@@ -20,7 +20,11 @@ export interface NewCoupleInput {
   weddingDate: string;
 }
 
-const toView = ({ accessCodeHash: _hash, ...view }: Couple): CoupleView => view;
+function toView(couple: Couple): CoupleView {
+  const view: Partial<Couple> = { ...couple };
+  delete view.accessCodeHash;
+  return view as CoupleView;
+}
 
 export class PortalService {
   constructor(private readonly repo: CoupleRepository) {}

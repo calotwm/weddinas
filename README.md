@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Weddinas · Client portal
 
-## Getting Started
+Per-couple portal for [weddinas.com](https://weddinas.com) clients.
 
-First, run the development server:
+- **Couples** log in at `/` with their access code and get a dashboard: countdown, proposals to approve or reject, progress reports, a checklist, and an editor for their public page.
+- **Guests** see the couple's public page at `/boda/<slug>`: countdown, story, venue, schedule, dress code and gifts.
+- **Planner team** manages every couple at `/admin`: create couples (generates the access code), regenerate codes, publish proposals and reports.
+
+## Run locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000. In development an empty database is seeded with a demo couple:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| What | Value |
+| --- | --- |
+| Couple access code | `DEMO-BODA` |
+| Admin code (`/admin/login`) | `weddinas-admin` |
+| Public page | `/boda/sofia-y-martin` |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Configuration
 
-## Learn More
+Set these in `.env.local` (or the host's environment). In production `SESSION_SECRET` and `ADMIN_CODE` are required.
 
-To learn more about Next.js, take a look at the following resources:
+| Variable | Purpose |
+| --- | --- |
+| `SESSION_SECRET` | HMAC key for the session cookie |
+| `ADMIN_CODE` | Code for the planner admin |
+| `DATA_FILE` | Path of the JSON database (default `data/db.json`) |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Architecture
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+src/core     domain + use cases (PortalService), no framework code
+src/infra    adapters (JsonCoupleRepository)
+src/server   wiring: service container, session cookie helpers
+src/app      Next.js routes and server actions
+```
 
-## Deploy on Vercel
+Access codes are stored as SHA-256 hashes; the plain code is shown once to the planner. Server actions read the couple id from the signed session cookie, never from form data.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The JSON file adapter is for the prototype only: serverless hosts (Vercel) have a read-only filesystem. For production implement `CoupleRepository` (`src/core/ports.ts`) against a database such as Postgres/Supabase.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Tests
+
+```bash
+npm test
+```
