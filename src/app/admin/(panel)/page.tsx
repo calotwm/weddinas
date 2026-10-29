@@ -1,67 +1,73 @@
-import Link from "next/link";
+import { Icon, type IconName } from "@/components/icons";
 import { coupleNames } from "@/core/couple";
 import { getCountdown } from "@/core/countdown";
 import { formatShortDate, weddingDateToIso } from "@/lib/format";
 import { requireAdmin } from "@/server/auth";
 import { portal } from "@/server/container";
+import { siteOrigin } from "@/server/site-url";
 import { CreateCoupleForm } from "../forms";
+import { CoupleList, type CoupleRow } from "./couple-list";
 
 export const dynamic = "force-dynamic";
+
+function Stat({ icon, value, label, tone = "text-forest" }: { icon: IconName; value: number; label: string; tone?: string }) {
+  return (
+    <div className="card flex items-center gap-4 p-5 sm:p-5">
+      <span className="icon-badge"><Icon name={icon} /></span>
+      <div>
+        <p className={`font-display text-3xl leading-none ${tone}`}>{value}</p>
+        <p className="mt-1 text-xs tracking-wide text-ink/55 uppercase">{label}</p>
+      </div>
+    </div>
+  );
+}
 
 export default async function AdminHome() {
   await requireAdmin();
   const couples = await portal.listCouples();
 
+  const rows: CoupleRow[] = couples.map((c) => {
+    const { days, isPast } = getCountdown(new Date(weddingDateToIso(c.weddingDate)));
+    const done = c.tasks.filter((t) => t.done).length;
+    return {
+      id: c.id,
+      slug: c.slug,
+      names: coupleNames(c),
+      date: formatShortDate(weddingDateToIso(c.weddingDate)),
+      days,
+      isPast,
+      pending: c.proposals.filter((p) => p.status === "pending").length,
+      progress: c.tasks.length ? Math.round((done / c.tasks.length) * 100) : 0,
+    };
+  });
+
+  const active = rows.filter((r) => !r.isPast);
+  const soon = active.filter((r) => r.days <= 30).length;
+  const pendingTotal = active.reduce((sum, r) => sum + r.pending, 0);
+  const answered = couples.flatMap((c) => c.proposals).filter((p) => p.status !== "pending").length;
+
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
-      <section>
+    <div className="space-y-8">
+      <div>
         <p className="eyebrow">Panel del equipo</p>
-        <h1 className="mt-1 mb-6 font-display text-4xl text-forest">Parejas activas ({couples.length})</h1>
+        <h1 className="mt-1 font-display text-4xl text-forest sm:text-5xl">Parejas</h1>
+      </div>
 
-        <div className="card overflow-x-auto p-0 sm:p-0">
-          <table className="w-full text-left text-sm">
-            <thead className="text-xs tracking-[0.15em] text-forest uppercase">
-              <tr className="border-b border-forest/10">
-                <th className="px-5 py-4">Pareja</th>
-                <th className="px-5 py-4">Fecha</th>
-                <th className="px-5 py-4">Faltan</th>
-                <th className="px-5 py-4">Propuestas</th>
-                <th className="px-5 py-4" />
-              </tr>
-            </thead>
-            <tbody>
-              {couples.length === 0 && (
-                <tr><td colSpan={5} className="px-5 py-6 text-ink/60">Todavía no hay parejas cargadas.</td></tr>
-              )}
-              {couples.map((c) => {
-                const { days, isPast } = getCountdown(new Date(weddingDateToIso(c.weddingDate)));
-                const pending = c.proposals.filter((p) => p.status === "pending").length;
-                return (
-                  <tr key={c.id} className="border-b border-forest/5 last:border-0 hover:bg-peach-soft/50">
-                    <td className="px-5 py-4 font-display text-lg text-forest">
-                      <Link href={`/admin/parejas/${c.id}`}>{coupleNames(c)}</Link>
-                    </td>
-                    <td className="px-5 py-4">{formatShortDate(weddingDateToIso(c.weddingDate))}</td>
-                    <td className="px-5 py-4">{isPast ? "¡Ya fue!" : `${days} días`}</td>
-                    <td className="px-5 py-4">
-                      {pending > 0 ? <span className="rounded-full bg-peach px-2 py-0.5 text-rust">{pending} pendientes</span> : "—"}
-                    </td>
-                    <td className="px-5 py-4 text-right whitespace-nowrap">
-                      <Link href={`/boda/${c.slug}`} target="_blank" className="mr-4 text-teal hover:underline">Página ↗</Link>
-                      <Link href={`/admin/parejas/${c.id}`} className="text-forest hover:underline">Gestionar →</Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Stat icon="users" value={active.length} label="Parejas activas" />
+        <Stat icon="calendar" value={soon} label="Se casan en 30 días" tone="text-rust" />
+        <Stat icon="sparkle" value={pendingTotal} label="Propuestas sin responder" />
+        <Stat icon="check" value={answered} label="Propuestas respondidas" tone="text-teal" />
+      </div>
 
-      <aside className="card h-fit">
-        <h2 className="mb-4 font-display text-2xl text-forest">Nueva pareja</h2>
-        <CreateCoupleForm />
-      </aside>
+      <div className="grid items-start gap-6 lg:grid-cols-[1fr_360px]">
+        <CoupleList rows={rows} />
+        <aside className="card lg:sticky lg:top-24">
+          <h2 className="section-title mb-1">Nueva pareja</h2>
+          <p className="mb-5 text-sm text-ink/60">Se genera su código de acceso y su página pública.</p>
+          <CreateCoupleForm origin={await siteOrigin()} />
+        </aside>
+      </div>
     </div>
   );
 }
