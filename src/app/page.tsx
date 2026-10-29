@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Logo } from "@/components/brand";
 import { Icon, type IconName } from "@/components/icons";
+import { MadeBy } from "@/components/made-by";
 import { cssUrl } from "@/core/url";
 import { DEMO_ACCESS_CODE } from "@/server/container";
 import { LoginForm } from "./login-form";
@@ -66,6 +67,7 @@ export default function Home() {
           </p>
         </div>
       </main>
+      <MadeBy className="relative z-10 pb-5" />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Logo } from "@/components/brand";
 import { Icon } from "@/components/icons";
+import { MadeBy } from "@/components/made-by";
 import { AdminLoginForm } from "../forms";
 
 export default function AdminLoginPage() {
@@ -17,6 +18,7 @@ export default function AdminLoginPage() {
           <Icon name="arrowLeft" className="h-4 w-4" />
           Volver al portal de novios
         </Link>
+        <MadeBy className="mt-10" />
       </div>
     </main>
   );

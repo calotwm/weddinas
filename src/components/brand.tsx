@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element -- brand assets are served by weddinas.com */
 import Link from "next/link";
+import { MadeBy } from "./made-by";
 
 export const LOGO_URL = "https://weddinas.com/wp-content/uploads/2023/06/logo-menu.png";
 export const LOGO_LIGHT_URL = "https://weddinas.com/wp-content/uploads/2023/06/isologo-completo-claro.png";
@@ -20,6 +21,7 @@ export function SiteFooter({ children }: { children?: React.ReactNode }) {
         <a href="https://www.instagram.com/weddinas/" className="transition-colors hover:text-peach">@weddinas</a>
       </p>
       {children}
+      <MadeBy className="mt-6" />
     </footer>
   );
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { TopBar } from "@/components/brand";
 import { Icon } from "@/components/icons";
+import { MadeBy } from "@/components/made-by";
 import { requireAdmin } from "@/server/auth";
 import { logout } from "../../actions";
 
@@ -21,7 +22,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </button>
         </form>
       </TopBar>
-      <main className="mx-auto max-w-6xl px-4 pt-8 pb-16 sm:px-6">{children}</main>
+      <main className="mx-auto max-w-6xl px-4 pt-8 pb-10 sm:px-6">{children}</main>
+      <MadeBy light={false} className="pb-8" />
     </div>
   );
 }
