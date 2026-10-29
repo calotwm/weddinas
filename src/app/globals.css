@@ -10,38 +10,83 @@
   --color-rust: #c6541a;
   --color-ink: #273835;
   --color-cream: #fffaf6;
+  --color-sand: #f6ece4;
 
   --font-sans: var(--font-body), "Helvetica Neue", Arial, sans-serif;
   --font-display: var(--font-heading), Georgia, serif;
   --font-script: var(--font-script-face), cursive;
+
+  --shadow-soft: 0 1px 2px rgba(39, 56, 53, 0.04), 0 12px 32px -16px rgba(39, 56, 53, 0.22);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--color-cream);
   color: var(--color-ink);
+  line-height: 1.6;
+}
+
+::selection {
+  background: var(--color-peach);
+  color: var(--color-forest);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-teal);
+  outline-offset: 2px;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
 }
 
 @utility btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold tracking-wide uppercase transition-colors disabled:opacity-60;
+  @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold tracking-wide whitespace-nowrap transition-all duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60;
 }
 @utility btn-primary {
-  @apply btn bg-forest text-peach hover:bg-teal;
+  @apply btn bg-forest text-cream shadow-sm hover:bg-teal hover:shadow-md;
 }
 @utility btn-accent {
-  @apply btn bg-rust text-white hover:bg-forest;
+  @apply btn bg-rust text-white shadow-sm hover:bg-[#a9440f] hover:shadow-md;
 }
 @utility btn-ghost {
-  @apply btn border border-forest/30 text-forest hover:bg-forest/5;
+  @apply btn border border-forest/25 bg-white/60 text-forest hover:border-forest/50 hover:bg-white;
+}
+@utility btn-light {
+  @apply btn bg-white/15 text-white ring-1 ring-white/30 backdrop-blur hover:bg-white/25;
+}
+@utility btn-sm {
+  @apply px-4 py-1.5 text-xs;
+}
+@utility btn-icon {
+  @apply inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-ink/50 transition-colors hover:bg-peach-soft hover:text-rust;
 }
 @utility card {
-  @apply rounded-3xl bg-white p-6 shadow-[0_10px_30px_-15px_rgba(39,56,53,0.25)] sm:p-8;
+  @apply rounded-3xl bg-white p-6 shadow-soft ring-1 ring-forest/5 sm:p-8;
 }
 @utility field {
-  @apply w-full rounded-2xl border border-forest/20 bg-white px-4 py-3 text-ink outline-none placeholder:text-ink/40 focus:border-teal focus:ring-2 focus:ring-mint/40;
+  @apply w-full rounded-2xl border border-forest/15 bg-white px-4 py-3 text-ink transition-colors outline-none placeholder:text-ink/35 hover:border-forest/30 focus:border-teal focus:ring-4 focus:ring-mint/25;
 }
 @utility label {
-  @apply mb-1.5 block text-xs font-semibold tracking-[0.15em] text-forest uppercase;
+  @apply mb-1.5 block text-xs font-semibold tracking-[0.12em] text-forest/80 uppercase;
+}
+@utility hint {
+  @apply mt-1.5 text-xs text-ink/50;
 }
 @utility eyebrow {
   @apply text-xs font-semibold tracking-[0.25em] text-teal uppercase;
+}
+@utility chip {
+  @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold;
+}
+@utility section-title {
+  @apply font-display text-2xl text-forest sm:text-3xl;
+}
+@utility icon-badge {
+  @apply flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-peach-soft text-rust;
 }

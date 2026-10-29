@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Allura, DM_Serif_Display, Questrial } from "next/font/google";
 import "./globals.css";
 
@@ -11,8 +11,9 @@ const script = Allura({ variable: "--font-script-face", weight: "400", subsets: 
 export const metadata: Metadata = {
   title: "Weddinas | Portal de novios",
   description: "El portal de cada pareja Weddinas: cuenta regresiva, propuestas, reportes y su página de casamiento.",
-  icons: { icon: "https://weddinas.com/wp-content/uploads/2023/06/iso.png" },
 };
+
+export const viewport: Viewport = { themeColor: "#2b635a" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
