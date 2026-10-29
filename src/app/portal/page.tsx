@@ -1,64 +1,108 @@
 import Link from "next/link";
+import { CopyButton } from "@/components/copy-button";
 import { Countdown } from "@/components/countdown";
-import { formatShortDate, formatWeddingDate, weddingDateToIso } from "@/lib/format";
+import { Icon } from "@/components/icons";
+import { cssUrl } from "@/core/url";
+import { formatShortDate, weddingDateToIso } from "@/lib/format";
+import { siteOrigin } from "@/server/site-url";
 import { getCurrentCouple } from "./data";
 
 export default async function PortalHome() {
   const couple = await getCurrentCouple();
   const pending = couple.proposals.filter((p) => p.status === "pending");
   const done = couple.tasks.filter((t) => t.done).length;
+  const nextTasks = couple.tasks.filter((t) => !t.done).slice(0, 3);
   const progress = couple.tasks.length ? Math.round((done / couple.tasks.length) * 100) : 0;
   const lastReport = couple.reports[0];
+  const publicUrl = `${await siteOrigin()}/boda/${couple.slug}`;
+  const cover = couple.publicInfo.coverImageUrl;
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
-      <section className="card bg-forest text-center lg:col-span-3">
-        <p className="font-script text-4xl text-peach sm:text-5xl">Falta muy poquito</p>
-        <p className="mt-1 mb-6 text-sm tracking-[0.2em] text-peach/80 uppercase first-letter:uppercase">
-          {formatWeddingDate(couple.weddingDate)}
-        </p>
-        <Countdown date={weddingDateToIso(couple.weddingDate)} tone="light" />
-      </section>
-
-      <section className="card">
-        <p className="eyebrow">Propuestas</p>
-        <p className="mt-3 font-display text-5xl text-forest">{pending.length}</p>
-        <p className="text-ink/70">esperando su respuesta</p>
-        <Link href="/portal/propuestas" className="btn-accent mt-6">Ver propuestas</Link>
-      </section>
-
-      <section className="card">
-        <p className="eyebrow">Checklist</p>
-        <p className="mt-3 font-display text-5xl text-forest">{progress}%</p>
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-peach-soft">
-          <div className="h-full rounded-full bg-teal" style={{ width: `${progress}%` }} />
+      <section className="card relative overflow-hidden bg-forest text-center lg:col-span-3">
+        {cover && <div aria-hidden className="absolute inset-0 bg-cover bg-center opacity-25" style={{ backgroundImage: cssUrl(cover) }} />}
+        <div className="relative py-4">
+          <p className="font-script text-4xl text-peach sm:text-5xl">Cuenta regresiva</p>
+          <p className="mt-1 mb-8 text-xs tracking-[0.3em] text-cream/70 uppercase">para el gran día</p>
+          <Countdown date={weddingDateToIso(couple.weddingDate)} tone="light" />
         </div>
-        <p className="mt-2 text-ink/70">{done} de {couple.tasks.length} tareas listas</p>
-        <Link href="/portal/checklist" className="btn-ghost mt-6">Ir al checklist</Link>
       </section>
 
-      <section className="card">
-        <p className="eyebrow">Último reporte</p>
+      <section className="card flex flex-col">
+        <div className="flex items-center gap-3">
+          <span className="icon-badge"><Icon name="sparkle" /></span>
+          <p className="eyebrow">Propuestas</p>
+        </div>
+        <p className="mt-5 font-display text-5xl text-forest">{pending.length}</p>
+        <p className="text-ink/60">{pending.length === 1 ? "propuesta espera su respuesta" : "propuestas esperan su respuesta"}</p>
+        {pending[0] && <p className="mt-3 line-clamp-1 text-sm text-ink/80">Última: {pending[0].title}</p>}
+        <Link href="/portal/propuestas" className={`${pending.length ? "btn-accent" : "btn-ghost"} mt-6 self-start`}>
+          {pending.length ? "Responder" : "Ver propuestas"}
+          <Icon name="arrowRight" className="h-4 w-4" />
+        </Link>
+      </section>
+
+      <section className="card flex flex-col">
+        <div className="flex items-center gap-3">
+          <span className="icon-badge"><Icon name="checklist" /></span>
+          <p className="eyebrow">Checklist</p>
+        </div>
+        <div className="mt-5 flex items-baseline gap-2">
+          <p className="font-display text-5xl text-forest">{progress}%</p>
+          <p className="text-sm text-ink/60">{done} de {couple.tasks.length}</p>
+        </div>
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-sand" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
+          <div className="h-full rounded-full bg-gradient-to-r from-mint to-teal transition-all" style={{ width: `${progress}%` }} />
+        </div>
+        {nextTasks.length > 0 && (
+          <ul className="mt-4 space-y-1.5 text-sm text-ink/80">
+            {nextTasks.map((t) => (
+              <li key={t.id} className="flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-rust" />
+                <span className="line-clamp-1">{t.title}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <Link href="/portal/checklist" className="btn-ghost mt-6 self-start">Ir al checklist</Link>
+      </section>
+
+      <section className="card flex flex-col">
+        <div className="flex items-center gap-3">
+          <span className="icon-badge"><Icon name="file" /></span>
+          <p className="eyebrow">Último reporte</p>
+        </div>
         {lastReport ? (
           <>
-            <h2 className="mt-3 font-display text-2xl text-forest">{lastReport.title}</h2>
-            <p className="text-sm text-ink/60">{formatShortDate(lastReport.createdAt)}</p>
-            <p className="mt-3 line-clamp-3 text-ink/80">{lastReport.body}</p>
-            <Link href="/portal/reportes" className="btn-ghost mt-6">Leer reportes</Link>
+            <h2 className="mt-5 font-display text-2xl leading-snug text-forest">{lastReport.title}</h2>
+            <p className="text-xs tracking-wide text-ink/50 uppercase">{formatShortDate(lastReport.createdAt)}</p>
+            <p className="mt-3 line-clamp-3 text-sm text-ink/80">{lastReport.body}</p>
+            <Link href="/portal/reportes" className="btn-ghost mt-6 self-start">Leer reportes</Link>
           </>
         ) : (
-          <p className="mt-3 text-ink/70">Todavía no hay reportes. ¡Pronto les contamos novedades!</p>
+          <p className="mt-5 text-ink/60">Todavía no hay reportes. ¡Pronto les contamos novedades!</p>
         )}
       </section>
 
-      <section className="card flex flex-col items-start gap-4 bg-peach sm:flex-row sm:items-center sm:justify-between lg:col-span-3">
-        <div>
-          <p className="font-display text-2xl text-forest">Su página de casamiento</p>
-          <p className="text-ink/80">Compártanla con sus invitados: horarios, lugar, dress code y regalos.</p>
+      <section className="card flex flex-col gap-5 bg-peach-soft lg:col-span-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-start gap-4">
+          <span className="icon-badge bg-white"><Icon name="heart" /></span>
+          <div>
+            <p className="font-display text-2xl text-forest">Su página de casamiento</p>
+            <p className="text-ink/70">Compártanla con sus invitados: horarios, lugar, dress code y regalos.</p>
+            <p className="mt-2 font-mono text-xs break-all text-ink/50">{publicUrl}</p>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <Link href="/portal/mi-pagina" className="btn-primary">Editar</Link>
-          <Link href={`/boda/${couple.slug}`} target="_blank" className="btn-ghost bg-white">Ver página ↗</Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/portal/mi-pagina" className="btn-primary">
+            <Icon name="edit" className="h-4 w-4" />
+            Editar
+          </Link>
+          <CopyButton text={publicUrl} label="Copiar link" className="btn-ghost" />
+          <Link href={`/boda/${couple.slug}`} target="_blank" className="btn-ghost">
+            <Icon name="external" className="h-4 w-4" />
+            Ver
+          </Link>
         </div>
       </section>
     </div>
