@@ -2,12 +2,14 @@ import Link from "next/link";
 import { coupleNames } from "@/core/couple";
 import { getCountdown } from "@/core/countdown";
 import { formatShortDate, weddingDateToIso } from "@/lib/format";
+import { requireAdmin } from "@/server/auth";
 import { portal } from "@/server/container";
 import { CreateCoupleForm } from "../forms";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminHome() {
+  await requireAdmin();
   const couples = await portal.listCouples();
 
   return (

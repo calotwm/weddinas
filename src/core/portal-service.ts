@@ -53,6 +53,10 @@ export class PortalService {
 
   /** Returns the plain access code once; only its hash is stored. */
   async createCouple(input: NewCoupleInput): Promise<{ couple: CoupleView; accessCode: string }> {
+    return this.serialize(() => this.insertCouple(input));
+  }
+
+  private async insertCouple(input: NewCoupleInput): Promise<{ couple: CoupleView; accessCode: string }> {
     const accessCode = await this.uniqueAccessCode();
     const couple: Couple = {
       id: randomUUID(),
@@ -165,11 +169,27 @@ export class PortalService {
     });
   }
 
-  private async mutate(coupleId: string, change: (couple: Couple) => void): Promise<void> {
-    const couple = await this.repo.findById(coupleId);
-    if (!couple) throw new Error("Couple not found");
-    change(couple);
-    await this.repo.save(couple);
+  /** Changes whenever the access code changes; sessions are bound to it so regenerating a code logs old devices out. */
+  async credentialFingerprint(coupleId: string): Promise<string | null> {
+    return (await this.repo.findById(coupleId))?.accessCodeHash ?? null;
+  }
+
+  /** Serializes writes so concurrent read-modify-write cycles never overwrite each other. */
+  private writes: Promise<unknown> = Promise.resolve();
+
+  private serialize<T>(work: () => Promise<T>): Promise<T> {
+    const run = this.writes.then(work, work);
+    this.writes = run.catch(() => undefined);
+    return run;
+  }
+
+  private mutate(coupleId: string, change: (couple: Couple) => void): Promise<void> {
+    return this.serialize(async () => {
+      const couple = await this.repo.findById(coupleId);
+      if (!couple) throw new Error("Couple not found");
+      change(couple);
+      await this.repo.save(couple);
+    });
   }
 
   private async uniqueSlug(names: string): Promise<string> {

@@ -2,14 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import type { ScheduleItem } from "@/core/couple";
+import { safeHttpUrl as safeUrl } from "@/core/url";
 import { requireCoupleId } from "@/server/auth";
 import { portal } from "@/server/container";
 
 // Every action takes the couple id from the signed session, never from the form.
 
 const text = (formData: FormData, key: string, max = 2000) => String(formData.get(key) ?? "").trim().slice(0, max);
-
-const safeUrl = (value: string) => (/^https?:\/\//i.test(value) ? value : "");
 
 export async function savePublicInfo(formData: FormData): Promise<void> {
   const coupleId = await requireCoupleId();

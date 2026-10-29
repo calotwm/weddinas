@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { SiteFooter } from "@/components/brand";
 import { Countdown } from "@/components/countdown";
 import { coupleNames } from "@/core/couple";
+import { cssUrl } from "@/core/url";
 import { formatWeddingDate, weddingDateToIso } from "@/lib/format";
 import { ensureDemoData, portal } from "@/server/container";
 
@@ -28,7 +29,7 @@ export default async function WeddingPage({ params }: Props) {
     <div className="min-h-screen">
       <header className="relative flex min-h-[85vh] items-center justify-center overflow-hidden px-4 py-20 text-center">
         {info.coverImageUrl && (
-          <div aria-hidden className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${info.coverImageUrl})` }} />
+          <div aria-hidden className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: cssUrl(info.coverImageUrl) }} />
         )}
         <div aria-hidden className={`absolute inset-0 ${info.coverImageUrl ? "bg-forest/65" : "bg-forest"}`} />
         <div className="relative max-w-3xl">

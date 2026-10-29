@@ -53,14 +53,14 @@ describe("slugify", () => {
 
 describe("session", () => {
   it("round-trips a signed payload", () => {
-    const token = signSession({ role: "couple", coupleId: "c1" }, "secret");
-    expect(verifySession(token, "secret")).toEqual({ role: "couple", coupleId: "c1" });
+    const token = signSession({ role: "couple", coupleId: "c1", key: "k" }, "secret", 60);
+    expect(verifySession(token, "secret")).toEqual({ role: "couple", coupleId: "c1", key: "k" });
   });
 
   it("rejects tampered tokens and wrong secrets", () => {
-    const token = signSession({ role: "couple", coupleId: "c1" }, "secret");
+    const token = signSession({ role: "couple", coupleId: "c1", key: "k" }, "secret", 60);
     const [body, sig] = token.split(".");
-    const forged = Buffer.from(JSON.stringify({ role: "admin" })).toString("base64url");
+    const forged = Buffer.from(JSON.stringify({ role: "admin", key: "k", exp: Date.now() + 60_000 })).toString("base64url");
     expect(verifySession(`${forged}.${sig}`, "secret")).toBeNull();
     expect(verifySession(`${body}.${sig}`, "other")).toBeNull();
     expect(verifySession("garbage", "secret")).toBeNull();

@@ -3,7 +3,8 @@
 import { timingSafeEqual } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { adminCode, requireAdmin, startSession } from "@/server/auth";
+import { safeHttpUrl } from "@/core/url";
+import { adminCode, allowLoginAttempt, requireAdmin, startAdminSession } from "@/server/auth";
 import { ensureDemoData, portal } from "@/server/container";
 
 const text = (formData: FormData, key: string, max = 4000) => String(formData.get(key) ?? "").trim().slice(0, max);
@@ -13,13 +14,16 @@ const isLocalDateTime = (value: string) => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.tes
 export type FormResult = { error?: string; code?: string; names?: string } | null;
 
 export async function adminLogin(_prev: FormResult, formData: FormData): Promise<FormResult> {
+  if (!(await allowLoginAttempt("admin"))) {
+    return { error: "Demasiados intentos. Esperá unos minutos y volvé a probar." };
+  }
   const given = Buffer.from(text(formData, "code", 200));
   const expected = Buffer.from(adminCode());
   if (given.length !== expected.length || !timingSafeEqual(given, expected)) {
     return { error: "Código de administración incorrecto." };
   }
   await ensureDemoData();
-  await startSession({ role: "admin" });
+  await startAdminSession();
   redirect("/admin");
 }
 
@@ -57,12 +61,11 @@ export async function updateCouple(formData: FormData): Promise<void> {
 export async function addProposal(formData: FormData): Promise<void> {
   await requireAdmin();
   const coupleId = text(formData, "coupleId", 100);
-  const link = text(formData, "link", 500);
   await portal.addProposal(coupleId, {
     title: text(formData, "title", 200),
     description: text(formData, "description"),
     amount: text(formData, "amount", 100),
-    link: /^https?:\/\//i.test(link) ? link : "",
+    link: safeHttpUrl(text(formData, "link", 500)),
   });
   revalidatePath("/", "layout");
 }

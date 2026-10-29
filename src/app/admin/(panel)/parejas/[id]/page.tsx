@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { SubmitButton } from "@/components/submit-button";
 import { coupleNames } from "@/core/couple";
 import { formatShortDate } from "@/lib/format";
+import { requireAdmin } from "@/server/auth";
 import { portal } from "@/server/container";
 import { addProposal, addReport, deleteProposal, deleteReport, updateCouple } from "../../../actions";
 import { RegenerateCodeForm } from "../../../forms";
@@ -12,6 +13,7 @@ export const dynamic = "force-dynamic";
 const STATUS_LABEL = { pending: "Pendiente", approved: "Aprobada", rejected: "Rechazada" } as const;
 
 export default async function CoupleAdminPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin();
   const couple = await portal.getCouple((await params).id);
   if (!couple) notFound();
 
