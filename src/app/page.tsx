@@ -23,7 +23,7 @@ export default function Home() {
       <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-forest/80 via-forest/70 to-ink/90" />
 
       <header className="relative z-10 flex items-center justify-between px-5 py-5 sm:px-8">
-        <Logo light className="h-10 sm:h-11" />
+        <Logo light className="h-12 sm:h-14" />
         <Link href="/admin/login" className="btn-light btn-sm" title="Acceso para el equipo Weddinas">
           <Icon name="lock" className="h-3.5 w-3.5" />
           Equipo

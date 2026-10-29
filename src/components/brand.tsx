@@ -26,14 +26,14 @@ export function SiteFooter({ children }: { children?: React.ReactNode }) {
 
 export function TopBar({ label, children }: { label?: string; children?: React.ReactNode }) {
   return (
-    <header className="sticky top-0 z-20 border-b border-forest/10 bg-cream/85 backdrop-blur-md">
+    <header className="sticky top-0 z-20 bg-forest/95 shadow-sm backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <div className="flex items-center gap-3">
           <Link href="/" aria-label="Inicio">
             <Logo className="h-8 sm:h-9" />
           </Link>
           {label && (
-            <span className="hidden border-l border-forest/15 pl-3 text-xs tracking-[0.2em] text-forest/70 uppercase sm:inline">
+            <span className="hidden border-l border-cream/20 pl-3 text-xs tracking-[0.2em] text-cream/70 uppercase sm:inline">
               {label}
             </span>
           )}

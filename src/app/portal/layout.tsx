@@ -16,12 +16,12 @@ export default async function PortalLayout({ children }: { children: React.React
   return (
     <div className="flex min-h-screen flex-col">
       <TopBar label="Portal de novios">
-        <Link href={`/boda/${couple.slug}`} target="_blank" className="btn-ghost btn-sm hidden sm:inline-flex">
+        <Link href={`/boda/${couple.slug}`} target="_blank" className="btn-light btn-sm hidden sm:inline-flex">
           <Icon name="external" className="h-3.5 w-3.5" />
           Nuestra página
         </Link>
         <form action={logout}>
-          <button className="btn-ghost btn-sm" aria-label="Cerrar sesión">
+          <button className="btn-light btn-sm" aria-label="Cerrar sesión">
             <Icon name="logout" className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Salir</span>
           </button>

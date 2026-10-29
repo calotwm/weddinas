@@ -10,12 +10,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="min-h-screen bg-sand/40">
       <TopBar label="Panel del equipo">
-        <Link href="/admin" className="btn-ghost btn-sm">
+        <Link href="/admin" className="btn-light btn-sm">
           <Icon name="users" className="h-3.5 w-3.5" />
           Parejas
         </Link>
         <form action={logout}>
-          <button className="btn-ghost btn-sm" aria-label="Cerrar sesión">
+          <button className="btn-light btn-sm" aria-label="Cerrar sesión">
             <Icon name="logout" className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Salir</span>
           </button>

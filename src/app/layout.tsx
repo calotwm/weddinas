@@ -17,8 +17,9 @@ export const viewport: Viewport = { themeColor: "#2b635a" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es-AR">
-      <body className={`${heading.variable} ${body.variable} ${script.variable} font-sans antialiased`}>{children}</body>
+    // Font variables live on <html> because the Tailwind theme tokens that reference them are declared on :root.
+    <html lang="es-AR" className={`${heading.variable} ${body.variable} ${script.variable}`}>
+      <body className="font-sans antialiased">{children}</body>
     </html>
   );
 }
