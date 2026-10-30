@@ -117,13 +117,15 @@ export async function uploadFamilyPhoto(_prev: PhotoResult, formData: FormData):
   } catch {
     return { error: "Subí una foto en JPG, PNG o WebP." };
   }
+  let previous: string | null;
   try {
-    const previous = await portal.setFamilyPhoto(coupleId, memberId, photoId);
-    if (previous) await files.delete(coupleId, previous);
+    previous = await portal.setFamilyPhoto(coupleId, memberId, photoId);
   } catch {
     await files.delete(coupleId, photoId);
     return { error: "No encontramos a esa persona. Recargá la página." };
   }
+  // The new photo is already saved; failing to remove the old file must not undo it.
+  if (previous) await files.delete(coupleId, previous).catch(() => undefined);
   revalidatePath("/", "layout");
   return { ok: Date.now() };
 }

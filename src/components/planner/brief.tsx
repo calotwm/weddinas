@@ -12,9 +12,9 @@ export function StatusChip({ status }: { status: BlockStatus }) {
   return <span className={`chip ${s.className}`}>{s.label}</span>;
 }
 
-/** Read-only view of one brief block: only fields with content. */
+/** Couple-facing view of one brief block: only filled details; the Aclaraciones column stays internal. */
 export function BriefBlockSummary({ block }: { block: BriefBlock }) {
-  const filled = block.fields.filter((f) => f.detail || f.note);
+  const filled = block.fields.filter((f) => f.detail);
   return (
     <article className="card space-y-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -29,10 +29,7 @@ export function BriefBlockSummary({ block }: { block: BriefBlock }) {
           {filled.map((f, i) => (
             <div key={`${f.label}-${i}`}>
               <dt className="text-xs tracking-wider text-ink/50 uppercase">{f.label}</dt>
-              <dd className="text-ink">
-                {f.detail}
-                {f.note && <span className="block text-ink/55">{f.note}</span>}
-              </dd>
+              <dd className="text-ink">{f.detail}</dd>
             </div>
           ))}
         </dl>

@@ -4,23 +4,23 @@ import { getCurrentCouple } from "../data";
 
 export default async function VendorsPage() {
   const couple = await getCurrentCouple();
-  const vendors = couple.brief.filter((b) => b.kind === "vendor" && b.status !== "na");
-  const event = couple.brief.filter((b) => b.kind === "event" && b.fields.some((f) => f.detail || f.note));
-  const confirmed = vendors.filter((b) => b.status === "confirmed").length;
+  // The couple only sees what is confirmed; vendors still being searched or decided stay internal.
+  const vendors = couple.brief.filter((b) => b.kind === "vendor" && b.status === "confirmed");
+  const event = couple.brief.filter((b) => b.kind === "event" && b.status === "confirmed" && b.fields.some((f) => f.detail));
 
   return (
     <div className="space-y-8">
       <div>
         <h2 className="font-display text-3xl text-forest">Proveedores</h2>
         <p className="mt-1 text-sm text-ink/70">
-          {confirmed} de {vendors.length} rubros confirmados. El equipo va completando el detalle de cada uno.
+          {vendors.length === 1 ? "1 proveedor confirmado" : `${vendors.length} proveedores confirmados`}. El equipo va completando el detalle de cada uno.
         </p>
       </div>
 
       {vendors.length === 0 && (
         <div className="card text-center text-ink/60">
           <Icon name="users" className="mx-auto mb-2 h-8 w-8 text-mint" />
-          Todavía no hay proveedores cargados.
+          Cuando confirmen proveedores, los van a ver acá con su detalle.
         </div>
       )}
       <div className="grid gap-5 lg:grid-cols-2">

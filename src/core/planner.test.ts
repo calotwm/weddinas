@@ -66,6 +66,16 @@ describe("planner workspace", () => {
       expect((await load()).budget.items[0].payments).toEqual([]);
     });
 
+    it("refuses to change the currency of an item that already has payments", async () => {
+      const item = await service.addBudgetItem(coupleId, base);
+      await service.addPayment(coupleId, item.id, { date: "2026-10-30", amount: 400, currency: "ARS", arsPerUsd: null, kind: "sena", note: "" });
+      await expect(service.updateBudgetItem(coupleId, item.id, { ...base, currency: "USD" })).rejects.toThrow("currency");
+      expect((await load()).budget.items[0].currency).toBe("ARS");
+
+      await service.updateBudgetItem(coupleId, item.id, { ...base, amount: 2000 });
+      expect((await load()).budget.items[0].amount).toBe(2000);
+    });
+
     it("rejects non-positive amounts and unknown categories", async () => {
       await expect(service.addBudgetItem(coupleId, { ...base, amount: 0 })).rejects.toThrow();
       await expect(service.addBudgetItem(coupleId, { ...base, category: "nope" })).rejects.toThrow();

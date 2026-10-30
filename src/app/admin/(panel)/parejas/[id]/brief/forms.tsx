@@ -45,7 +45,7 @@ export function BriefBlockForm({ coupleId, block }: { coupleId: string; block: B
         <div className="hidden grid-cols-[minmax(8rem,1fr)_2fr_2fr] gap-3 bg-sand/60 px-4 py-2 text-xs font-semibold tracking-wider text-ink/60 uppercase sm:grid">
           <span>Campo</span>
           <span>Detalle</span>
-          <span>Aclaraciones</span>
+          <span>Aclaraciones (solo equipo)</span>
         </div>
         <div className="divide-y divide-forest/5">
           {block.fields.map((f, i) => (

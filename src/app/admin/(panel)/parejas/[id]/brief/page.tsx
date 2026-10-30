@@ -28,7 +28,7 @@ export default async function BriefAdminPage({ params }: { params: Promise<{ id:
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h2 className="font-display text-3xl text-forest">Brief</h2>
-          <p className="hint">El detalle de cada rubro, como en el brief de Excel. La pareja ve un resumen de lo confirmado.</p>
+          <p className="hint">El detalle de cada rubro, como en el brief de Excel. La pareja ve el detalle de los rubros confirmados; las aclaraciones quedan internas.</p>
         </div>
         {missing.length > 0 && (
           <form action={addBriefBlock} className="flex items-end gap-2">

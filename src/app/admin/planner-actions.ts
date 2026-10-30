@@ -49,8 +49,13 @@ export async function saveBudgetItem(_prev: PlannerResult, formData: FormData): 
   try {
     if (itemId) await portal.updateBudgetItem(coupleId, itemId, input);
     else await portal.addBudgetItem(coupleId, input);
-  } catch {
-    return { error: "No se pudo guardar. Revisá el rubro y los datos." };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "";
+    return {
+      error: message.includes("currency")
+        ? "No se puede cambiar la moneda de un ítem que ya tiene pagos. Borrá los pagos o creá un ítem nuevo."
+        : "No se pudo guardar. Revisá el rubro y los datos.",
+    };
   }
   return done();
 }

@@ -2,7 +2,7 @@ import type { IpcSeries, UsdQuote } from "@/core/money";
 import type { RatesProvider } from "@/core/ports";
 
 const IPC_URL =
-  "https://apis.datos.gob.ar/series/api/series/?ids=148.3_INIVELNAL_DICI_M_26&limit=60&sort=desc&format=json";
+  "https://apis.datos.gob.ar/series/api/series/?ids=148.3_INIVELNAL_DICI_M_26&limit=1000&sort=desc&format=json";
 const USD_URL = "https://dolarapi.com/v1/dolares";
 
 const HOUR = 3_600_000;

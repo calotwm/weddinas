@@ -249,6 +249,10 @@ export class PortalService {
     await this.mutate(coupleId, (c) => {
       const item = c.budget.items.find((i) => i.id === itemId);
       if (!item) throw new Error("Budget item not found");
+      // Payments are recorded against the item's currency; switching it would silently drop them from the totals.
+      if (clean.currency !== item.currency && item.payments.length > 0) {
+        throw new Error("Cannot change the currency of an item with payments");
+      }
       Object.assign(item, clean);
     });
   }
