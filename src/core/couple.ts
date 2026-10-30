@@ -1,3 +1,5 @@
+import type { Adjustment, Currency } from "./money";
+
 export type ProposalStatus = "pending" | "approved" | "rejected";
 
 export interface ScheduleItem {
@@ -42,6 +44,91 @@ export interface ChecklistTask {
   done: boolean;
 }
 
+export type PaymentKind = "sena" | "saldo" | "adicional" | "iva";
+
+export interface Payment {
+  id: string;
+  /** "YYYY-MM-DD" */
+  date: string;
+  amount: number;
+  currency: Currency;
+  /** Exchange rate used when the payment currency differs from the item's. */
+  arsPerUsd: number | null;
+  kind: PaymentKind;
+  note: string;
+}
+
+export interface BudgetItem {
+  id: string;
+  /** Brief category key (see brief-catalog). */
+  category: string;
+  vendor: string;
+  concept: string;
+  amount: number;
+  currency: Currency;
+  adjustment: Adjustment;
+  /** "YYYY-MM": month the amount was agreed; IPC adjustment starts there. */
+  baseMonth: string;
+  note: string;
+  payments: Payment[];
+}
+
+export interface Budget {
+  /** Dollar quote used for conversions (dolarapi "casa", e.g. "blue", "oficial", "bolsa"). */
+  usdQuote: string;
+  guests: number | null;
+  items: BudgetItem[];
+}
+
+export type BlockStatus = "searching" | "deciding" | "confirmed" | "na";
+
+export interface BriefField {
+  label: string;
+  detail: string;
+  note: string;
+}
+
+/** One section of the planner brief: event data (civil, ceremony…) or one vendor category. */
+export interface BriefBlock {
+  key: string;
+  name: string;
+  kind: "event" | "vendor";
+  vendor: string;
+  contact: string;
+  status: BlockStatus;
+  /** Team member in charge ("Equipo" in the Excel brief). */
+  owner: string;
+  fields: BriefField[];
+}
+
+export type SongStatus = "chosen" | "pending" | "na";
+
+export interface SongChoice {
+  moment: string;
+  song: string;
+  artist: string;
+  status: SongStatus;
+  note: string;
+}
+
+export interface Music {
+  songs: SongChoice[];
+  playlistUrl: string;
+  mustPlay: string;
+  banned: string;
+}
+
+export type FamilySide = "a" | "b";
+
+export interface FamilyMember {
+  id: string;
+  side: FamilySide;
+  name: string;
+  relation: string;
+  /** Uploaded reference photo so the photographer can recognize them. */
+  photoId: string | null;
+}
+
 export interface Couple {
   id: string;
   slug: string;
@@ -53,6 +140,12 @@ export interface Couple {
   proposals: Proposal[];
   reports: Report[];
   tasks: ChecklistTask[];
+  budget: Budget;
+  brief: BriefBlock[];
+  /** Brief free text: "Ideas generales". */
+  ideas: string;
+  music: Music;
+  family: FamilyMember[];
   createdAt: string;
 }
 

@@ -1,15 +1,25 @@
 import { randomUUID } from "node:crypto";
 import { generateAccessCode, hashAccessCode } from "./access-code";
+import { BRIEF_CATALOG, catalogBlock, defaultBrief, defaultMusic, newBriefBlock, SONG_MOMENT_KEYS } from "./brief-catalog";
 import {
   emptyPublicInfo,
+  type BlockStatus,
+  type BriefField,
+  type BudgetItem,
   type ChecklistTask,
   type Couple,
   type CoupleView,
+  type FamilyMember,
+  type FamilySide,
+  type Music,
+  type Payment,
+  type PaymentKind,
   type Proposal,
   type ProposalStatus,
   type PublicInfo,
   type PublicPage,
   type Report,
+  type SongStatus,
 } from "./couple";
 import type { CoupleRepository } from "./ports";
 import { slugify } from "./slug";
@@ -20,8 +30,53 @@ export interface NewCoupleInput {
   weddingDate: string;
 }
 
+export type BudgetItemInput = Omit<BudgetItem, "id" | "payments">;
+export type PaymentInput = Omit<Payment, "id">;
+export interface BriefBlockUpdate {
+  vendor: string;
+  contact: string;
+  status: BlockStatus;
+  owner: string;
+  fields: BriefField[];
+}
+
+const BLOCK_STATUSES: BlockStatus[] = ["searching", "deciding", "confirmed", "na"];
+const SONG_STATUSES: SongStatus[] = ["chosen", "pending", "na"];
+const PAYMENT_KINDS: PaymentKind[] = ["sena", "saldo", "adicional", "iva"];
+const BRIEF_ORDER = BRIEF_CATALOG.map((b) => b.key);
+const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Fills planner fields missing on couples stored before they existed. */
+function withPlannerDefaults(couple: Couple): Couple {
+  couple.budget ??= { usdQuote: "blue", guests: null, items: [] };
+  couple.brief ??= defaultBrief();
+  couple.ideas ??= "";
+  couple.music ??= defaultMusic();
+  couple.family ??= [];
+  return couple;
+}
+
+function cleanBudgetItem(input: BudgetItemInput): BudgetItemInput {
+  if (!catalogBlock(input.category)) throw new Error("Unknown category");
+  if (!(input.amount > 0) || !Number.isFinite(input.amount)) throw new Error("Amount must be positive");
+  if (input.currency !== "ARS" && input.currency !== "USD") throw new Error("Unknown currency");
+  if (input.adjustment !== "ipc" && input.adjustment !== "frozen") throw new Error("Unknown adjustment");
+  if (!MONTH.test(input.baseMonth)) throw new Error("Base month must be YYYY-MM");
+  return {
+    category: input.category,
+    vendor: input.vendor.trim(),
+    concept: input.concept.trim(),
+    amount: input.amount,
+    currency: input.currency,
+    adjustment: input.currency === "USD" ? "frozen" : input.adjustment,
+    baseMonth: input.baseMonth,
+    note: input.note.trim(),
+  };
+}
+
 function toView(couple: Couple): CoupleView {
-  const view: Partial<Couple> = { ...couple };
+  const view: Partial<Couple> = { ...withPlannerDefaults(couple) };
   delete view.accessCodeHash;
   return view as CoupleView;
 }
@@ -69,6 +124,11 @@ export class PortalService {
       proposals: [],
       reports: [],
       tasks: [],
+      budget: { usdQuote: "blue", guests: null, items: [] },
+      brief: defaultBrief(),
+      ideas: "",
+      music: defaultMusic(),
+      family: [],
       createdAt: new Date().toISOString(),
     };
     await this.repo.save(couple);
@@ -169,6 +229,150 @@ export class PortalService {
     });
   }
 
+  async updateBudgetSettings(coupleId: string, settings: { usdQuote: string; guests: number | null }): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      c.budget.usdQuote = settings.usdQuote;
+      c.budget.guests = settings.guests !== null && settings.guests > 0 ? Math.round(settings.guests) : null;
+    });
+  }
+
+  async addBudgetItem(coupleId: string, input: BudgetItemInput): Promise<BudgetItem> {
+    const item: BudgetItem = { id: randomUUID(), ...cleanBudgetItem(input), payments: [] };
+    await this.mutate(coupleId, (c) => {
+      c.budget.items.push(item);
+    });
+    return item;
+  }
+
+  async updateBudgetItem(coupleId: string, itemId: string, input: BudgetItemInput): Promise<void> {
+    const clean = cleanBudgetItem(input);
+    await this.mutate(coupleId, (c) => {
+      const item = c.budget.items.find((i) => i.id === itemId);
+      if (!item) throw new Error("Budget item not found");
+      Object.assign(item, clean);
+    });
+  }
+
+  async deleteBudgetItem(coupleId: string, itemId: string): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      c.budget.items = c.budget.items.filter((i) => i.id !== itemId);
+    });
+  }
+
+  async addPayment(coupleId: string, itemId: string, input: PaymentInput): Promise<Payment> {
+    if (!(input.amount > 0) || !Number.isFinite(input.amount)) throw new Error("Amount must be positive");
+    if (!DAY.test(input.date)) throw new Error("Date must be YYYY-MM-DD");
+    if (!PAYMENT_KINDS.includes(input.kind)) throw new Error("Unknown payment kind");
+    const payment: Payment = { id: randomUUID(), ...input, note: input.note.trim() };
+    await this.mutate(coupleId, (c) => {
+      const item = c.budget.items.find((i) => i.id === itemId);
+      if (!item) throw new Error("Budget item not found");
+      if (payment.currency !== item.currency && !(payment.arsPerUsd && payment.arsPerUsd > 0)) {
+        throw new Error("A payment in another currency needs its exchange rate");
+      }
+      if (payment.currency === item.currency) payment.arsPerUsd = null;
+      item.payments.push(payment);
+      item.payments.sort((a, b) => a.date.localeCompare(b.date));
+    });
+    return payment;
+  }
+
+  async deletePayment(coupleId: string, itemId: string, paymentId: string): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      const item = c.budget.items.find((i) => i.id === itemId);
+      if (item) item.payments = item.payments.filter((p) => p.id !== paymentId);
+    });
+  }
+
+  async addBriefBlock(coupleId: string, key: string): Promise<void> {
+    const entry = catalogBlock(key);
+    if (!entry) throw new Error("Unknown brief block");
+    await this.mutate(coupleId, (c) => {
+      if (c.brief.some((b) => b.key === key)) return;
+      c.brief.push(newBriefBlock(entry));
+      c.brief.sort((a, b) => BRIEF_ORDER.indexOf(a.key) - BRIEF_ORDER.indexOf(b.key));
+    });
+  }
+
+  async updateBriefBlock(coupleId: string, key: string, update: BriefBlockUpdate): Promise<void> {
+    if (!BLOCK_STATUSES.includes(update.status)) throw new Error("Unknown status");
+    await this.mutate(coupleId, (c) => {
+      const block = c.brief.find((b) => b.key === key);
+      if (!block) throw new Error("Brief block not found");
+      block.vendor = update.vendor.trim();
+      block.contact = update.contact.trim();
+      block.status = update.status;
+      block.owner = update.owner.trim();
+      block.fields = update.fields
+        .map((f) => ({ label: f.label.trim(), detail: f.detail.trim(), note: f.note.trim() }))
+        .filter((f) => f.label);
+    });
+  }
+
+  async removeBriefBlock(coupleId: string, key: string): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      c.brief = c.brief.filter((b) => b.key !== key);
+    });
+  }
+
+  async updateIdeas(coupleId: string, ideas: string): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      c.ideas = ideas.trim();
+    });
+  }
+
+  async saveMusic(coupleId: string, music: Music): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      c.music = {
+        songs: SONG_MOMENT_KEYS.map((moment) => {
+          const given = music.songs.find((s) => s.moment === moment);
+          return {
+            moment,
+            song: given?.song.trim() ?? "",
+            artist: given?.artist.trim() ?? "",
+            status: given && SONG_STATUSES.includes(given.status) ? given.status : "pending",
+            note: given?.note.trim() ?? "",
+          };
+        }),
+        playlistUrl: music.playlistUrl.trim(),
+        mustPlay: music.mustPlay.trim(),
+        banned: music.banned.trim(),
+      };
+    });
+  }
+
+  async addFamilyMember(coupleId: string, input: { side: FamilySide; name: string; relation: string }): Promise<FamilyMember> {
+    if (input.side !== "a" && input.side !== "b") throw new Error("Unknown side");
+    if (!input.name.trim()) throw new Error("Name is required");
+    const member: FamilyMember = { id: randomUUID(), side: input.side, name: input.name.trim(), relation: input.relation.trim(), photoId: null };
+    await this.mutate(coupleId, (c) => {
+      c.family.push(member);
+    });
+    return member;
+  }
+
+  /** Returns the member's previous photo id so the caller can delete that file. */
+  async setFamilyPhoto(coupleId: string, memberId: string, photoId: string | null): Promise<string | null> {
+    let previous: string | null = null;
+    await this.mutate(coupleId, (c) => {
+      const member = c.family.find((m) => m.id === memberId);
+      if (!member) throw new Error("Family member not found");
+      previous = member.photoId;
+      member.photoId = photoId;
+    });
+    return previous;
+  }
+
+  /** Returns the removed member's photo id so the caller can delete that file. */
+  async removeFamilyMember(coupleId: string, memberId: string): Promise<string | null> {
+    let photoId: string | null = null;
+    await this.mutate(coupleId, (c) => {
+      photoId = c.family.find((m) => m.id === memberId)?.photoId ?? null;
+      c.family = c.family.filter((m) => m.id !== memberId);
+    });
+    return photoId;
+  }
+
   /** Changes whenever the access code changes; sessions are bound to it so regenerating a code logs old devices out. */
   async credentialFingerprint(coupleId: string): Promise<string | null> {
     return (await this.repo.findById(coupleId))?.accessCodeHash ?? null;
@@ -187,7 +391,7 @@ export class PortalService {
     return this.serialize(async () => {
       const couple = await this.repo.findById(coupleId);
       if (!couple) throw new Error("Couple not found");
-      change(couple);
+      change(withPlannerDefaults(couple));
       await this.repo.save(couple);
     });
   }

@@ -1,13 +1,17 @@
 import "server-only";
 import path from "node:path";
 import { hashAccessCode } from "@/core/access-code";
-import { emptyPublicInfo } from "@/core/couple";
+import { defaultBrief, defaultMusic } from "@/core/brief-catalog";
+import { emptyPublicInfo, type BriefBlock } from "@/core/couple";
 import { PortalService } from "@/core/portal-service";
 import { JsonCoupleRepository } from "@/infra/json-couple-repository";
+import { PublicRatesProvider } from "@/infra/public-rates";
 
 const repo = new JsonCoupleRepository(process.env.DATA_FILE ?? path.join(process.cwd(), "data", "db.json"));
 
 export const portal = new PortalService(repo);
+
+export const rates = new PublicRatesProvider();
 
 export const DEMO_ACCESS_CODE = "DEMO-BODA";
 
@@ -69,6 +73,69 @@ export async function ensureDemoData(): Promise<void> {
       { id: "demo-t2", title: "Elegir fotógrafo", done: false },
       { id: "demo-t3", title: "Prueba de vestido", done: false },
     ],
+    budget: {
+      usdQuote: "blue",
+      guests: 160,
+      items: [
+        { id: "demo-b1", category: "espacio", vendor: "Estancia La Linda", concept: "Salón + parque", amount: 18000, currency: "USD", adjustment: "frozen", baseMonth: month(-3), note: "Saldo congelado en USD", payments: [
+          { id: "demo-pay1", date: day(-80), amount: 9000, currency: "USD", arsPerUsd: null, kind: "sena", note: "50% seña" },
+        ] },
+        { id: "demo-b2", category: "catering", vendor: "Sabores de Campo", concept: "Menú formal x 160", amount: 32000000, currency: "ARS", adjustment: "ipc", baseMonth: month(-4), note: "Saldo se ajusta por IPC", payments: [
+          { id: "demo-pay2", date: day(-110), amount: 9600000, currency: "ARS", arsPerUsd: null, kind: "sena", note: "30% seña" },
+        ] },
+        { id: "demo-b3", category: "foto", vendor: "Luz Norte Fotografía", concept: "Cobertura completa 2 cámaras", amount: 2400, currency: "USD", adjustment: "frozen", baseMonth: month(-2), note: "", payments: [
+          { id: "demo-pay3", date: day(-50), amount: 1800000, currency: "ARS", arsPerUsd: 1500, kind: "sena", note: "Seña pagada en pesos" },
+        ] },
+        { id: "demo-b4", category: "dj", vendor: "Pulso DJ", concept: "DJ + técnica + pista", amount: 6500000, currency: "ARS", adjustment: "ipc", baseMonth: month(-1), note: "", payments: [] },
+      ],
+    },
+    brief: demoBrief(),
+    ideas: "Boda de campo al atardecer, tonos durazno y verde salvia. Mucha luz cálida y mesas largas.",
+    music: {
+      ...defaultMusic(),
+      songs: defaultMusic().songs.map((s) =>
+        s.moment === "entrada-novia" ? { ...s, song: "A Thousand Years", artist: "Christina Perri", status: "chosen" as const }
+        : s.moment === "vals" ? { ...s, song: "Perfect", artist: "Ed Sheeran", status: "chosen" as const }
+        : s.moment === "cierre" ? { ...s, song: "Mil horas", artist: "Los Abuelos de la Nada", status: "chosen" as const }
+        : s,
+      ),
+      playlistUrl: "https://open.spotify.com/",
+      mustPlay: "Cumbia de los 2000 en la última tanda",
+      banned: "Nada de reggaeton viejo",
+    },
+    family: [
+      { id: "demo-f1", side: "a", name: "Elena", relation: "Abuela", photoId: null },
+      { id: "demo-f2", side: "a", name: "Carla y Diego", relation: "Padres", photoId: null },
+      { id: "demo-f3", side: "b", name: "Ramón", relation: "Padrino", photoId: null },
+    ],
     createdAt: new Date().toISOString(),
+  });
+}
+
+/** "YYYY-MM" n months from now. */
+function month(n: number): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() + n);
+  return d.toISOString().slice(0, 7);
+}
+
+/** "YYYY-MM-DD" n days from now. */
+function day(n: number): string {
+  return new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+}
+
+function demoBrief(): BriefBlock[] {
+  const fill: Record<string, Partial<BriefBlock> & { details?: Record<string, string> }> = {
+    evento: { status: "confirmed", details: { Lugar: "Estancia La Linda", "Cantidad de invitados": "160", "Tipo de boda": "Formal de campo" } },
+    espacio: { vendor: "Estancia La Linda", status: "confirmed", owner: "Pau", details: { Pago: "50%", "Cantidad de horas": "8", "Mobiliario incluido": "Sí, mesas largas de madera" } },
+    catering: { vendor: "Sabores de Campo", status: "confirmed", owner: "Belu", details: { Pago: "30%", Degustación: "Ya realizada", Servicio: "Formal", "Pax confirmados": "160" } },
+    foto: { vendor: "Luz Norte Fotografía", status: "confirmed", owner: "Pau", details: { Pago: "Seña", Cobertura: "2 cámaras" } },
+    dj: { vendor: "Pulso DJ", status: "deciding", owner: "Nat" },
+  };
+  return defaultBrief().map((block) => {
+    const f = fill[block.key];
+    if (!f) return block;
+    const { details = {}, ...rest } = f;
+    return { ...block, ...rest, fields: block.fields.map((field) => ({ ...field, detail: details[field.label] ?? field.detail })) };
   });
 }
