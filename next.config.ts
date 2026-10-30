@@ -28,11 +28,13 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Family photos are uploaded through server actions (images are capped at 5 MB in core/uploads).
+  experimental: { serverActions: { bodySizeLimit: "6mb" } },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
       // Private areas and guests' pages (addresses, bank details) stay out of search engines.
-      { source: "/:area(admin|portal|boda)/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+      { source: "/:area(admin|portal|boda|archivos)/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
     ];
   },
 };

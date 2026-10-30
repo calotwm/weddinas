@@ -65,6 +65,15 @@ export async function requireCoupleId(): Promise<string> {
   return session.coupleId;
 }
 
+/** True for a valid admin session or the couple's own valid session; never redirects. */
+export async function canAccessCouple(coupleId: string): Promise<boolean> {
+  const session = await getSession();
+  if (session?.role === "admin") return session.key === credentialKey("admin", adminCode());
+  if (session?.role !== "couple" || session.coupleId !== coupleId) return false;
+  const fingerprint = await portal.credentialFingerprint(coupleId);
+  return !!fingerprint && credentialKey("couple", fingerprint) === session.key;
+}
+
 /** Call from every admin page and action: layouts are not re-run on client navigation. */
 export async function requireAdmin(): Promise<void> {
   const session = await getSession();
