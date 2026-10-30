@@ -5,13 +5,18 @@ import { defaultBrief, defaultMusic } from "@/core/brief-catalog";
 import { emptyPublicInfo, type BriefBlock } from "@/core/couple";
 import { PortalService } from "@/core/portal-service";
 import { JsonCoupleRepository } from "@/infra/json-couple-repository";
+import { LocalFileStore } from "@/infra/local-file-store";
 import { PublicRatesProvider } from "@/infra/public-rates";
 
-const repo = new JsonCoupleRepository(process.env.DATA_FILE ?? path.join(process.cwd(), "data", "db.json"));
+const dataFile = process.env.DATA_FILE ?? path.join(process.cwd(), "data", "db.json");
+const repo = new JsonCoupleRepository(dataFile);
 
 export const portal = new PortalService(repo);
 
 export const rates = new PublicRatesProvider();
+
+/** Uploads live next to the database file, so on Railway they share its volume. */
+export const files = new LocalFileStore(path.join(path.dirname(dataFile), "uploads"));
 
 export const DEMO_ACCESS_CODE = "DEMO-BODA";
 
