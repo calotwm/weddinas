@@ -6,6 +6,11 @@ Per-couple portal for [weddinas.com](https://weddinas.com) clients.
 - **Guests** see the couple's public page at `/boda/<slug>`: countdown, story, venue, schedule, dress code and gifts.
 - **Planner team** manages every couple at `/admin`: create couples (generates the access code), regenerate codes, publish proposals and reports, and per couple keep the **brief** (event data plus one block per vendor category, as in the Excel brief), the **budget** (items in ARS or USD with their payments) and see the couple's music and family photos.
 
+### Files
+
+- The team attaches PDFs and images to each brief block (optionally "solo equipo"), proposal and report; the couple sees the shared ones in Proveedores (confirmed blocks), Propuestas and Reportes. Deleting a block, proposal, report or file deletes it from disk.
+- Couples upload a cover photo for their public page in "Nuestra página" (or paste a link).
+
 ### Budget, IPC and dollar
 
 - Each budget item is in ARS or USD. ARS balances marked "Se ajusta por IPC" are updated with the latest published INDEC IPC (via [datos.gob.ar](https://datos.gob.ar), series `148.3_INIVELNAL_DICI_M_26`) from the month the amount was agreed; the newest month is added from its monthly variation at [argly.com.ar](https://argly.com.ar) (`/v1/ipc`), which publishes it weeks before datos.gob.ar; "Congelado" and USD items never change. The IPC is monthly and published with a lag, so the page shows which month it used.
@@ -59,7 +64,7 @@ Access codes are stored as SHA-256 hashes; the plain code is shown once to the p
 - Every admin page and action checks the admin session itself; layouts are not re-run on client navigation.
 - `next.config.ts` sets CSP, HSTS, frame, referrer and permissions headers, and `noindex` for `/admin`, `/portal` and `/boda`.
 - No API routes or CORS headers are exposed; server actions only accept same-origin requests.
-- Uploaded photos are accepted only when their bytes are JPEG, PNG or WebP (no SVG), up to 5 MB, saved under a generated id, and served by `/archivos/<couple>/<file>` only to that couple or the admin (404 otherwise).
+- Uploads are accepted only when their bytes are JPEG, PNG or WebP (photos, up to 5 MB) or also PDF (attachments, up to 10 MB); never SVG or HTML. They are saved under a generated id and served by `/archivos/<couple>/<file>` only to that couple or the admin (404 otherwise), with a `sandbox` CSP so a PDF cannot run script on the site's origin. The one public file is a couple's current cover photo, at `/boda/<slug>/portada`.
 
 The JSON file adapter is for the prototype only: serverless hosts (Vercel) have a read-only filesystem. For production implement `CoupleRepository` (`src/core/ports.ts`) against a database such as Postgres/Supabase.
 

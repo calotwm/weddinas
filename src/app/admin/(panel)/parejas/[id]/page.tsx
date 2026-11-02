@@ -7,6 +7,7 @@ import { requireAdmin } from "@/server/auth";
 import { portal } from "@/server/container";
 import { siteOrigin } from "@/server/site-url";
 import { addProposal, addReport, deleteProposal, deleteReport, updateCouple } from "../../../actions";
+import { AdminAttachments } from "../../../admin-attachments";
 import { RegenerateCodeForm } from "../../../forms";
 
 export const dynamic = "force-dynamic";
@@ -77,7 +78,7 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
           <ul className="divide-y divide-forest/8">
             {couple.proposals.map((p) => (
               <li key={p.id} className="flex items-start justify-between gap-3 py-4">
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-semibold text-ink">{p.title}</p>
                     <span className={`chip py-0.5 ${STATUS[p.status].className}`}>{STATUS[p.status].label}</span>
@@ -88,6 +89,12 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
                     {p.amount && ` · ${p.amount}`}
                   </p>
                   {p.coupleComment && <p className="mt-2 rounded-xl bg-peach-soft px-3 py-2 text-sm text-ink/80">“{p.coupleComment}”</p>}
+                  <details className="mt-3">
+                    <summary className="cursor-pointer text-xs font-semibold text-teal">Archivos ({p.attachments?.length ?? 0})</summary>
+                    <div className="mt-3">
+                      <AdminAttachments coupleId={couple.id} kind="proposal" targetId={p.id} attachments={p.attachments} />
+                    </div>
+                  </details>
                 </div>
                 <form action={deleteProposal}>
                   {hidden}
@@ -108,10 +115,16 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
           <ul className="divide-y divide-forest/8">
             {couple.reports.map((r) => (
               <li key={r.id} className="flex items-start justify-between gap-3 py-4">
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="font-semibold text-ink">{r.title}</p>
                   <p className="text-xs text-ink/50">{formatShortDate(r.createdAt)}</p>
                   <p className="mt-1 line-clamp-2 text-sm text-ink/70">{r.body}</p>
+                  <details className="mt-3">
+                    <summary className="cursor-pointer text-xs font-semibold text-teal">Archivos ({r.attachments?.length ?? 0})</summary>
+                    <div className="mt-3">
+                      <AdminAttachments coupleId={couple.id} kind="report" targetId={r.id} attachments={r.attachments} />
+                    </div>
+                  </details>
                 </div>
                 <form action={deleteReport}>
                   {hidden}

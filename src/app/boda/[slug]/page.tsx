@@ -4,7 +4,8 @@ import { SiteFooter } from "@/components/brand";
 import { Countdown } from "@/components/countdown";
 import { Icon, type IconName } from "@/components/icons";
 import { coupleNames } from "@/core/couple";
-import { cssUrl } from "@/core/url";
+import { coverCss } from "@/core/url";
+import { siteOrigin } from "@/server/site-url";
 import { formatWeddingDate, weddingDateToIso } from "@/lib/format";
 import { ensureDemoData, portal } from "@/server/container";
 
@@ -21,7 +22,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `${coupleNames(page)} · ¡Nos casamos!`,
     description: `${formatWeddingDate(page.weddingDate)}${page.publicInfo.venue ? ` · ${page.publicInfo.venue}` : ""}`,
-    openGraph: page.publicInfo.coverImageUrl ? { images: [page.publicInfo.coverImageUrl] } : undefined,
+    openGraph: page.publicInfo.coverPhotoId
+      ? { images: [`${await siteOrigin()}/boda/${page.slug}/portada?v=${page.publicInfo.coverPhotoId}`] }
+      : page.publicInfo.coverImageUrl
+        ? { images: [page.publicInfo.coverImageUrl] }
+        : undefined,
   };
 }
 
@@ -42,13 +47,14 @@ export default async function WeddingPage({ params }: Props) {
   if (!page) notFound();
 
   const { publicInfo: info } = page;
-  const hasCover = cssUrl(info.coverImageUrl) !== "none";
+  const cover = coverCss(page.slug, info);
+  const hasCover = cover !== "none";
 
   return (
     <div className="min-h-screen">
       <header className="relative flex min-h-[92svh] items-center justify-center overflow-hidden px-4 py-24 text-center">
         {hasCover && (
-          <div aria-hidden className="absolute inset-0 scale-105 bg-cover bg-center" style={{ backgroundImage: cssUrl(info.coverImageUrl) }} />
+          <div aria-hidden className="absolute inset-0 scale-105 bg-cover bg-center" style={{ backgroundImage: cover }} />
         )}
         <div aria-hidden className={`absolute inset-0 ${hasCover ? "bg-gradient-to-b from-ink/50 via-forest/55 to-forest/90" : "bg-forest"}`} />
         <div className="relative max-w-3xl">

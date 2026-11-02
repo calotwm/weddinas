@@ -1,4 +1,5 @@
 import type { BlockStatus, BriefBlock } from "@/core/couple";
+import { AttachmentList } from "@/components/attachments";
 
 export const BLOCK_STATUS: Record<BlockStatus, { label: string; className: string }> = {
   searching: { label: "En búsqueda", className: "bg-sand text-ink/70" },
@@ -13,8 +14,9 @@ export function StatusChip({ status }: { status: BlockStatus }) {
 }
 
 /** Couple-facing view of one brief block: only filled details; the Aclaraciones column stays internal. */
-export function BriefBlockSummary({ block }: { block: BriefBlock }) {
+export function BriefBlockSummary({ coupleId, block }: { coupleId: string; block: BriefBlock }) {
   const filled = block.fields.filter((f) => f.detail);
+  const shared = (block.attachments ?? []).filter((a) => !a.internal);
   return (
     <article className="card space-y-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -24,15 +26,20 @@ export function BriefBlockSummary({ block }: { block: BriefBlock }) {
         </div>
         <StatusChip status={block.status} />
       </div>
-      {filled.length > 0 ? (
-        <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-          {filled.map((f, i) => (
-            <div key={`${f.label}-${i}`}>
-              <dt className="text-xs tracking-wider text-ink/50 uppercase">{f.label}</dt>
-              <dd className="text-ink">{f.detail}</dd>
-            </div>
-          ))}
-        </dl>
+      {filled.length > 0 || shared.length > 0 ? (
+        <>
+          {filled.length > 0 && (
+            <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+              {filled.map((f, i) => (
+                <div key={`${f.label}-${i}`}>
+                  <dt className="text-xs tracking-wider text-ink/50 uppercase">{f.label}</dt>
+                  <dd className="whitespace-pre-line text-ink">{f.detail}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          <AttachmentList coupleId={coupleId} attachments={shared} />
+        </>
       ) : (
         <p className="text-sm text-ink/50">Todavía no hay detalles cargados.</p>
       )}

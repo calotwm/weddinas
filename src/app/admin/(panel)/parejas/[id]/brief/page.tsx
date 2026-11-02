@@ -5,6 +5,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { BRIEF_CATALOG } from "@/core/brief-catalog";
 import { requireAdmin } from "@/server/auth";
 import { portal } from "@/server/container";
+import { AdminAttachments } from "@/app/admin/admin-attachments";
 import { addBriefBlock, removeBriefBlock } from "@/app/admin/planner-actions";
 import { BriefBlockForm, IdeasForm } from "./forms";
 
@@ -63,6 +64,7 @@ export default async function BriefAdminPage({ params }: { params: Promise<{ id:
                 <Icon name="arrowRight" className="h-4 w-4 text-teal transition-transform group-open:rotate-90" />
                 <span className="font-display text-2xl text-forest">{block.name}</span>
                 {block.vendor && <span className="text-sm text-ink/60">· {block.vendor}</span>}
+                {(block.attachments?.length ?? 0) > 0 && <span className="text-xs text-ink/50">· {block.attachments!.length} archivo{block.attachments!.length === 1 ? "" : "s"}</span>}
                 <span className="ml-auto flex items-center gap-2">
                   {block.owner && <span className="chip bg-white text-ink/60 ring-1 ring-forest/10">{block.owner}</span>}
                   <StatusChip status={block.status} />
@@ -70,6 +72,7 @@ export default async function BriefAdminPage({ params }: { params: Promise<{ id:
               </summary>
               <div className="space-y-4 border-t border-forest/5 px-6 py-5">
                 <BriefBlockForm coupleId={couple.id} block={block} />
+                <AdminAttachments coupleId={couple.id} kind="brief" targetId={block.key} attachments={block.attachments} allowInternal />
                 <form action={removeBriefBlock} className="text-right">
                   {hidden}
                   <input type="hidden" name="key" value={block.key} />

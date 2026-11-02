@@ -1,9 +1,10 @@
+import { AttachmentList } from "@/components/attachments";
 import { Icon } from "@/components/icons";
 import { formatShortDate } from "@/lib/format";
 import { getCurrentCouple } from "../data";
 
 export default async function ReportsPage() {
-  const { reports } = await getCurrentCouple();
+  const { id: coupleId, reports } = await getCurrentCouple();
 
   if (reports.length === 0) {
     return (
@@ -30,6 +31,9 @@ export default async function ReportsPage() {
             </div>
             <h2 className="mt-1 font-display text-2xl leading-snug text-forest">{r.title}</h2>
             <p className="mt-4 whitespace-pre-line text-ink/80">{r.body}</p>
+            <div className="mt-4">
+              <AttachmentList coupleId={coupleId} attachments={r.attachments} />
+            </div>
           </article>
         </li>
       ))}

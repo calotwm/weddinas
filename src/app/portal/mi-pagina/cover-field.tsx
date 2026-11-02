@@ -9,7 +9,7 @@ export function CoverField({ defaultValue }: { defaultValue: string }) {
 
   return (
     <div>
-      <label htmlFor="coverImageUrl" className="label">Foto de portada (link)</label>
+      <label htmlFor="coverImageUrl" className="label">O peguen el link de una foto</label>
       <input
         id="coverImageUrl"
         name="coverImageUrl"
@@ -20,7 +20,7 @@ export function CoverField({ defaultValue }: { defaultValue: string }) {
         placeholder="https://…"
         className="field"
       />
-      <p className="hint">Peguen el link de una foto horizontal (por ejemplo de Google Fotos o Instagram).</p>
+      <p className="hint">Si prefieren no subirla, sirve un link público a una foto horizontal.</p>
       {preview !== "none" && (
         <div
           role="img"

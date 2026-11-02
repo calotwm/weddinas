@@ -1,3 +1,4 @@
+import { AttachmentList } from "@/components/attachments";
 import { Icon } from "@/components/icons";
 import { SubmitButton } from "@/components/submit-button";
 import type { Proposal } from "@/core/couple";
@@ -14,7 +15,7 @@ const STATUS: Record<Proposal["status"], { label: string; className: string }> =
 const ORDER: Record<Proposal["status"], number> = { pending: 0, approved: 1, rejected: 2 };
 
 export default async function ProposalsPage() {
-  const { proposals } = await getCurrentCouple();
+  const { id: coupleId, proposals } = await getCurrentCouple();
 
   if (proposals.length === 0) {
     return (
@@ -41,6 +42,9 @@ export default async function ProposalsPage() {
           </div>
 
           <p className="mt-4 whitespace-pre-line text-ink/80">{p.description}</p>
+          <div className="mt-4">
+            <AttachmentList coupleId={coupleId} attachments={p.attachments} />
+          </div>
 
           {(p.amount || p.link) && (
             <div className="mt-5 flex flex-wrap items-center gap-3">
