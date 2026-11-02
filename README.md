@@ -8,7 +8,7 @@ Per-couple portal for [weddinas.com](https://weddinas.com) clients.
 
 ### Budget, IPC and dollar
 
-- Each budget item is in ARS or USD. ARS balances marked "Se ajusta por IPC" are updated with the latest published INDEC IPC (via [datos.gob.ar](https://datos.gob.ar), series `148.3_INIVELNAL_DICI_M_26`) from the month the amount was agreed; "Congelado" and USD items never change. The IPC is monthly and published with a lag, so the page shows which month it used.
+- Each budget item is in ARS or USD. ARS balances marked "Se ajusta por IPC" are updated with the latest published INDEC IPC (via [datos.gob.ar](https://datos.gob.ar), series `148.3_INIVELNAL_DICI_M_26`) from the month the amount was agreed; the newest month is added from its monthly variation at [argly.com.ar](https://argly.com.ar) (`/v1/ipc`), which publishes it weeks before datos.gob.ar; "Congelado" and USD items never change. The IPC is monthly and published with a lag, so the page shows which month it used.
 - Totals are shown in both currencies with the couple's reference dollar (blue, oficial, MEP…) from [dolarapi.com](https://dolarapi.com). A payment in the other currency stores the exchange rate of that day.
 - Both sources are cached in memory (IPC 12 h, dollar 30 min); if they are down the portal keeps working without adjustment.
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { adjustedAmount, convert, ipcFactor, type IpcSeries } from "./money";
+import { adjustedAmount, convert, extendIpc, ipcFactor, type IpcSeries } from "./money";
 
 const ipc: IpcSeries = {
   points: [
@@ -25,6 +25,24 @@ describe("ipcFactor", () => {
 
   it("is 1 without series data", () => {
     expect(ipcFactor(null, "2026-06")).toEqual({ factor: 1, latestMonth: null });
+  });
+});
+
+describe("extendIpc", () => {
+  const base: IpcSeries = { points: [{ month: "2026-07", value: 100 }, { month: "2026-08", value: 110 }] };
+
+  it("adds the next month from its monthly variation", () => {
+    expect(extendIpc(base, { month: "2026-09", variationPct: 2 }).points.at(-1)).toEqual({ month: "2026-09", value: 112.2 });
+  });
+
+  it("ignores a variation for a month already in the series or not right after it", () => {
+    expect(extendIpc(base, { month: "2026-08", variationPct: 5 })).toEqual(base);
+    expect(extendIpc(base, { month: "2026-11", variationPct: 5 })).toEqual(base);
+  });
+
+  it("rolls over the year", () => {
+    const dec: IpcSeries = { points: [{ month: "2026-12", value: 200 }] };
+    expect(extendIpc(dec, { month: "2027-01", variationPct: 1 }).points.at(-1)).toEqual({ month: "2027-01", value: 202 });
   });
 });
 

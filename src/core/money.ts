@@ -26,6 +26,19 @@ export interface AdjustableAmount {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+function nextMonth(month: string): string {
+  const [y, m] = month.split("-").map(Number);
+  return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
+}
+
+/** Appends the month right after the series from its published monthly variation (INDEC reports it before the index level reaches datos.gob.ar). */
+export function extendIpc(series: IpcSeries, latest: { month: string; variationPct: number }): IpcSeries {
+  const last = series.points.at(-1);
+  if (!last || latest.month !== nextMonth(last.month)) return series;
+  const value = Math.round(last.value * (1 + latest.variationPct / 100) * 10_000) / 10_000;
+  return { points: [...series.points, { month: latest.month, value }] };
+}
+
 export function ipcFactor(series: IpcSeries | null, baseMonth: string): { factor: number; latestMonth: string | null } {
   if (!series || series.points.length === 0) return { factor: 1, latestMonth: null };
   const latest = series.points[series.points.length - 1];
