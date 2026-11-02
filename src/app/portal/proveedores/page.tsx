@@ -6,7 +6,7 @@ export default async function VendorsPage() {
   const couple = await getCurrentCouple();
   // The couple only sees what is confirmed; vendors still being searched or decided stay internal.
   const vendors = couple.brief.filter((b) => b.kind === "vendor" && b.status === "confirmed");
-  const event = couple.brief.filter((b) => b.kind === "event" && b.status === "confirmed" && b.fields.some((f) => f.detail));
+  const event = couple.brief.filter((b) => b.kind === "event" && b.status === "confirmed" && (b.fields.some((f) => f.detail) || (b.attachments ?? []).some((x) => !x.internal)));
 
   return (
     <div className="space-y-8">

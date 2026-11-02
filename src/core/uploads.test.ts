@@ -92,4 +92,8 @@ describe("LocalFileStore", () => {
     await expect(store.saveDocument("couple-1", Buffer.concat([pdf, Buffer.alloc(MAX_DOCUMENT_BYTES)]))).rejects.toThrow("large");
     await expect(store.saveImage("couple-1", pdf)).rejects.toThrow("image");
   });
+
+  it("keeps images attached as documents at 5 MB", async () => {
+    await expect(store.saveDocument("couple-1", Buffer.concat([jpeg, Buffer.alloc(MAX_IMAGE_BYTES)]))).rejects.toThrow("large");
+  });
 });

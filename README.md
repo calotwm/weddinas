@@ -64,7 +64,7 @@ Access codes are stored as SHA-256 hashes; the plain code is shown once to the p
 - Every admin page and action checks the admin session itself; layouts are not re-run on client navigation.
 - `next.config.ts` sets CSP, HSTS, frame, referrer and permissions headers, and `noindex` for `/admin`, `/portal` and `/boda`.
 - No API routes or CORS headers are exposed; server actions only accept same-origin requests.
-- Uploads are accepted only when their bytes are JPEG, PNG or WebP (photos, up to 5 MB) or also PDF (attachments, up to 10 MB); never SVG or HTML. They are saved under a generated id and served by `/archivos/<couple>/<file>` only to that couple or the admin (404 otherwise), with a `sandbox` CSP so a PDF cannot run script on the site's origin. The one public file is a couple's current cover photo, at `/boda/<slug>/portada`.
+- Uploads are accepted only when their bytes are JPEG, PNG or WebP (photos, up to 5 MB) or also PDF (attachments, up to 10 MB); never SVG or HTML. They are saved under a generated id and served by `/archivos/<couple>/<file>` only to that couple or the admin (404 otherwise) with their exact type and `nosniff`. (A `sandbox` CSP is not used: browsers refuse to show PDFs in a sandboxed document.) The one public file is a couple's current cover photo, at `/boda/<slug>/portada`.
 
 The JSON file adapter is for the prototype only: serverless hosts (Vercel) have a read-only filesystem. For production implement `CoupleRepository` (`src/core/ports.ts`) against a database such as Postgres/Supabase.
 

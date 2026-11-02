@@ -142,7 +142,13 @@ export async function uploadCoverPhoto(_prev: PhotoResult, formData: FormData): 
   } catch {
     return { error: "Subí una foto en JPG, PNG o WebP." };
   }
-  const previous = await portal.setCoverPhoto(coupleId, photoId);
+  let previous: string | null;
+  try {
+    previous = await portal.setCoverPhoto(coupleId, photoId);
+  } catch {
+    await files.delete(coupleId, photoId);
+    return { error: "No se pudo guardar la foto. Recargá la página." };
+  }
   if (previous) await files.delete(coupleId, previous).catch(() => undefined);
   revalidatePath("/", "layout");
   return { ok: Date.now() };

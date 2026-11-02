@@ -30,6 +30,8 @@ export class LocalFileStore {
     if (bytes.byteLength > maxBytes) throw new Error("File too large");
     const type = detect(bytes);
     if (!type) throw new Error(unsupported);
+    // Only PDFs get the larger document limit; images keep theirs wherever they are uploaded.
+    if (type.ext !== "pdf" && bytes.byteLength > MAX_IMAGE_BYTES) throw new Error("File too large");
     const id = `${randomUUID()}.${type.ext}`;
     await mkdir(dir, { recursive: true });
     await writeFile(path.join(dir, id), bytes);
