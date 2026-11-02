@@ -27,6 +27,10 @@ Open http://localhost:3000. In development an empty database is seeded with a de
 | Admin code (`/admin/login`) | `weddinas-admin` |
 | Public page | `/boda/sofia-y-martin` |
 
+### Importing couples
+
+The admin home has **Importar desde las planillas**: upload one JSON file per couple (shape: `CoupleImport` in `src/core/couple-import.ts`) and the couple is created with brief, budget and payments, songs, family and ideas, and its access code is shown once. The import is rehearsed in memory first, so an invalid file stores nothing. The JSON is built from the Drive spreadsheets outside the repo; real couple data is never committed.
+
 ## Configuration
 
 Set these in `.env.local` (or the host's environment). In production `SESSION_SECRET` and `ADMIN_CODE` are required.

@@ -2,6 +2,7 @@
 
 import { timingSafeEqual } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { importCouple, type CoupleImport } from "@/core/couple-import";
 import { redirect } from "next/navigation";
 import { safeHttpUrl } from "@/core/url";
 import { adminCode, allowLoginAttempt, requireAdmin, startAdminSession } from "@/server/auth";
@@ -39,6 +40,27 @@ export async function createCouple(_prev: FormResult, formData: FormData): Promi
   const { couple, accessCode } = await portal.createCouple({ partnerA, partnerB, weddingDate });
   revalidatePath("/admin");
   return { code: accessCode, names: `${couple.partnerA} & ${couple.partnerB}` };
+}
+
+/** Imports a whole couple from a JSON file built from the planners' spreadsheets. */
+export async function importCoupleFile(_prev: FormResult, formData: FormData): Promise<FormResult> {
+  await requireAdmin();
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { error: "Elegí el archivo .json de la pareja." };
+  if (file.size > 1_000_000) return { error: "El archivo pesa más de 1 MB." };
+  let data: CoupleImport;
+  try {
+    data = JSON.parse(await file.text());
+  } catch {
+    return { error: "El archivo no es un JSON válido." };
+  }
+  try {
+    const { accessCode } = await importCouple(portal, data);
+    revalidatePath("/admin");
+    return { code: accessCode, names: `${data.partnerA.trim()} & ${data.partnerB.trim()}` };
+  } catch (e) {
+    return { error: `No se importó nada: ${e instanceof Error ? e.message : "datos inválidos"}.` };
+  }
 }
 
 export async function regenerateCode(_prev: FormResult, formData: FormData): Promise<FormResult> {

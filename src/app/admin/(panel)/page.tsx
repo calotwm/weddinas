@@ -5,7 +5,7 @@ import { formatShortDate, weddingDateToIso } from "@/lib/format";
 import { requireAdmin } from "@/server/auth";
 import { portal } from "@/server/container";
 import { siteOrigin } from "@/server/site-url";
-import { CreateCoupleForm } from "../forms";
+import { CreateCoupleForm, ImportCoupleForm } from "../forms";
 import { CoupleList, type CoupleRow } from "./couple-list";
 
 export const dynamic = "force-dynamic";
@@ -66,6 +66,11 @@ export default async function AdminHome() {
           <h2 className="section-title mb-1">Nueva pareja</h2>
           <p className="mb-5 text-sm text-ink/60">Se genera su código de acceso y su página pública.</p>
           <CreateCoupleForm origin={await siteOrigin()} />
+          <details className="mt-6 border-t border-forest/10 pt-4">
+            <summary className="cursor-pointer text-sm font-semibold text-forest">Importar desde las planillas</summary>
+            <p className="mt-2 mb-3 text-xs text-ink/60">Crea la pareja con brief, presupuesto, pagos, canciones y familia. Si algo del archivo no es válido, no se guarda nada.</p>
+            <ImportCoupleForm origin={await siteOrigin()} />
+          </details>
         </aside>
       </div>
     </div>

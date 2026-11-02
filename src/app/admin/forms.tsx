@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { CopyButton } from "@/components/copy-button";
 import { Icon } from "@/components/icons";
 import { SubmitButton } from "@/components/submit-button";
-import { adminLogin, createCouple, regenerateCode, type FormResult } from "./actions";
+import { adminLogin, createCouple, importCoupleFile, regenerateCode, type FormResult } from "./actions";
 
 const invitation = (names: string, code: string, origin: string) =>
   `¡Hola ${names}! Este es su portal Weddinas, donde van a ver la cuenta regresiva, propuestas y reportes, y armar su página.\n\nEntren en ${origin} con el código: ${code}`;
@@ -71,6 +71,20 @@ export function CreateCoupleForm({ origin }: { origin: string }) {
         <Icon name="plus" className="h-4 w-4" />
         Crear pareja
       </SubmitButton>
+    </form>
+  );
+}
+
+export function ImportCoupleForm({ origin }: { origin: string }) {
+  const [state, action] = useActionState(importCoupleFile, null);
+  return (
+    <form action={action} className="space-y-3">
+      <div>
+        <label htmlFor="import-file" className="label">Archivo de la pareja (.json)</label>
+        <input id="import-file" name="file" type="file" accept="application/json,.json" required className="field text-sm" />
+      </div>
+      <CodeNotice result={state} origin={origin} />
+      <SubmitButton className="btn-ghost w-full" pendingText="Importando…">Importar pareja</SubmitButton>
     </form>
   );
 }
