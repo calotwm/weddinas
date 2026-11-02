@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { detectImage, isFileId, MAX_IMAGE_BYTES, mimeForFileId } from "@/core/uploads";
+import { detectDocument, detectImage, isFileId, MAX_DOCUMENT_BYTES, MAX_IMAGE_BYTES, mimeForFileId, type FileType } from "@/core/uploads";
 
 const COUPLE_ID = /^[A-Za-z0-9-]{1,64}$/;
 
@@ -9,12 +9,27 @@ const COUPLE_ID = /^[A-Za-z0-9-]{1,64}$/;
 export class LocalFileStore {
   constructor(private readonly root: string) {}
 
-  async saveImage(coupleId: string, bytes: Uint8Array): Promise<string> {
+  saveImage(coupleId: string, bytes: Uint8Array): Promise<string> {
+    return this.save(coupleId, bytes, MAX_IMAGE_BYTES, detectImage, "Not a supported image");
+  }
+
+  /** PDF or image, for attachments. */
+  saveDocument(coupleId: string, bytes: Uint8Array): Promise<string> {
+    return this.save(coupleId, bytes, MAX_DOCUMENT_BYTES, detectDocument, "Not a supported file");
+  }
+
+  private async save(
+    coupleId: string,
+    bytes: Uint8Array,
+    maxBytes: number,
+    detect: (bytes: Uint8Array) => FileType | null,
+    unsupported: string,
+  ): Promise<string> {
     const dir = this.coupleDir(coupleId);
     if (!dir) throw new Error("Invalid couple id");
-    if (bytes.byteLength > MAX_IMAGE_BYTES) throw new Error("File too large");
-    const type = detectImage(bytes);
-    if (!type) throw new Error("Not a supported image");
+    if (bytes.byteLength > maxBytes) throw new Error("File too large");
+    const type = detect(bytes);
+    if (!type) throw new Error(unsupported);
     const id = `${randomUUID()}.${type.ext}`;
     await mkdir(dir, { recursive: true });
     await writeFile(path.join(dir, id), bytes);

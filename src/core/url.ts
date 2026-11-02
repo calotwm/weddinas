@@ -13,3 +13,9 @@ export function cssUrl(value: string): string {
   const url = safeHttpUrl(value);
   return url ? `url("${url.replace(/["\\\n\r]/g, encodeURIComponent)}")` : "none";
 }
+
+/** CSS background for a couple's cover: their uploaded photo (served at /boda/<slug>/portada) or else the pasted link. */
+export function coverCss(slug: string, info: { coverPhotoId?: string | null; coverImageUrl: string }): string {
+  if (info.coverPhotoId) return `url("/boda/${encodeURIComponent(slug)}/portada?v=${encodeURIComponent(info.coverPhotoId)}")`;
+  return cssUrl(info.coverImageUrl);
+}

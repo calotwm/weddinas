@@ -28,13 +28,15 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  // Family photos are uploaded through server actions (images are capped at 5 MB in core/uploads).
-  experimental: { serverActions: { bodySizeLimit: "6mb" } },
+  // Photos and attachments are uploaded through server actions (core/uploads caps images at 5 MB and PDFs at 10 MB; up to 10 files per upload are checked one by one).
+  experimental: { serverActions: { bodySizeLimit: "25mb" } },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
       // Private areas and guests' pages (addresses, bank details) stay out of search engines.
       { source: "/:area(admin|portal|boda|archivos)/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+      // Uploaded PDFs open in the browser viewer; sandboxing keeps any embedded script away from the site's origin.
+      { source: "/archivos/:path*", headers: [{ key: "Content-Security-Policy", value: `${csp}; sandbox` }] },
     ];
   },
 };

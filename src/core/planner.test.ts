@@ -128,6 +128,59 @@ describe("planner workspace", () => {
     expect(music).toMatchObject({ playlistUrl: "https://open.spotify.com/playlist/1", mustPlay: "Cumbia", banned: "Reggaeton" });
   });
 
+  describe("attachments", () => {
+    const file = (id: string) => ({ id: `${id}.pdf`, name: "Pack contratado.pdf", size: 1200, internal: false });
+
+    it("attaches files to brief blocks, proposals and reports and removes them returning the file to delete", async () => {
+      const proposal = await service.addProposal(coupleId, { title: "Ambientación", description: "" });
+      const report = await service.addReport(coupleId, { title: "Avance", body: "" });
+
+      const a = await service.addAttachment(coupleId, { kind: "brief", key: "dj" }, file("a"));
+      await service.addAttachment(coupleId, { kind: "proposal", id: proposal.id }, file("b"));
+      await service.addAttachment(coupleId, { kind: "report", id: report.id }, { ...file("c"), internal: true });
+
+      let couple = await load();
+      expect(a).toMatchObject({ id: "a.pdf", name: "Pack contratado.pdf", size: 1200, internal: false });
+      expect(couple.brief.find((b) => b.key === "dj")!.attachments).toEqual([a]);
+      expect(couple.proposals[0].attachments!.map((x) => x.id)).toEqual(["b.pdf"]);
+      expect(couple.reports[0].attachments![0].internal).toBe(false); // reports and proposals are always shared
+
+      expect(await service.removeAttachment(coupleId, { kind: "brief", key: "dj" }, "a.pdf")).toBe("a.pdf");
+      expect(await service.removeAttachment(coupleId, { kind: "brief", key: "dj" }, "a.pdf")).toBeNull();
+      couple = await load();
+      expect(couple.brief.find((b) => b.key === "dj")!.attachments).toEqual([]);
+    });
+
+    it("keeps only a safe file name and rejects unknown targets", async () => {
+      const a = await service.addAttachment(coupleId, { kind: "brief", key: "dj" }, { ...file("a"), name: "..\\..\\x/Fac<tura>.pdf" });
+      expect(a.name).toBe("Factura.pdf");
+      await expect(service.addAttachment(coupleId, { kind: "brief", key: "nope" }, file("b"))).rejects.toThrow("not found");
+      await expect(service.addAttachment(coupleId, { kind: "proposal", id: "nope" }, file("b"))).rejects.toThrow("not found");
+    });
+
+    it("returns every attached file when their block, proposal or report is deleted", async () => {
+      const proposal = await service.addProposal(coupleId, { title: "P", description: "" });
+      const report = await service.addReport(coupleId, { title: "R", body: "" });
+      await service.addAttachment(coupleId, { kind: "brief", key: "dj" }, file("a"));
+      await service.addAttachment(coupleId, { kind: "proposal", id: proposal.id }, file("b"));
+      await service.addAttachment(coupleId, { kind: "report", id: report.id }, file("c"));
+
+      expect(await service.removeBriefBlock(coupleId, "dj")).toEqual(["a.pdf"]);
+      expect(await service.deleteProposal(coupleId, proposal.id)).toEqual(["b.pdf"]);
+      expect(await service.deleteReport(coupleId, report.id)).toEqual(["c.pdf"]);
+    });
+  });
+
+  it("sets and clears the cover photo, which the public page exposes by slug", async () => {
+    expect(await service.setCoverPhoto(coupleId, "p1.jpg")).toBeNull();
+    expect(await service.setCoverPhoto(coupleId, "p2.jpg")).toBe("p1.jpg");
+    const { slug } = await load();
+    expect(await service.coverPhoto(slug)).toEqual({ coupleId, photoId: "p2.jpg" });
+    expect(await service.setCoverPhoto(coupleId, null)).toBe("p2.jpg");
+    expect(await service.coverPhoto(slug)).toBeNull();
+    expect(await service.coverPhoto("nope")).toBeNull();
+  });
+
   it("adds family members, sets their photo and removes them returning the photo to delete", async () => {
     const member = await service.addFamilyMember(coupleId, { side: "b", name: "Tío Juan", relation: "Tío" });
     expect(await service.setFamilyPhoto(coupleId, member.id, "photo-1")).toBeNull();

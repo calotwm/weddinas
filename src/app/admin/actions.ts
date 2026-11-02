@@ -6,7 +6,7 @@ import { importCouple, type CoupleImport } from "@/core/couple-import";
 import { redirect } from "next/navigation";
 import { safeHttpUrl } from "@/core/url";
 import { adminCode, allowLoginAttempt, requireAdmin, startAdminSession } from "@/server/auth";
-import { ensureDemoData, portal } from "@/server/container";
+import { ensureDemoData, files, portal } from "@/server/container";
 
 const text = (formData: FormData, key: string, max = 4000) => String(formData.get(key) ?? "").trim().slice(0, max);
 
@@ -94,7 +94,9 @@ export async function addProposal(formData: FormData): Promise<void> {
 
 export async function deleteProposal(formData: FormData): Promise<void> {
   await requireAdmin();
-  await portal.deleteProposal(text(formData, "coupleId", 100), text(formData, "proposalId", 100));
+  const coupleId = text(formData, "coupleId", 100);
+  const leftovers = await portal.deleteProposal(coupleId, text(formData, "proposalId", 100));
+  await Promise.all(leftovers.map((id) => files.delete(coupleId, id).catch(() => undefined)));
   revalidatePath("/", "layout");
 }
 
@@ -109,6 +111,8 @@ export async function addReport(formData: FormData): Promise<void> {
 
 export async function deleteReport(formData: FormData): Promise<void> {
   await requireAdmin();
-  await portal.deleteReport(text(formData, "coupleId", 100), text(formData, "reportId", 100));
+  const coupleId = text(formData, "coupleId", 100);
+  const leftovers = await portal.deleteReport(coupleId, text(formData, "reportId", 100));
+  await Promise.all(leftovers.map((id) => files.delete(coupleId, id).catch(() => undefined)));
   revalidatePath("/", "layout");
 }

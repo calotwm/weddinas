@@ -129,3 +129,28 @@ export async function uploadFamilyPhoto(_prev: PhotoResult, formData: FormData):
   revalidatePath("/", "layout");
   return { ok: Date.now() };
 }
+
+export async function uploadCoverPhoto(_prev: PhotoResult, formData: FormData): Promise<PhotoResult> {
+  const coupleId = await requireCoupleId();
+  const file = formData.get("photo");
+  if (!(file instanceof File) || file.size === 0) return { error: "Elegí una foto." };
+  if (file.size > MAX_IMAGE_BYTES) return { error: "La foto pesa más de 5 MB." };
+
+  let photoId: string;
+  try {
+    photoId = await files.saveImage(coupleId, new Uint8Array(await file.arrayBuffer()));
+  } catch {
+    return { error: "Subí una foto en JPG, PNG o WebP." };
+  }
+  const previous = await portal.setCoverPhoto(coupleId, photoId);
+  if (previous) await files.delete(coupleId, previous).catch(() => undefined);
+  revalidatePath("/", "layout");
+  return { ok: Date.now() };
+}
+
+export async function removeCoverPhoto(): Promise<void> {
+  const coupleId = await requireCoupleId();
+  const previous = await portal.setCoverPhoto(coupleId, null);
+  if (previous) await files.delete(coupleId, previous).catch(() => undefined);
+  revalidatePath("/", "layout");
+}

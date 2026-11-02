@@ -16,7 +16,18 @@ export interface PublicInfo {
   dressCode: string;
   giftInfo: string;
   coverImageUrl: string;
+  /** Uploaded cover (a file id); served publicly at /boda/<slug>/portada and preferred over coverImageUrl. */
+  coverPhotoId?: string | null;
   schedule: ScheduleItem[];
+}
+
+/** A file the team attached (image or PDF). `internal` ones are only shown to the team. */
+export interface Attachment {
+  id: string;
+  name: string;
+  size: number;
+  uploadedAt: string;
+  internal: boolean;
 }
 
 export interface Proposal {
@@ -29,6 +40,7 @@ export interface Proposal {
   coupleComment: string;
   createdAt: string;
   respondedAt: string | null;
+  attachments?: Attachment[];
 }
 
 export interface Report {
@@ -36,6 +48,7 @@ export interface Report {
   title: string;
   body: string;
   createdAt: string;
+  attachments?: Attachment[];
 }
 
 export interface ChecklistTask {
@@ -99,6 +112,7 @@ export interface BriefBlock {
   /** Team member in charge ("Equipo" in the Excel brief). */
   owner: string;
   fields: BriefField[];
+  attachments?: Attachment[];
 }
 
 export type SongStatus = "chosen" | "pending" | "na";

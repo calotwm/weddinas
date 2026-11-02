@@ -3,6 +3,7 @@ import { generateAccessCode, hashAccessCode } from "./access-code";
 import { BRIEF_CATALOG, catalogBlock, defaultBrief, defaultMusic, newBriefBlock, SONG_MOMENT_KEYS } from "./brief-catalog";
 import {
   emptyPublicInfo,
+  type Attachment,
   type BlockStatus,
   type BriefField,
   type BudgetItem,
@@ -38,6 +39,25 @@ export interface BriefBlockUpdate {
   status: BlockStatus;
   owner: string;
   fields: BriefField[];
+}
+
+export type AttachmentTarget = { kind: "brief"; key: string } | { kind: "proposal"; id: string } | { kind: "report"; id: string };
+
+/** Keeps the last path segment and drops characters that could break markup or headers. */
+function safeFileName(name: string): string {
+  const base = name.split(/[\\/]/).pop() ?? "";
+  return base.replace(/[<>:"|?*\u0000-\u001f]/g, "").trim().slice(0, 120) || "archivo";
+}
+
+function attachmentsOf(couple: Couple, target: AttachmentTarget): Attachment[] {
+  const owner =
+    target.kind === "brief"
+      ? couple.brief.find((b) => b.key === target.key)
+      : target.kind === "proposal"
+        ? couple.proposals.find((p) => p.id === target.id)
+        : couple.reports.find((r) => r.id === target.id);
+  if (!owner) throw new Error(`${target.kind} not found`);
+  return (owner.attachments ??= []);
 }
 
 const BLOCK_STATUSES: BlockStatus[] = ["searching", "deciding", "confirmed", "na"];
@@ -188,10 +208,14 @@ export class PortalService {
     });
   }
 
-  async deleteProposal(coupleId: string, proposalId: string): Promise<void> {
+  /** Returns the attached files to delete. */
+  async deleteProposal(coupleId: string, proposalId: string): Promise<string[]> {
+    let removed: string[] = [];
     await this.mutate(coupleId, (c) => {
+      removed = (c.proposals.find((p) => p.id === proposalId)?.attachments ?? []).map((a) => a.id);
       c.proposals = c.proposals.filter((p) => p.id !== proposalId);
     });
+    return removed;
   }
 
   async addReport(coupleId: string, input: { title: string; body: string }): Promise<Report> {
@@ -202,10 +226,57 @@ export class PortalService {
     return report;
   }
 
-  async deleteReport(coupleId: string, reportId: string): Promise<void> {
+  /** Returns the attached files to delete. */
+  async deleteReport(coupleId: string, reportId: string): Promise<string[]> {
+    let removed: string[] = [];
     await this.mutate(coupleId, (c) => {
+      removed = (c.reports.find((r) => r.id === reportId)?.attachments ?? []).map((a) => a.id);
       c.reports = c.reports.filter((r) => r.id !== reportId);
     });
+    return removed;
+  }
+
+  async addAttachment(coupleId: string, target: AttachmentTarget, input: Omit<Attachment, "uploadedAt">): Promise<Attachment> {
+    const attachment: Attachment = {
+      id: input.id,
+      name: safeFileName(input.name),
+      size: input.size,
+      uploadedAt: new Date().toISOString(),
+      // Proposals and reports are written for the couple; only brief files can stay internal.
+      internal: target.kind === "brief" && input.internal,
+    };
+    await this.mutate(coupleId, (c) => {
+      attachmentsOf(c, target).push(attachment);
+    });
+    return attachment;
+  }
+
+  /** Returns the file id to delete, or null when it was not attached there. */
+  async removeAttachment(coupleId: string, target: AttachmentTarget, fileId: string): Promise<string | null> {
+    let removed: string | null = null;
+    await this.mutate(coupleId, (c) => {
+      const list = attachmentsOf(c, target);
+      const index = list.findIndex((a) => a.id === fileId);
+      if (index >= 0) removed = list.splice(index, 1)[0].id;
+    });
+    return removed;
+  }
+
+  /** Returns the previous cover photo id to delete. */
+  async setCoverPhoto(coupleId: string, photoId: string | null): Promise<string | null> {
+    let previous: string | null = null;
+    await this.mutate(coupleId, (c) => {
+      previous = c.publicInfo.coverPhotoId ?? null;
+      c.publicInfo.coverPhotoId = photoId;
+    });
+    return previous;
+  }
+
+  /** The only file served without a session: the current cover of a public page. */
+  async coverPhoto(slug: string): Promise<{ coupleId: string; photoId: string } | null> {
+    const couple = await this.repo.findBySlug(slug);
+    const photoId = couple?.publicInfo.coverPhotoId;
+    return couple && photoId ? { coupleId: couple.id, photoId } : null;
   }
 
   async addTask(coupleId: string, title: string): Promise<ChecklistTask> {
@@ -313,10 +384,14 @@ export class PortalService {
     });
   }
 
-  async removeBriefBlock(coupleId: string, key: string): Promise<void> {
+  /** Returns the attached files to delete. */
+  async removeBriefBlock(coupleId: string, key: string): Promise<string[]> {
+    let removed: string[] = [];
     await this.mutate(coupleId, (c) => {
+      removed = (c.brief.find((b) => b.key === key)?.attachments ?? []).map((a) => a.id);
       c.brief = c.brief.filter((b) => b.key !== key);
     });
+    return removed;
   }
 
   async updateIdeas(coupleId: string, ideas: string): Promise<void> {

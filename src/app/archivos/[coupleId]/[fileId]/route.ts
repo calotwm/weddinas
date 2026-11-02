@@ -1,7 +1,7 @@
 import { canAccessCouple } from "@/server/auth";
 import { files } from "@/server/container";
 
-/** Serves a couple's uploaded image only to that couple or the team; anyone else gets a 404. */
+/** Serves a couple's uploaded file only to that couple or the team; anyone else gets a 404. */
 export async function GET(_req: Request, { params }: { params: Promise<{ coupleId: string; fileId: string }> }) {
   const { coupleId, fileId } = await params;
   const file = (await canAccessCouple(coupleId)) ? await files.read(coupleId, fileId) : null;

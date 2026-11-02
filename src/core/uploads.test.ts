@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { detectImage, isFileId, MAX_IMAGE_BYTES } from "./uploads";
+import { detectDocument, detectImage, isFileId, MAX_DOCUMENT_BYTES, MAX_IMAGE_BYTES } from "./uploads";
 import { LocalFileStore } from "@/infra/local-file-store";
 
 const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
@@ -27,11 +27,31 @@ describe("detectImage", () => {
   });
 });
 
+const pdf = Buffer.from("%PDF-1.7\n%");
+
+describe("detectDocument", () => {
+  it("accepts PDFs and the same images, up to 10 MB", () => {
+    expect(detectDocument(pdf)).toEqual({ ext: "pdf", mime: "application/pdf" });
+    expect(detectDocument(png)).toEqual({ ext: "png", mime: "image/png" });
+    expect(MAX_DOCUMENT_BYTES).toBe(10 * 1024 * 1024);
+  });
+
+  it("rejects HTML and SVG", () => {
+    expect(detectDocument(Buffer.from("<html><script>"))).toBeNull();
+    expect(detectDocument(Buffer.from("<svg onload=alert(1)>"))).toBeNull();
+  });
+
+  it("never lets images-only uploads take a PDF", () => {
+    expect(detectImage(pdf)).toBeNull();
+  });
+});
+
 describe("isFileId", () => {
   it("only accepts generated ids, never paths", () => {
     expect(isFileId("0f8fad5b-d9cb-469f-a165-70867728950e.jpg")).toBe(true);
     expect(isFileId("../db.json")).toBe(false);
     expect(isFileId("0f8fad5b-d9cb-469f-a165-70867728950e.svg")).toBe(false);
+    expect(isFileId("0f8fad5b-d9cb-469f-a165-70867728950e.pdf")).toBe(true);
     expect(isFileId("x/0f8fad5b-d9cb-469f-a165-70867728950e.jpg")).toBe(false);
   });
 });
@@ -62,5 +82,14 @@ describe("LocalFileStore", () => {
     await expect(store.saveImage("couple-1", Buffer.concat([jpeg, Buffer.alloc(MAX_IMAGE_BYTES)]))).rejects.toThrow("large");
     await expect(store.saveImage("../evil", jpeg)).rejects.toThrow();
     expect(await store.read("couple-1", "../../etc/passwd")).toBeNull();
+  });
+
+  it("saves documents (PDF or image) up to 10 MB, refusing anything else", async () => {
+    const id = await store.saveDocument("couple-1", pdf);
+    expect(id).toMatch(/\.pdf$/);
+    expect(await store.read("couple-1", id)).toEqual({ bytes: pdf, mime: "application/pdf" });
+    await expect(store.saveDocument("couple-1", Buffer.from("<html>"))).rejects.toThrow("supported");
+    await expect(store.saveDocument("couple-1", Buffer.concat([pdf, Buffer.alloc(MAX_DOCUMENT_BYTES)]))).rejects.toThrow("large");
+    await expect(store.saveImage("couple-1", pdf)).rejects.toThrow("image");
   });
 });

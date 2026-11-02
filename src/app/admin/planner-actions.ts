@@ -5,7 +5,7 @@ import type { BlockStatus, PaymentKind } from "@/core/couple";
 import type { Adjustment, Currency } from "@/core/money";
 import type { BudgetItemInput } from "@/core/portal-service";
 import { requireAdmin } from "@/server/auth";
-import { portal } from "@/server/container";
+import { files, portal } from "@/server/container";
 
 const text = (formData: FormData, key: string, max = 4000) => String(formData.get(key) ?? "").trim().slice(0, max);
 
@@ -113,7 +113,9 @@ export async function addBriefBlock(formData: FormData): Promise<void> {
 
 export async function removeBriefBlock(formData: FormData): Promise<void> {
   await requireAdmin();
-  await portal.removeBriefBlock(text(formData, "coupleId", 100), text(formData, "key", 60));
+  const coupleId = text(formData, "coupleId", 100);
+  const leftovers = await portal.removeBriefBlock(coupleId, text(formData, "key", 60));
+  await Promise.all(leftovers.map((id) => files.delete(coupleId, id).catch(() => undefined)));
   revalidatePath("/", "layout");
 }
 
