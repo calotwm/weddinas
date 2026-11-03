@@ -35,7 +35,7 @@ export default async function ProposalsPage() {
         <article key={p.id} className={`card ${p.status === "pending" ? "ring-2 ring-peach" : ""}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-xs tracking-wide text-ink/50 uppercase">{formatShortDate(p.createdAt)}</p>
+              <p className="text-sm font-medium text-teal">{formatShortDate(p.createdAt)}</p>
               <h2 className="mt-1 font-display text-2xl leading-snug text-forest sm:text-3xl">{p.title}</h2>
             </div>
             <span className={`chip ${STATUS[p.status].className}`}>{STATUS[p.status].label}</span>

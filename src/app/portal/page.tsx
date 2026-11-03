@@ -31,7 +31,7 @@ export default async function PortalHome() {
       <section className="card flex flex-col">
         <div className="flex items-center gap-3">
           <span className="icon-badge"><Icon name="sparkle" /></span>
-          <p className="eyebrow">Propuestas</p>
+          <h2 className="font-display text-2xl text-forest">Propuestas</h2>
         </div>
         <p className="mt-5 font-display text-5xl text-forest">{pending.length}</p>
         <p className="text-ink/60">{pending.length === 1 ? "propuesta espera su respuesta" : "propuestas esperan su respuesta"}</p>
@@ -45,7 +45,7 @@ export default async function PortalHome() {
       <section className="card flex flex-col">
         <div className="flex items-center gap-3">
           <span className="icon-badge"><Icon name="checklist" /></span>
-          <p className="eyebrow">Checklist</p>
+          <h2 className="font-display text-2xl text-forest">Checklist</h2>
         </div>
         <div className="mt-5 flex items-baseline gap-2">
           <p className="font-display text-5xl text-forest">{progress}%</p>
@@ -70,12 +70,12 @@ export default async function PortalHome() {
       <section className="card flex flex-col">
         <div className="flex items-center gap-3">
           <span className="icon-badge"><Icon name="file" /></span>
-          <p className="eyebrow">Último reporte</p>
+          <h2 className="font-display text-2xl text-forest">Último reporte</h2>
         </div>
         {lastReport ? (
           <>
-            <h2 className="mt-5 font-display text-2xl leading-snug text-forest">{lastReport.title}</h2>
-            <p className="text-xs tracking-wide text-ink/50 uppercase">{formatShortDate(lastReport.createdAt)}</p>
+            <h3 className="mt-5 text-lg font-semibold leading-snug text-ink">{lastReport.title}</h3>
+            <p className="text-sm font-medium text-teal">{formatShortDate(lastReport.createdAt)}</p>
             <p className="mt-3 line-clamp-3 text-sm text-ink/80">{lastReport.body}</p>
             <Link href="/portal/reportes" className="btn-ghost mt-6 self-start">Leer reportes</Link>
           </>

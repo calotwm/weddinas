@@ -26,7 +26,7 @@ export default async function ReportsPage() {
           />
           <article className="card">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-xs tracking-wide text-ink/50 uppercase">{formatShortDate(r.createdAt)}</p>
+              <p className="text-sm font-medium text-teal">{formatShortDate(r.createdAt)}</p>
               {i === 0 && <span className="chip bg-peach text-rust">Nuevo</span>}
             </div>
             <h2 className="mt-1 font-display text-2xl leading-snug text-forest">{r.title}</h2>

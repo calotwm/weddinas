@@ -31,7 +31,7 @@ export default async function VendorsPage() {
 
       {event.length > 0 && (
         <section className="space-y-4">
-          <h3 className="text-xs font-semibold tracking-[0.25em] text-rust uppercase">Su casamiento</h3>
+          <h3 className="font-display text-2xl text-forest">Su casamiento</h3>
           <div className="grid gap-5 lg:grid-cols-2">
             {event.map((block) => (
               <BriefBlockSummary key={block.key} coupleId={couple.id} block={block} />

@@ -18,7 +18,7 @@ export function BriefBlockSummary({ coupleId, block }: { coupleId: string; block
   const filled = block.fields.filter((f) => f.detail);
   const shared = (block.attachments ?? []).filter((a) => !a.internal);
   return (
-    <article className="card space-y-3">
+    <article className="card space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 className="font-display text-2xl text-forest">{block.name}</h3>
@@ -29,10 +29,13 @@ export function BriefBlockSummary({ coupleId, block }: { coupleId: string; block
       {filled.length > 0 || shared.length > 0 ? (
         <>
           {filled.length > 0 && (
-            <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+            <dl className="divide-y divide-forest/10 rounded-2xl bg-cream/70 px-4 ring-1 ring-forest/5">
               {filled.map((f, i) => (
-                <div key={`${f.label}-${i}`}>
-                  <dt className="text-xs tracking-wider text-ink/50 uppercase">{f.label}</dt>
+                <div key={`${f.label}-${i}`} className="grid gap-1 py-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] sm:gap-4">
+                  <dt className="flex items-start gap-2 text-sm font-semibold text-forest">
+                    <span aria-hidden className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-rust" />
+                    {f.label}
+                  </dt>
                   <dd className="whitespace-pre-line text-ink">{f.detail}</dd>
                 </div>
               ))}
