@@ -68,7 +68,7 @@ export default async function MyPage() {
               maxLength={500}
               defaultValue={info.mapUrl}
               placeholder="https://maps.google.com/…"
-              hint="Abran el lugar en Google Maps, toquen «Compartir» y peguen el link."
+              hint="El mapa de la página se arma solo con el lugar y la dirección. Este link es opcional, para el botón «Cómo llegar»."
             />
             <div>
               <span className="label">Cronograma del día</span>
@@ -80,8 +80,14 @@ export default async function MyPage() {
             <h2 className="section-title">Detalles</h2>
             <div className="grid gap-5 lg:grid-cols-2">
               <Field name="dressCode" label="Dress code" maxLength={500} defaultValue={info.dressCode} placeholder="Elegante sport" />
-              <Field name="giftInfo" label="Regalos" maxLength={1000} defaultValue={info.giftInfo} rows={3} placeholder="CBU, alias o lista de regalos" />
+              <Field name="giftInfo" label="Mensaje sobre regalos" maxLength={1000} defaultValue={info.giftInfo} rows={3} placeholder="Su presencia es nuestro mejor regalo…" />
             </div>
+            <div className="grid gap-5 lg:grid-cols-3">
+              <Field name="giftAlias" label="Alias" maxLength={20} defaultValue={info.giftAlias ?? ""} placeholder="sofi.martin.boda" hint="De 6 a 20 letras, números, puntos o guiones." />
+              <Field name="giftCbu" label="CBU o CVU" maxLength={30} defaultValue={info.giftCbu ?? ""} placeholder="22 números" hint="Si no tiene 22 números, no se muestra." />
+              <Field name="giftHolder" label="Titular de la cuenta" maxLength={120} defaultValue={info.giftHolder ?? ""} />
+            </div>
+            <p className="hint">Sus invitados ven el alias y el CBU con un botón para copiarlos.</p>
           </section>
         </div>
   

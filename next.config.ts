@@ -10,6 +10,8 @@ const csp = [
   "img-src 'self' https: data:",
   "font-src 'self'",
   `connect-src 'self'${isDev ? " ws:" : ""}`,
+  // The public page embeds the venue's Google Maps.
+  "frame-src https://www.google.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

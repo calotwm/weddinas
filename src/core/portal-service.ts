@@ -118,7 +118,7 @@ export class PortalService {
     const couple = await this.repo.findBySlug(slug);
     if (!couple) return null;
     const { partnerA, partnerB, weddingDate, publicInfo } = couple;
-    return { slug, partnerA, partnerB, weddingDate, publicInfo };
+    return { slug, partnerA, partnerB, weddingDate, publicInfo: { ...emptyPublicInfo(), ...publicInfo } };
   }
 
   async login(code: string): Promise<CoupleView | null> {

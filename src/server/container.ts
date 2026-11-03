@@ -43,7 +43,10 @@ export async function ensureDemoData(): Promise<void> {
       venueAddress: "Ruta 6 km 32, Cardales, Buenos Aires",
       mapUrl: "https://maps.google.com/?q=Cardales",
       dressCode: "Elegante sport. ¡Traigan calzado cómodo para bailar!",
-      giftInfo: "Su presencia es nuestro mejor regalo. Si quieren ayudarnos con la luna de miel: CBU 0000000000000000000000 · Alias SOFI.MARTIN.BODA",
+      giftInfo: "Su presencia es nuestro mejor regalo. Si quieren ayudarnos con la luna de miel:",
+      giftAlias: "sofi.martin.boda",
+      giftCbu: "0000003100012345678901",
+      giftHolder: "Sofía Pérez",
       coverImageUrl: "https://weddinas.com/wp-content/uploads/2025/07/portada.jpg",
       schedule: [
         { time: "19:30", title: "Ceremonia" },

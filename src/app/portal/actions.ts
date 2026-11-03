@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import type { ScheduleItem, SongStatus } from "@/core/couple";
+import { normalizeAlias, normalizeCbu } from "@/core/gift";
 import { MAX_IMAGE_BYTES } from "@/core/uploads";
 import { safeHttpUrl as safeUrl } from "@/core/url";
 import { requireCoupleId } from "@/server/auth";
@@ -28,6 +29,9 @@ export async function savePublicInfo(formData: FormData): Promise<void> {
     mapUrl: safeUrl(text(formData, "mapUrl", 500)),
     dressCode: text(formData, "dressCode", 500),
     giftInfo: text(formData, "giftInfo", 1000),
+    giftAlias: normalizeAlias(text(formData, "giftAlias", 40)),
+    giftCbu: normalizeCbu(text(formData, "giftCbu", 40)),
+    giftHolder: text(formData, "giftHolder", 120),
     coverImageUrl: safeUrl(text(formData, "coverImageUrl", 500)),
     schedule,
   });

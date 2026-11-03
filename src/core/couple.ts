@@ -15,6 +15,10 @@ export interface PublicInfo {
   mapUrl: string;
   dressCode: string;
   giftInfo: string;
+  /** Bank alias and CBU/CVU for gifts, shown with copy buttons. Missing on pages saved before they existed. */
+  giftAlias?: string;
+  giftCbu?: string;
+  giftHolder?: string;
   coverImageUrl: string;
   /** Uploaded cover (a file id); served publicly at /boda/<slug>/portada and preferred over coverImageUrl. */
   coverPhotoId?: string | null;
@@ -176,6 +180,9 @@ export const emptyPublicInfo = (): PublicInfo => ({
   mapUrl: "",
   dressCode: "",
   giftInfo: "",
+  giftAlias: "",
+  giftCbu: "",
+  giftHolder: "",
   coverImageUrl: "",
   schedule: [],
 });

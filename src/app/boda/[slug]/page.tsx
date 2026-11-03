@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SiteFooter } from "@/components/brand";
+import { CopyButton } from "@/components/copy-button";
 import { Countdown } from "@/components/countdown";
 import { Icon, type IconName } from "@/components/icons";
 import { coupleNames } from "@/core/couple";
-import { coverCss } from "@/core/url";
+import { coverCss, mapEmbedUrl } from "@/core/url";
 import { siteOrigin } from "@/server/site-url";
 import { formatWeddingDate, weddingDateToIso } from "@/lib/format";
 import { ensureDemoData, portal } from "@/server/container";
@@ -33,12 +34,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 function InfoCard({ icon, title, children, className = "" }: { icon: IconName; title: string; children: React.ReactNode; className?: string }) {
   return (
     <section className={`card ${className}`}>
-      <div className="mb-4 flex items-center gap-3">
+      <div className="mb-5 flex items-center gap-3 border-b border-forest/10 pb-4">
         <span className="icon-badge"><Icon name={icon} /></span>
-        <p className="eyebrow">{title}</p>
+        <h2 className="font-display text-2xl text-forest sm:text-3xl">{title}</h2>
       </div>
       {children}
     </section>
+  );
+}
+
+function GiftRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-cream/70 px-4 py-3 ring-1 ring-forest/5">
+      <div className="min-w-0">
+        <dt className="text-sm font-semibold text-forest">{label}</dt>
+        <dd className="font-mono text-base break-all text-forest">{value}</dd>
+      </div>
+      <CopyButton text={value} />
+    </div>
   );
 }
 
@@ -49,6 +62,9 @@ export default async function WeddingPage({ params }: Props) {
   const { publicInfo: info } = page;
   const cover = coverCss(page.slug, info);
   const hasCover = cover !== "none";
+  const mapEmbed = mapEmbedUrl(info);
+  const place = [info.venue, info.venueAddress].filter(Boolean).join(", ");
+  const directions = info.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`;
 
   return (
     <div className="min-h-screen">
@@ -80,21 +96,30 @@ export default async function WeddingPage({ params }: Props) {
         )}
 
         <div className="grid gap-6 md:grid-cols-2">
-          {(info.venue || info.venueAddress) && (
-            <InfoCard icon="map" title="Dónde">
-              <h2 className="font-display text-3xl text-forest">{info.venue}</h2>
-              <p className="mt-1 text-ink/70">{info.venueAddress}</p>
-              {info.mapUrl && (
-                <a href={info.mapUrl} target="_blank" rel="noreferrer noopener" className="btn-primary mt-6">
-                  <Icon name="map" className="h-4 w-4" />
-                  Cómo llegar
-                </a>
-              )}
+          {mapEmbed && (
+            <InfoCard icon="map" title="Dónde" className="md:col-span-2">
+              <div className="grid gap-6 md:grid-cols-[1fr_1.6fr] md:items-center">
+                <div>
+                  <h3 className="font-display text-2xl text-forest">{info.venue}</h3>
+                  <p className="mt-1 text-lg text-ink/80">{info.venueAddress}</p>
+                  <a href={directions} target="_blank" rel="noreferrer noopener" className="btn-primary mt-6">
+                    <Icon name="map" className="h-4 w-4" />
+                    Cómo llegar
+                  </a>
+                </div>
+                <iframe
+                  title={`Mapa de ${info.venue || info.venueAddress}`}
+                  src={mapEmbed}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  className="aspect-[4/3] w-full rounded-2xl border-0 bg-sand ring-1 ring-forest/10"
+                />
+              </div>
             </InfoCard>
           )}
 
           {info.schedule.length > 0 && (
-            <InfoCard icon="clock" title="Cronograma">
+            <InfoCard icon="clock" title="Cronograma" className="md:row-span-2">
               <ol className="relative space-y-4 border-l border-mint/50 pl-5">
                 {info.schedule.map((item, i) => (
                   <li key={i} className="relative">
@@ -109,13 +134,20 @@ export default async function WeddingPage({ params }: Props) {
 
           {info.dressCode && (
             <InfoCard icon="shirt" title="Dress code" className="bg-peach-soft">
-              <p className="font-display text-2xl text-forest">{info.dressCode}</p>
+              <p className="text-lg text-ink">{info.dressCode}</p>
             </InfoCard>
           )}
 
-          {info.giftInfo && (
+          {(info.giftInfo || info.giftAlias || info.giftCbu) && (
             <InfoCard icon="gift" title="Regalos">
-              <p className="whitespace-pre-line text-ink/80">{info.giftInfo}</p>
+              {info.giftInfo && <p className="text-lg whitespace-pre-line text-ink">{info.giftInfo}</p>}
+              {(info.giftAlias || info.giftCbu) && (
+                <dl className="mt-4 space-y-3">
+                  {info.giftAlias && <GiftRow label="Alias" value={info.giftAlias} />}
+                  {info.giftCbu && <GiftRow label="CBU / CVU" value={info.giftCbu} />}
+                </dl>
+              )}
+              {info.giftHolder && <p className="mt-3 text-ink/80">A nombre de <strong className="text-forest">{info.giftHolder}</strong></p>}
             </InfoCard>
           )}
         </div>

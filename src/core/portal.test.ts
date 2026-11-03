@@ -113,6 +113,18 @@ describe("PortalService", () => {
     expect(page).not.toHaveProperty("accessCodeHash");
   });
 
+  it("stores the gift alias and CBU, and old pages without them still load", async () => {
+    const { couple } = await service.createCouple({ partnerA: "A", partnerB: "B", weddingDate: "2027-01-01T20:00" });
+    expect((await service.getPublicPage(couple.slug))?.publicInfo).toMatchObject({ giftAlias: "", giftCbu: "", giftHolder: "" });
+
+    await service.updatePublicInfo(couple.id, { giftAlias: "sofi.martin.boda", giftCbu: "0000003100012345678901", giftHolder: "Sofía Pérez" });
+    expect((await service.getPublicPage(couple.slug))?.publicInfo).toMatchObject({
+      giftAlias: "sofi.martin.boda",
+      giftCbu: "0000003100012345678901",
+      giftHolder: "Sofía Pérez",
+    });
+  });
+
   it("publishes proposals that the couple can answer", async () => {
     const { couple } = await service.createCouple({ partnerA: "A", partnerB: "B", weddingDate: "2027-01-01T20:00" });
     const proposal = await service.addProposal(couple.id, { title: "Ambientación", description: "Luces cálidas" });
