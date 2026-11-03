@@ -5,6 +5,7 @@ import { SubmitButton } from "@/components/submit-button";
 import type { BriefBlock } from "@/core/couple";
 import { saveBriefBlock, saveIdeas } from "@/app/admin/planner-actions";
 import { BLOCK_STATUS } from "@/components/planner/brief";
+import { NoteField } from "@/components/planner/note-field";
 
 export function BriefBlockForm({ coupleId, block }: { coupleId: string; block: BriefBlock }) {
   const [state, action] = useActionState(saveBriefBlock, null);
@@ -52,13 +53,13 @@ export function BriefBlockForm({ coupleId, block }: { coupleId: string; block: B
             <div key={`${f.label}-${i}`} className="grid gap-2 px-4 py-3 sm:grid-cols-[minmax(8rem,1fr)_2fr_2fr] sm:items-center sm:gap-3">
               <input type="hidden" name="label" value={f.label} />
               <span className="text-sm font-semibold text-forest">{f.label}</span>
-              <input name="detail" defaultValue={f.detail} aria-label={`${f.label}: detalle`} placeholder="Detalle" className="field !py-2" />
+              <NoteField name="detail" defaultValue={f.detail} aria-label={`${f.label}: detalle`} placeholder="Detalle" className="field !py-2" />
               <input name="fieldNote" defaultValue={f.note} aria-label={`${f.label}: aclaraciones`} placeholder="Aclaraciones" className="field !py-2" />
             </div>
           ))}
           <div className="grid gap-2 bg-peach-soft/50 px-4 py-3 sm:grid-cols-[minmax(8rem,1fr)_4fr] sm:items-center sm:gap-3">
             <input name="newLabel" maxLength={120} aria-label="Nuevo campo" placeholder="+ Nuevo campo" className="field !py-2" />
-            <input name="newDetail" aria-label="Detalle del nuevo campo" placeholder="Detalle" className="field !py-2" />
+            <NoteField name="newDetail" aria-label="Detalle del nuevo campo" placeholder="Detalle" className="field !py-2" />
           </div>
         </div>
       </div>

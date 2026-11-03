@@ -1,5 +1,26 @@
 import type { BlockStatus, BriefBlock } from "@/core/couple";
 import { AttachmentList } from "@/components/attachments";
+import { noteLines } from "@/core/notes";
+
+/** A planner's note as a list: one item per line, with headings for its groups. */
+export function NoteText({ text }: { text: string }) {
+  const lines = noteLines(text);
+  if (lines.length <= 1) return <>{lines[0]?.text}</>;
+  return (
+    <ul className="space-y-1">
+      {lines.map((line, i) =>
+        line.kind === "heading" ? (
+          <li key={i} className="pt-2 font-semibold text-forest first:pt-0">{line.text}</li>
+        ) : (
+          <li key={i} className="flex gap-2">
+            <span aria-hidden className="mt-2.5 h-1 w-1 shrink-0 rounded-full bg-ink/40" />
+            <span>{line.text}</span>
+          </li>
+        ),
+      )}
+    </ul>
+  );
+}
 
 export const BLOCK_STATUS: Record<BlockStatus, { label: string; className: string }> = {
   searching: { label: "En búsqueda", className: "bg-sand text-ink/70" },
@@ -36,7 +57,7 @@ export function BriefBlockSummary({ coupleId, block }: { coupleId: string; block
                     <span aria-hidden className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-rust" />
                     {f.label}
                   </dt>
-                  <dd className="whitespace-pre-line text-ink">{f.detail}</dd>
+                  <dd className="text-ink"><NoteText text={f.detail} /></dd>
                 </div>
               ))}
             </dl>
