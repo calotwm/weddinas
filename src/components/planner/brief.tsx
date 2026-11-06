@@ -1,11 +1,10 @@
 import type { BlockStatus, BriefBlock } from "@/core/couple";
 import { AttachmentList } from "@/components/attachments";
-import { noteLines } from "@/core/notes";
+import { noteLines, type NoteLine } from "@/core/notes";
 
-/** A planner's note as a list: one item per line, with headings for its groups. */
-export function NoteText({ text }: { text: string }) {
-  const lines = noteLines(text);
-  if (lines.length <= 1) return <>{lines[0]?.text}</>;
+const PREVIEW_LINES = 3;
+
+function NoteLines({ lines }: { lines: NoteLine[] }) {
   return (
     <ul className="space-y-1">
       {lines.map((line, i) =>
@@ -19,6 +18,24 @@ export function NoteText({ text }: { text: string }) {
         ),
       )}
     </ul>
+  );
+}
+
+/** A planner's note as a list: one item per line, with headings for its groups. Long notes show a "Ver más". */
+export function NoteText({ text, collapse = false }: { text: string; collapse?: boolean }) {
+  const lines = noteLines(text);
+  if (lines.length <= 1) return <>{lines[0]?.text}</>;
+  if (!collapse || lines.length <= PREVIEW_LINES + 1) return <NoteLines lines={lines} />;
+  return (
+    <details className="group">
+      <summary className="list-none">
+        <NoteLines lines={lines.slice(0, PREVIEW_LINES)} />
+        <span className="mt-1 inline-block cursor-pointer text-sm font-semibold text-teal group-open:hidden">Ver más ({lines.length - PREVIEW_LINES})</span>
+      </summary>
+      <div className="mt-1">
+        <NoteLines lines={lines.slice(PREVIEW_LINES)} />
+      </div>
+    </details>
   );
 }
 
@@ -57,12 +74,17 @@ export function BriefBlockSummary({ coupleId, block }: { coupleId: string; block
                     <span aria-hidden className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-rust" />
                     {f.label}
                   </dt>
-                  <dd className="text-ink"><NoteText text={f.detail} /></dd>
+                  <dd className="text-ink"><NoteText text={f.detail} collapse /></dd>
                 </div>
               ))}
             </dl>
           )}
-          <AttachmentList coupleId={coupleId} attachments={shared} />
+          {shared.length > 0 && (
+            <div>
+              <p className="mb-2 text-sm font-semibold text-forest">Documentos</p>
+              <AttachmentList coupleId={coupleId} attachments={shared} />
+            </div>
+          )}
         </>
       ) : (
         <p className="text-sm text-ink/50">Todavía no hay detalles cargados.</p>

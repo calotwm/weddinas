@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { generateAccessCode, hashAccessCode } from "./access-code";
-import { BRIEF_CATALOG, catalogBlock, defaultBrief, defaultMusic, newBriefBlock, SONG_MOMENT_KEYS } from "./brief-catalog";
+import { BRIEF_CATALOG, catalogBlock, defaultBrief, defaultMusic, newBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
 import {
   emptyPublicInfo,
   isPresented,
@@ -75,6 +75,7 @@ function withPlannerDefaults(couple: Couple): Couple {
   couple.ideas ??= "";
   couple.music ??= defaultMusic();
   couple.family ??= [];
+  couple.brief.forEach(withCatalogFields);
   return couple;
 }
 

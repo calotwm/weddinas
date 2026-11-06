@@ -112,6 +112,22 @@ describe("planner workspace", () => {
       expect((await load()).brief.some((b) => b.key === "cotillon")).toBe(false);
     });
 
+    it("gives stored vendor blocks the common fields, renaming old labels without losing their detail", async () => {
+      const stored = JSON.parse(readFileSync(file, "utf8"));
+      const espacio = stored[0].brief.find((b: { key: string }) => b.key === "espacio");
+      espacio.fields = [
+        { label: "Pago", detail: "50% seña", note: "" },
+        { label: "Mobiliario incluido", detail: "Sillas Tiffany", note: "interno" },
+        { label: "Estacionamiento", detail: "Sí", note: "" },
+      ];
+      writeFileSync(file, JSON.stringify(stored));
+
+      const fields = (await load()).brief.find((b) => b.key === "espacio")!.fields;
+      expect(fields.map((f) => f.label)).toEqual([...BRIEF_CATALOG.find((b) => b.key === "espacio")!.fields, "Estacionamiento"]);
+      expect(fields.find((f) => f.label === "Mobiliario")).toEqual({ label: "Mobiliario", detail: "Sillas Tiffany", note: "interno" });
+      expect(fields.find((f) => f.label === "Pago")!.detail).toBe("50% seña");
+    });
+
     it("saves the general ideas", async () => {
       await service.updateIdeas(coupleId, "Boda de campo");
       expect((await load()).ideas).toBe("Boda de campo");
