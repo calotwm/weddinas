@@ -8,7 +8,7 @@ const SECTIONS: Array<{ href: string; label: string; icon: IconName; match: (pat
   { href: "/admin", label: "Parejas", icon: "users", match: (p) => p === "/admin" || p.startsWith("/admin/parejas") || p === "/admin/mensaje" },
   { href: "/admin/proveedores", label: "Proveedores", icon: "sparkle", match: (p) => p.startsWith("/admin/proveedores") },
   { href: "/admin/pagos", label: "Pagos", icon: "dollar", match: (p) => p.startsWith("/admin/pagos") },
-  { href: "/admin/invitados", label: "Invitados", icon: "heart", match: (p) => p.startsWith("/admin/invitados") },
+  { href: "/admin/invitados", label: "Invitados", icon: "list", match: (p) => p.startsWith("/admin/invitados") },
   { href: "/admin/civil", label: "Civil", icon: "file", match: (p) => p.startsWith("/admin/civil") },
 ];
 

@@ -13,7 +13,7 @@ const TABS: Array<{ path: string; label: string; icon: IconName }> = [
   { path: "/familia", label: "Familia", icon: "heart" },
   { path: "/estetica", label: "Estética", icon: "edit" },
   { path: "/timing", label: "Timing", icon: "clock" },
-  { path: "/invitados", label: "Invitados", icon: "users" },
+  { path: "/invitados", label: "Invitados", icon: "list" },
 ];
 
 export function CoupleTabs({ coupleId }: { coupleId: string }) {

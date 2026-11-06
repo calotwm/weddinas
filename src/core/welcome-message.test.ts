@@ -24,7 +24,7 @@ describe("renderWelcomeMessage", () => {
 
   it("renders the default text exactly as the message the team sent before", () => {
     expect(renderWelcomeMessage(DEFAULT_WELCOME_TEMPLATE, values)).toBe(
-      "¡Hola Delfi & Juancho! Este es su portal Weddinas, donde van a ver la cuenta regresiva, propuestas, proveedores y pagos, y armar su página.\n\nEntren en https://portal.weddinas.com con el código: DELFIYJUANCHO27",
+      "¡Hola Delfi & Juancho! Este es su portal Weddinas, donde van a ver la cuenta regresiva, propuestas, proveedores, pagos, su lista de invitados y el timing del día.\n\nEntren en https://portal.weddinas.com con el código: DELFIYJUANCHO27",
     );
   });
 });

@@ -17,7 +17,7 @@ const LINKS: Array<{ href: string; label: string; short: string; icon: IconName 
   { href: "/portal/familia", label: "Fotos familiares", short: "Familia", icon: "heart" },
   { href: "/portal/estetica", label: "Estética", short: "Estética", icon: "edit" },
   { href: "/portal/timing", label: "Timing del día", short: "Timing", icon: "clock" },
-  { href: "/portal/invitados", label: "Lista de invitados", short: "Invitados", icon: "users" },
+  { href: "/portal/invitados", label: "Lista de invitados", short: "Invitados", icon: "list" },
 ];
 
 function Badge({ count }: { count: number }) {

@@ -94,7 +94,7 @@ export default async function AdminHome() {
   const active = rows.filter((r) => !r.isPast);
   const soon = active.filter((r) => r.days <= 30).length;
   const pendingTotal = active.reduce((sum, r) => sum + r.pending, 0);
-  const answered = couples.flatMap((c) => c.proposals).filter((p) => p.status !== "pending").length;
+  const answered = couples.flatMap((c) => c.proposals).filter((p) => p.status === "approved" || p.status === "rejected").length;
 
   return (
     <div className="space-y-8">
@@ -124,7 +124,7 @@ export default async function AdminHome() {
           <div className="mt-5 grid gap-8 lg:grid-cols-2">
             <div>
               <p className="mb-4 text-sm text-ink/60">
-                Se genera su código de acceso y su página pública.{" "}
+                Se genera su código de acceso.{" "}
                 <Link href="/admin/mensaje" className="font-semibold text-forest underline-offset-4 hover:underline">
                   Editar el mensaje de bienvenida
                 </Link>

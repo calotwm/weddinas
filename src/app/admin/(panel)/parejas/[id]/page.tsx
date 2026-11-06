@@ -6,7 +6,7 @@ import { BRIEF_CATALOG, categoryName } from "@/core/brief-catalog";
 import { coupleNames, isPresented, type Proposal } from "@/core/couple";
 import { formatShortDate } from "@/lib/format";
 import { requireAdmin } from "@/server/auth";
-import { portal } from "@/server/container";
+import { portal, welcomeTemplate } from "@/server/container";
 import { siteOrigin } from "@/server/site-url";
 import { addProposal, deleteProposal, deleteReport, presentProposal, replyToProposal, updateCouple } from "../../../actions";
 import { AdminAttachments } from "../../../admin-attachments";
@@ -201,7 +201,7 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
 
         <section className="card space-y-4">
           <h2 className="section-title">Código de acceso</h2>
-          <RegenerateCodeForm coupleId={couple.id} names={names} origin={origin} />
+          <RegenerateCodeForm coupleId={couple.id} names={names} origin={origin} template={await welcomeTemplate()} />
         </section>
       </div>
     </div>
