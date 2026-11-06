@@ -1,6 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import {
+  aestheticInput,
+  guestInput,
+  pastedGuests,
+  removeAestheticPhoto as dropPhoto,
+  timingInput,
+  uploadAestheticPhotos as savePhotos,
+} from "@/components/planner/section-forms";
 import type { BlockStatus, PaymentKind } from "@/core/couple";
 import type { Adjustment, Currency } from "@/core/money";
 import type { BudgetItemInput } from "@/core/portal-service";
@@ -146,4 +154,72 @@ export async function saveIdeas(_prev: PlannerResult, formData: FormData): Promi
   await requireAdmin();
   await portal.updateIdeas(text(formData, "coupleId", 100), text(formData, "ideas", 6000));
   return done();
+}
+
+// Estética, Timing and Invitados: the team edits the same data the couple does.
+
+const coupleOf = (formData: FormData) => text(formData, "coupleId", 100);
+const refresh = () => revalidatePath("/", "layout");
+
+export async function saveAesthetic(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.saveAesthetic(coupleOf(formData), aestheticInput(formData));
+  refresh();
+}
+
+export async function uploadAestheticPhotos(_prev: PlannerResult, formData: FormData): Promise<PlannerResult> {
+  await requireAdmin();
+  const result = await savePhotos(coupleOf(formData), formData);
+  refresh();
+  return result;
+}
+
+export async function removeAestheticPhoto(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await dropPhoto(coupleOf(formData), text(formData, "photoId", 100));
+  refresh();
+}
+
+export async function addTimingItem(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const input = timingInput(formData);
+  if (input) await portal.addTimingItem(coupleOf(formData), input).catch(() => undefined);
+  refresh();
+}
+
+export async function updateTimingItem(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const input = timingInput(formData);
+  if (input) await portal.updateTimingItem(coupleOf(formData), text(formData, "itemId", 100), input).catch(() => undefined);
+  refresh();
+}
+
+export async function deleteTimingItem(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.deleteTimingItem(coupleOf(formData), text(formData, "itemId", 100));
+  refresh();
+}
+
+export async function addGuest(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.addGuests(coupleOf(formData), [guestInput(formData)]).catch(() => undefined);
+  refresh();
+}
+
+export async function addGuestList(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.addGuests(coupleOf(formData), pastedGuests(formData)).catch(() => undefined);
+  refresh();
+}
+
+export async function updateGuest(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.updateGuest(coupleOf(formData), text(formData, "guestId", 100), guestInput(formData)).catch(() => undefined);
+  refresh();
+}
+
+export async function deleteGuest(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.deleteGuest(coupleOf(formData), text(formData, "guestId", 100));
+  refresh();
 }

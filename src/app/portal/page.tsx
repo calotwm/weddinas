@@ -3,7 +3,10 @@ import { Countdown } from "@/components/countdown";
 import { Icon } from "@/components/icons";
 import { categoryName } from "@/core/brief-catalog";
 import { dueItems } from "@/core/budget";
+import { GuestSummaryView } from "@/components/planner/guest-summary";
+import { TimingList } from "@/components/planner/timing";
 import { isPresented } from "@/core/couple";
+import { guestSummary } from "@/core/guests";
 import { coverCss } from "@/core/url";
 import { formatDay, formatMoney, monthEnd, today, weddingDateToIso } from "@/lib/format";
 import { loadRates } from "@/server/rates";
@@ -93,6 +96,37 @@ export default async function PortalHome() {
           <p className="mt-5 text-ink/60">No tienen pagos que venzan este mes.</p>
         )}
         <Link href="/portal/presupuesto" className="btn-ghost mt-6 self-start">Ver presupuesto</Link>
+      </section>
+
+      <section className="card flex flex-col">
+        <div className="flex items-center gap-3">
+          <span className="icon-badge"><Icon name="clock" /></span>
+          <h2 className="font-display text-2xl text-forest">Timing</h2>
+        </div>
+        <div className="mt-5">
+          {couple.timing.length > 0 ? (
+            <TimingList timing={couple.timing} limit={4} />
+          ) : (
+            <p className="text-ink/60">Todavía no armaron el cronograma del día.</p>
+          )}
+        </div>
+        {couple.timing.length > 4 && <p className="mt-2 text-sm text-ink/50">y {couple.timing.length - 4} momento{couple.timing.length - 4 === 1 ? "" : "s"} más</p>}
+        <Link href="/portal/timing" className="btn-ghost mt-6 self-start">{couple.timing.length ? "Ver timing" : "Armar timing"}</Link>
+      </section>
+
+      <section className="card flex flex-col lg:col-span-2">
+        <div className="flex items-center gap-3">
+          <span className="icon-badge"><Icon name="users" /></span>
+          <h2 className="font-display text-2xl text-forest">Lista de invitados</h2>
+        </div>
+        <div className="mt-5">
+          {couple.guests.length > 0 ? (
+            <GuestSummaryView summary={guestSummary(couple.guests)} compact />
+          ) : (
+            <p className="text-ink/60">Todavía no cargaron invitados.</p>
+          )}
+        </div>
+        <Link href="/portal/invitados" className="btn-ghost mt-6 self-start">{couple.guests.length ? "Ver lista" : "Cargar invitados"}</Link>
       </section>
     </div>
   );
