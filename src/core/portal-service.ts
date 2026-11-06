@@ -13,7 +13,10 @@ import {
   type CoupleView,
   type FamilyMember,
   type FamilySide,
+  type Guest,
+  type GuestStatus,
   type Music,
+  type PaletteColor,
   type Payment,
   type PaymentKind,
   type Proposal,
@@ -22,7 +25,9 @@ import {
   type PublicPage,
   type Report,
   type SongStatus,
+  type TimingItem,
 } from "./couple";
+import { GUEST_STATUSES, MAX_GUESTS } from "./guests";
 import type { CoupleRepository } from "./ports";
 import { slugify } from "./slug";
 
@@ -41,6 +46,44 @@ export interface BriefBlockUpdate {
   owner: string;
   fields: BriefField[];
 }
+
+export interface AestheticInput {
+  fonts: string;
+  /** Stored on the public info, where the guest page already reads it. */
+  dressCode: string;
+  palette: PaletteColor[];
+}
+
+export type TimingInput = Omit<TimingItem, "id">;
+export type GuestInput = Omit<Guest, "id">;
+export type NewGuestInput = Pick<Guest, "name"> & Partial<Omit<Guest, "id" | "name">>;
+
+export const MAX_AESTHETIC_PHOTOS = 12;
+const MAX_PALETTE = 24;
+const MAX_TIMING = 100;
+const HEX = /^#[0-9a-f]{6}$/i;
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+function cleanTiming(input: TimingInput): TimingInput {
+  if (!HHMM.test(input.time)) throw new Error("Time must be HH:MM");
+  const title = input.title.trim();
+  if (!title) throw new Error("Title is required");
+  return { time: input.time, title, note: input.note.trim() };
+}
+
+function cleanGuest(input: NewGuestInput): GuestInput {
+  const status: GuestStatus = input.status ?? "pending";
+  if (!GUEST_STATUSES.includes(status)) throw new Error("Unknown guest status");
+  return {
+    name: input.name.trim(),
+    group: (input.group ?? "").trim(),
+    status,
+    table: (input.table ?? "").trim(),
+    restriction: (input.restriction ?? "").trim(),
+  };
+}
+
+const byTime = (a: TimingItem, b: TimingItem) => a.time.localeCompare(b.time);
 
 export type AttachmentTarget = { kind: "brief"; key: string } | { kind: "proposal"; id: string } | { kind: "report"; id: string };
 
@@ -75,6 +118,9 @@ function withPlannerDefaults(couple: Couple): Couple {
   couple.ideas ??= "";
   couple.music ??= defaultMusic();
   couple.family ??= [];
+  couple.aesthetic ??= { fonts: "", palette: [], photoIds: [] };
+  couple.timing ??= [];
+  couple.guests ??= [];
   couple.brief.forEach(withCatalogFields);
   return couple;
 }
@@ -154,6 +200,9 @@ export class PortalService {
       ideas: "",
       music: defaultMusic(),
       family: [],
+      aesthetic: { fonts: "", palette: [], photoIds: [] },
+      timing: [],
+      guests: [],
       createdAt: new Date().toISOString(),
     };
     await this.repo.save(couple);
@@ -472,6 +521,91 @@ export class PortalService {
       c.family = c.family.filter((m) => m.id !== memberId);
     });
     return photoId;
+  }
+
+  async saveAesthetic(coupleId: string, input: AestheticInput): Promise<void> {
+    const palette = input.palette.slice(0, MAX_PALETTE).map((color) => {
+      if (!HEX.test(color.hex)) throw new Error("Each color must be #rrggbb");
+      return { name: color.name.trim(), hex: color.hex.toLowerCase() };
+    });
+    await this.mutate(coupleId, (c) => {
+      c.aesthetic.fonts = input.fonts.trim();
+      c.aesthetic.palette = palette;
+      c.publicInfo.dressCode = input.dressCode.trim();
+    });
+  }
+
+  async addAestheticPhoto(coupleId: string, photoId: string): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      if (c.aesthetic.photoIds.length >= MAX_AESTHETIC_PHOTOS) throw new Error("Too many photos");
+      c.aesthetic.photoIds.push(photoId);
+    });
+  }
+
+  /** Returns the file id to delete, or null when it was not one of the couple's photos. */
+  async removeAestheticPhoto(coupleId: string, photoId: string): Promise<string | null> {
+    let removed: string | null = null;
+    await this.mutate(coupleId, (c) => {
+      if (!c.aesthetic.photoIds.includes(photoId)) return;
+      removed = photoId;
+      c.aesthetic.photoIds = c.aesthetic.photoIds.filter((id) => id !== photoId);
+    });
+    return removed;
+  }
+
+  async addTimingItem(coupleId: string, input: TimingInput): Promise<TimingItem> {
+    const item: TimingItem = { id: randomUUID(), ...cleanTiming(input) };
+    await this.mutate(coupleId, (c) => {
+      if (c.timing.length >= MAX_TIMING) throw new Error("Too many timing moments");
+      c.timing.push(item);
+      c.timing.sort(byTime);
+    });
+    return item;
+  }
+
+  async updateTimingItem(coupleId: string, itemId: string, input: TimingInput): Promise<void> {
+    const clean = cleanTiming(input);
+    await this.mutate(coupleId, (c) => {
+      const item = c.timing.find((t) => t.id === itemId);
+      if (!item) throw new Error("Timing moment not found");
+      Object.assign(item, clean);
+      c.timing.sort(byTime);
+    });
+  }
+
+  async deleteTimingItem(coupleId: string, itemId: string): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      c.timing = c.timing.filter((t) => t.id !== itemId);
+    });
+  }
+
+  /** Adds one or many guests (pasted lists); blank names are skipped. */
+  async addGuests(coupleId: string, inputs: NewGuestInput[]): Promise<Guest[]> {
+    const added: Guest[] = inputs
+      .map(cleanGuest)
+      .filter((g) => g.name)
+      .map((g) => ({ id: randomUUID(), ...g }));
+    await this.mutate(coupleId, (c) => {
+      if (c.guests.length + added.length > MAX_GUESTS) throw new Error(`A list holds up to ${MAX_GUESTS} guests`);
+      c.guests.push(...added);
+    });
+    return added;
+  }
+
+  async updateGuest(coupleId: string, guestId: string, input: GuestInput): Promise<void> {
+    const clean = cleanGuest(input);
+    if (!clean.name) throw new Error("Name is required");
+    await this.mutate(coupleId, (c) => {
+      const guest = c.guests.find((g) => g.id === guestId);
+      if (!guest) throw new Error("Guest not found");
+      Object.assign(guest, clean);
+    });
+  }
+
+  async deleteGuest(coupleId: string, guestId: string): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      c.guests = c.guests.filter((g) => g.id !== guestId);
+    });
   }
 
   /** Changes whenever the access code changes; sessions are bound to it so regenerating a code logs old devices out. */

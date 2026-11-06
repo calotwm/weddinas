@@ -151,6 +151,41 @@ export interface FamilyMember {
   photoId: string | null;
 }
 
+export interface PaletteColor {
+  name: string;
+  /** "#rrggbb", lowercase. */
+  hex: string;
+}
+
+/** "Estética": what the couple likes, for the team and vendors (replaces the guest web page in the portal). */
+export interface Aesthetic {
+  fonts: string;
+  palette: PaletteColor[];
+  /** Uploaded photos of the couple, served by /archivos to the couple and the team only. */
+  photoIds: string[];
+}
+
+/** One moment of the wedding day schedule. */
+export interface TimingItem {
+  id: string;
+  /** "HH:MM" (24 h). */
+  time: string;
+  title: string;
+  note: string;
+}
+
+export type GuestStatus = "confirmed" | "pending" | "declined";
+
+export interface Guest {
+  id: string;
+  name: string;
+  group: string;
+  status: GuestStatus;
+  table: string;
+  /** Dietary restriction, free text (e.g. "Celíaco"). */
+  restriction: string;
+}
+
 export interface Couple {
   id: string;
   slug: string;
@@ -168,6 +203,10 @@ export interface Couple {
   ideas: string;
   music: Music;
   family: FamilyMember[];
+  aesthetic: Aesthetic;
+  /** Kept sorted by time. */
+  timing: TimingItem[];
+  guests: Guest[];
   /** Last time the couple opened their notifications; newer ones count as unread. */
   notificationsSeenAt?: string | null;
   createdAt: string;
