@@ -44,6 +44,15 @@ export async function respondToProposal(formData: FormData): Promise<void> {
   const status = formData.get("status") === "approved" ? "approved" : "rejected";
   await portal.respondToProposal(coupleId, text(formData, "proposalId", 100), status, text(formData, "comment", 1000));
   revalidatePath("/portal", "layout");
+  revalidatePath("/admin", "layout");
+}
+
+export async function commentOnProposal(formData: FormData): Promise<void> {
+  const coupleId = await requireCoupleId();
+  const comment = text(formData, "comment", 1000);
+  if (comment) await portal.addProposalComment(coupleId, text(formData, "proposalId", 100), "couple", comment);
+  revalidatePath("/portal", "layout");
+  revalidatePath("/admin", "layout");
 }
 
 export async function addTask(formData: FormData): Promise<void> {

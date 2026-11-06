@@ -1,6 +1,17 @@
 import type { Adjustment, Currency } from "./money";
 
-export type ProposalStatus = "pending" | "approved" | "rejected";
+/** "discarded": another proposal of the same rubro was approved; hidden from the couple, still shown to the team. */
+export type ProposalStatus = "pending" | "approved" | "rejected" | "discarded";
+
+export type CommentAuthor = "couple" | "team";
+
+export interface ProposalComment {
+  id: string;
+  author: CommentAuthor;
+  text: string;
+  /** ISO time it was written. */
+  at: string;
+}
 
 export interface ScheduleItem {
   time: string;
@@ -47,6 +58,12 @@ export interface Proposal {
   /** When the team presented it to the couple; null while it is a draft. Missing on proposals published before drafts existed. */
   presentedAt?: string | null;
   attachments?: Attachment[];
+  /** Brief vendor catalog key ("foto", "catering"…); approving one discards the other pending ones of that rubro. */
+  category?: string;
+  /** Question/answer thread between the couple and the team. */
+  comments?: ProposalComment[];
+  /** First time the couple opened Propuestas while it was presented. */
+  viewedAt?: string | null;
 }
 
 export interface Report {
@@ -121,6 +138,8 @@ export interface BriefBlock {
   owner: string;
   fields: BriefField[];
   attachments?: Attachment[];
+  /** When the block last became "confirmed"; drives the couple's vendor notification. Unset while not confirmed. */
+  confirmedAt?: string | null;
 }
 
 export type SongStatus = "chosen" | "pending" | "na";

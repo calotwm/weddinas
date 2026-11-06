@@ -1,12 +1,14 @@
 import { notFound } from "next/navigation";
 import { Icon } from "@/components/icons";
 import { SubmitButton } from "@/components/submit-button";
+import { CommentThread } from "@/app/portal/propuestas/comment-thread";
+import { BRIEF_CATALOG, categoryName } from "@/core/brief-catalog";
 import { coupleNames, isPresented, type Proposal } from "@/core/couple";
 import { formatShortDate } from "@/lib/format";
 import { requireAdmin } from "@/server/auth";
 import { portal } from "@/server/container";
 import { siteOrigin } from "@/server/site-url";
-import { addProposal, deleteProposal, deleteReport, presentProposal, updateCouple } from "../../../actions";
+import { addProposal, deleteProposal, deleteReport, presentProposal, replyToProposal, updateCouple } from "../../../actions";
 import { AdminAttachments } from "../../../admin-attachments";
 import { RegenerateCodeForm } from "../../../forms";
 
@@ -16,7 +18,10 @@ const STATUS: Record<Proposal["status"], { label: string; className: string }> =
   pending: { label: "Pendiente", className: "bg-peach text-rust" },
   approved: { label: "Aprobada", className: "bg-mint/25 text-forest" },
   rejected: { label: "Rechazada", className: "bg-ink/8 text-ink/60" },
+  discarded: { label: "Descartada", className: "bg-ink/8 text-ink/50" },
 };
+
+const VENDOR_RUBROS = BRIEF_CATALOG.filter((b) => b.kind === "vendor");
 
 export default async function CoupleAdminPage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
@@ -41,6 +46,16 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
             <div>
               <label htmlFor="p-description" className="label">Descripción</label>
               <textarea id="p-description" name="description" required rows={4} placeholder="Qué incluye, opciones, tiempos…" className="field" />
+            </div>
+            <div>
+              <label htmlFor="p-category" className="label">Rubro</label>
+              <select id="p-category" name="category" defaultValue="" className="field">
+                <option value="">Sin rubro</option>
+                {VENDOR_RUBROS.map((b) => (
+                  <option key={b.key} value={b.key}>{b.name}</option>
+                ))}
+              </select>
+              <p className="hint mt-1">Si los novios aprueban una propuesta con rubro, las otras pendientes de ese rubro se descartan y el proveedor queda confirmado en el brief.</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
@@ -79,8 +94,29 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
                     {isPresented(p) ? "Presentada" : "Creada"} {formatShortDate(p.presentedAt ?? p.createdAt)}
                     {p.respondedAt && ` · respondida ${formatShortDate(p.respondedAt)}`}
                     {p.amount && ` · ${p.amount}`}
+                    {p.category && ` · ${categoryName(p.category)}`}
                   </p>
+                  {isPresented(p) && (
+                    <p className={`mt-1 text-xs ${p.viewedAt ? "text-teal" : "text-ink/50"}`}>
+                      {p.viewedAt ? `Vista por los novios el ${formatShortDate(p.viewedAt)}` : "Todavía no la vieron"}
+                    </p>
+                  )}
                   {p.coupleComment && <p className="mt-2 rounded-xl bg-peach-soft px-3 py-2 text-sm text-ink/80">“{p.coupleComment}”</p>}
+                  {isPresented(p) && (
+                    <details className="mt-3" open={(p.comments?.length ?? 0) > 0}>
+                      <summary className="cursor-pointer text-xs font-semibold text-teal">Preguntas ({p.comments?.length ?? 0})</summary>
+                      <div className="mt-3 space-y-3">
+                        <CommentThread comments={p.comments} viewer="team" />
+                        <form action={replyToProposal} className="space-y-2">
+                          {hidden}
+                          <input type="hidden" name="proposalId" value={p.id} />
+                          <label className="sr-only" htmlFor={`reply-${p.id}`}>Responder sobre {p.title}</label>
+                          <textarea id={`reply-${p.id}`} name="comment" required rows={2} maxLength={1000} className="field" placeholder="Respondé o aclarale algo a los novios…" />
+                          <SubmitButton className="btn-ghost btn-sm" pendingText="Enviando…" doneText="¡Enviado!">Responder</SubmitButton>
+                        </form>
+                      </div>
+                    </details>
+                  )}
                   <details className="mt-3">
                     <summary className="cursor-pointer text-xs font-semibold text-teal">Archivos ({p.attachments?.length ?? 0})</summary>
                     <div className="mt-3">

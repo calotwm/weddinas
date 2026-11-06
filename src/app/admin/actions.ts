@@ -88,7 +88,15 @@ export async function addProposal(formData: FormData): Promise<void> {
     description: text(formData, "description"),
     amount: text(formData, "amount", 100),
     link: safeHttpUrl(text(formData, "link", 500)),
+    category: text(formData, "category", 60),
   }, { present: formData.get("intent") !== "draft" });
+  revalidatePath("/", "layout");
+}
+
+export async function replyToProposal(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const comment = text(formData, "comment", 1000);
+  if (comment) await portal.addProposalComment(text(formData, "coupleId", 100), text(formData, "proposalId", 100), "team", comment);
   revalidatePath("/", "layout");
 }
 
