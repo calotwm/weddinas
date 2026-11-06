@@ -1,10 +1,12 @@
 import { Icon } from "@/components/icons";
+import { ChecklistBoard } from "@/components/planner/checklist";
 import { SubmitButton } from "@/components/submit-button";
 import type { ChecklistTask } from "@/core/couple";
+import { currentMonth, formatMonth } from "@/lib/format";
 import { addTask, deleteTask, toggleTask } from "../actions";
 import { getCurrentCouple } from "../data";
 
-function TaskRow({ task }: { task: ChecklistTask }) {
+function TaskRow({ task, month }: { task: ChecklistTask; month: string }) {
   return (
     <li className="group flex items-center gap-3 py-3">
       <form action={toggleTask}>
@@ -19,6 +21,7 @@ function TaskRow({ task }: { task: ChecklistTask }) {
         </button>
       </form>
       <span className={`flex-1 ${task.done ? "text-ink/40 line-through" : ""}`}>{task.title}</span>
+      {task.month && task.month < month && <span className="chip bg-peach py-0.5 text-rust normal-case tracking-normal">{formatMonth(task.month)}</span>}
       <form action={deleteTask}>
         <input type="hidden" name="taskId" value={task.id} />
         <button aria-label={`Borrar ${task.title}`} className="btn-icon opacity-60 group-hover:opacity-100">
@@ -31,7 +34,7 @@ function TaskRow({ task }: { task: ChecklistTask }) {
 
 export default async function ChecklistPage() {
   const { tasks } = await getCurrentCouple();
-  const pending = tasks.filter((t) => !t.done);
+  const month = currentMonth();
   const done = tasks.filter((t) => t.done);
   const progress = tasks.length ? Math.round((done.length / tasks.length) * 100) : 0;
 
@@ -48,9 +51,11 @@ export default async function ChecklistPage() {
         <div className="h-full rounded-full bg-gradient-to-r from-mint to-teal" style={{ width: `${progress}%` }} />
       </div>
 
-      <form action={addTask} className="flex gap-2">
+      <form action={addTask} className="flex flex-wrap gap-2 sm:flex-nowrap">
         <label htmlFor="title" className="sr-only">Nueva tarea</label>
         <input id="title" name="title" required maxLength={200} className="field" placeholder="Ej: Elegir las flores del ramo" />
+        <label htmlFor="month" className="sr-only">Mes</label>
+        <input id="month" name="month" type="month" defaultValue={month} className="field sm:!w-44" />
         <SubmitButton pendingText="…" className="btn-primary shrink-0">
           <Icon name="plus" className="h-4 w-4" />
           <span className="hidden sm:inline">Agregar</span>
@@ -59,20 +64,7 @@ export default async function ChecklistPage() {
 
       {tasks.length === 0 && <p className="py-8 text-center text-ink/50">Sumen acá todo lo que no se quieren olvidar.</p>}
 
-      {pending.length > 0 && (
-        <ul className="mt-4 divide-y divide-forest/8">
-          {pending.map((t) => <TaskRow key={t.id} task={t} />)}
-        </ul>
-      )}
-
-      {done.length > 0 && (
-        <>
-          <p className="label mt-8">Listas</p>
-          <ul className="divide-y divide-forest/8">
-            {done.map((t) => <TaskRow key={t.id} task={t} />)}
-          </ul>
-        </>
-      )}
+      <ChecklistBoard tasks={tasks} month={month} renderTask={(t) => <TaskRow key={t.id} task={t} month={month} />} />
     </div>
   );
 }

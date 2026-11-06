@@ -2,7 +2,8 @@ import { isPresented, type Couple, type Proposal } from "./couple";
 
 export interface CoupleNotification {
   id: string;
-  kind: "proposal" | "report";
+  /** "vendor": a brief vendor became confirmed; "comment": the team answered on a proposal. */
+  kind: "proposal" | "report" | "vendor" | "comment";
   title: string;
   body: string;
   /** ISO time it reached the couple. */
@@ -16,15 +17,35 @@ const NEW_FOR_DAYS = 7;
 /** When a proposal reached the couple: proposals published before drafts existed fall back to their creation time. */
 export const presentedAt = (p: Proposal) => p.presentedAt ?? p.createdAt;
 
-/** What the team shared with the couple, newest first: presented proposals and reports. */
-export function coupleNotifications(couple: Pick<Couple, "proposals" | "reports">): CoupleNotification[] {
-  const proposals = couple.proposals.filter(isPresented).map(
+/**
+ * What reached the couple, newest first: presented proposals (discarded ones left out), reports,
+ * vendors confirmed in the brief and the team's answers on proposals.
+ */
+export function coupleNotifications(couple: Pick<Couple, "proposals" | "reports"> & Partial<Pick<Couple, "brief">>): CoupleNotification[] {
+  const visible = couple.proposals.filter((p) => isPresented(p) && p.status !== "discarded");
+  const proposals = visible.map(
     (p): CoupleNotification => ({ id: p.id, kind: "proposal", title: p.title, body: p.description, at: presentedAt(p) }),
+  );
+  const comments = visible.flatMap((p) =>
+    (p.comments ?? [])
+      .filter((c) => c.author === "team")
+      .map((c): CoupleNotification => ({ id: c.id, kind: "comment", title: `Respuesta sobre "${p.title}"`, body: c.text, at: c.at })),
   );
   const reports = couple.reports.map(
     (r): CoupleNotification => ({ id: r.id, kind: "report", title: r.title, body: r.body, at: r.createdAt, attachments: r.attachments }),
   );
-  return [...proposals, ...reports].sort((a, b) => b.at.localeCompare(a.at));
+  const vendors = (couple.brief ?? [])
+    .filter((b) => b.kind === "vendor" && b.status === "confirmed" && b.confirmedAt)
+    .map(
+      (b): CoupleNotification => ({
+        id: b.key,
+        kind: "vendor",
+        title: b.vendor ? `${b.name} confirmado: ${b.vendor}` : `${b.name} confirmado`,
+        body: "",
+        at: b.confirmedAt!,
+      }),
+    );
+  return [...proposals, ...comments, ...reports, ...vendors].sort((a, b) => b.at.localeCompare(a.at));
 }
 
 export const unreadCount = (notes: CoupleNotification[], seenAt: string | null | undefined) =>

@@ -1,28 +1,37 @@
 import { randomUUID } from "node:crypto";
-import { generateAccessCode, hashAccessCode } from "./access-code";
-import { BRIEF_CATALOG, catalogBlock, defaultBrief, defaultMusic, newBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
+import { accessCodeFor, hashAccessCode } from "./access-code";
+import { BRIEF_CATALOG, catalogBlock, defaultBrief, defaultMusic, musicMomentKeys, newBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
 import {
   emptyPublicInfo,
   isPresented,
   type Attachment,
   type BlockStatus,
+  type BriefBlock,
   type BriefField,
   type BudgetItem,
   type ChecklistTask,
+  type CommentAuthor,
   type Couple,
+  type CoupleSection,
   type CoupleView,
   type FamilyMember,
   type FamilySide,
+  type Guest,
+  type GuestStatus,
   type Music,
+  type PaletteColor,
   type Payment,
   type PaymentKind,
   type Proposal,
+  type ProposalComment,
   type ProposalStatus,
   type PublicInfo,
   type PublicPage,
   type Report,
   type SongStatus,
+  type TimingItem,
 } from "./couple";
+import { GUEST_STATUSES, MAX_GUESTS } from "./guests";
 import type { CoupleRepository } from "./ports";
 import { slugify } from "./slug";
 
@@ -41,6 +50,44 @@ export interface BriefBlockUpdate {
   owner: string;
   fields: BriefField[];
 }
+
+export interface AestheticInput {
+  fonts: string;
+  /** Stored on the public info, where the guest page already reads it. */
+  dressCode: string;
+  palette: PaletteColor[];
+}
+
+export type TimingInput = Omit<TimingItem, "id">;
+export type GuestInput = Omit<Guest, "id">;
+export type NewGuestInput = Pick<Guest, "name"> & Partial<Omit<Guest, "id" | "name">>;
+
+export const MAX_AESTHETIC_PHOTOS = 12;
+const MAX_PALETTE = 24;
+const MAX_TIMING = 100;
+const HEX = /^#[0-9a-f]{6}$/i;
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+function cleanTiming(input: TimingInput): TimingInput {
+  if (!HHMM.test(input.time)) throw new Error("Time must be HH:MM");
+  const title = input.title.trim();
+  if (!title) throw new Error("Title is required");
+  return { time: input.time, title, note: input.note.trim() };
+}
+
+function cleanGuest(input: NewGuestInput): GuestInput {
+  const status: GuestStatus = input.status ?? "pending";
+  if (!GUEST_STATUSES.includes(status)) throw new Error("Unknown guest status");
+  return {
+    name: input.name.trim(),
+    group: (input.group ?? "").trim(),
+    status,
+    table: (input.table ?? "").trim(),
+    restriction: (input.restriction ?? "").trim(),
+  };
+}
+
+const byTime = (a: TimingItem, b: TimingItem) => a.time.localeCompare(b.time);
 
 export type AttachmentTarget = { kind: "brief"; key: string } | { kind: "proposal"; id: string } | { kind: "report"; id: string };
 
@@ -65,18 +112,54 @@ const BLOCK_STATUSES: BlockStatus[] = ["searching", "deciding", "confirmed", "na
 const SONG_STATUSES: SongStatus[] = ["chosen", "pending", "na"];
 const PAYMENT_KINDS: PaymentKind[] = ["sena", "saldo", "adicional", "iva"];
 const BRIEF_ORDER = BRIEF_CATALOG.map((b) => b.key);
+const COMMENT_AUTHORS: CommentAuthor[] = ["couple", "team"];
+
+/** Adds the catalog block when the couple does not have it yet, keeping catalog order; returns the couple's block. */
+function ensureBriefBlock(couple: Couple, key: string): BriefBlock {
+  const entry = catalogBlock(key);
+  if (!entry) throw new Error("Unknown brief block");
+  let block = couple.brief.find((b) => b.key === key);
+  if (!block) {
+    block = newBriefBlock(entry);
+    couple.brief.push(block);
+    couple.brief.sort((a, b) => BRIEF_ORDER.indexOf(a.key) - BRIEF_ORDER.indexOf(b.key));
+  }
+  return block;
+}
+
+/** Stamps the moment a block becomes confirmed (the couple's vendor notification) and clears it when it leaves that status. */
+function setBlockStatus(block: BriefBlock, status: BlockStatus) {
+  if (status !== "confirmed") block.confirmedAt = null;
+  else if (block.status !== "confirmed" || !block.confirmedAt) block.confirmedAt = new Date().toISOString();
+  block.status = status;
+}
+
+/** An optional vendor rubro of the brief catalog; empty means "Sin rubro". */
+function proposalCategory(category: string | undefined): string | undefined {
+  const key = category?.trim();
+  if (!key) return undefined;
+  if (catalogBlock(key)?.kind !== "vendor") throw new Error("Unknown proposal category");
+  return key;
+}
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
+type LoadedCouple = Couple & Required<Pick<Couple, CoupleSection>>;
+
 /** Fills planner fields missing on couples stored before they existed. */
-function withPlannerDefaults(couple: Couple): Couple {
+function withPlannerDefaults(couple: Couple): LoadedCouple {
   couple.budget ??= { usdQuote: "blue", guests: null, items: [] };
   couple.brief ??= defaultBrief();
   couple.ideas ??= "";
   couple.music ??= defaultMusic();
+  couple.music.customMoments ??= [];
+  couple.music.hiddenMoments ??= [];
   couple.family ??= [];
+  couple.aesthetic ??= { fonts: "", palette: [], photoIds: [] };
+  couple.timing ??= [];
+  couple.guests ??= [];
   couple.brief.forEach(withCatalogFields);
-  return couple;
+  return couple as LoadedCouple;
 }
 
 function cleanBudgetItem(input: BudgetItemInput): BudgetItemInput {
@@ -137,7 +220,7 @@ export class PortalService {
   }
 
   private async insertCouple(input: NewCoupleInput): Promise<{ couple: CoupleView; accessCode: string }> {
-    const accessCode = await this.uniqueAccessCode();
+    const accessCode = await this.uniqueAccessCode(input);
     const couple: Couple = {
       id: randomUUID(),
       slug: await this.uniqueSlug(`${input.partnerA} & ${input.partnerB}`),
@@ -154,18 +237,25 @@ export class PortalService {
       ideas: "",
       music: defaultMusic(),
       family: [],
+      aesthetic: { fonts: "", palette: [], photoIds: [] },
+      timing: [],
+      guests: [],
       createdAt: new Date().toISOString(),
     };
     await this.repo.save(couple);
     return { couple: toView(couple), accessCode };
   }
 
+  /** The current code counts as taken, so the new one always differs and the old one stops working. */
   async regenerateCode(coupleId: string): Promise<string> {
-    const accessCode = await this.uniqueAccessCode();
-    await this.mutate(coupleId, (c) => {
-      c.accessCodeHash = hashAccessCode(accessCode);
+    return this.serialize(async () => {
+      const couple = await this.repo.findById(coupleId);
+      if (!couple) throw new Error("Couple not found");
+      const accessCode = await this.uniqueAccessCode(couple);
+      couple.accessCodeHash = hashAccessCode(accessCode);
+      await this.repo.save(withPlannerDefaults(couple));
+      return accessCode;
     });
-    return accessCode;
   }
 
   async updateCoupleDetails(coupleId: string, details: Partial<NewCoupleInput>): Promise<void> {
@@ -184,9 +274,10 @@ export class PortalService {
 
   async addProposal(
     coupleId: string,
-    input: { title: string; description: string; link?: string; amount?: string },
+    input: { title: string; description: string; link?: string; amount?: string; category?: string },
     { present = true }: { present?: boolean } = {},
   ): Promise<Proposal> {
+    const category = proposalCategory(input.category);
     const createdAt = new Date().toISOString();
     const proposal: Proposal = {
       id: randomUUID(),
@@ -199,6 +290,7 @@ export class PortalService {
       createdAt,
       respondedAt: null,
       presentedAt: present ? createdAt : null,
+      ...(category ? { category } : {}),
     };
     await this.mutate(coupleId, (c) => {
       c.proposals.unshift(proposal);
@@ -209,10 +301,43 @@ export class PortalService {
   async respondToProposal(coupleId: string, proposalId: string, status: ProposalStatus, comment: string): Promise<void> {
     await this.mutate(coupleId, (c) => {
       const proposal = c.proposals.find((p) => p.id === proposalId);
-      if (!proposal || !isPresented(proposal)) throw new Error("Proposal not found");
+      if (!proposal || !isPresented(proposal) || proposal.status === "discarded") throw new Error("Proposal not found");
+      if (status !== "approved" && status !== "rejected") throw new Error("Unknown answer");
       proposal.status = status;
       proposal.coupleComment = comment;
       proposal.respondedAt = new Date().toISOString();
+      if (status !== "approved" || !proposal.category) return;
+      // The chosen proposal wins its rubro: the other open ones go away and the brief block gets confirmed.
+      for (const other of c.proposals) {
+        if (other !== proposal && other.category === proposal.category && isPresented(other) && other.status === "pending") {
+          other.status = "discarded";
+        }
+      }
+      const block = ensureBriefBlock(c, proposal.category);
+      // A vendor the team already wrote in the brief is more precise than the proposal title, so it is kept.
+      if (!block.vendor) block.vendor = proposal.title;
+      setBlockStatus(block, "confirmed");
+    });
+  }
+
+  async addProposalComment(coupleId: string, proposalId: string, author: CommentAuthor, text: string): Promise<ProposalComment> {
+    if (!COMMENT_AUTHORS.includes(author)) throw new Error("Unknown comment author");
+    const body = text.trim();
+    if (!body) throw new Error("Comment is empty");
+    const comment: ProposalComment = { id: randomUUID(), author, text: body, at: new Date().toISOString() };
+    await this.mutate(coupleId, (c) => {
+      const proposal = c.proposals.find((p) => p.id === proposalId);
+      if (!proposal || !isPresented(proposal)) throw new Error("Proposal not found");
+      (proposal.comments ??= []).push(comment);
+    });
+    return comment;
+  }
+
+  /** Called when the couple opens Propuestas: stamps every presented proposal they had not seen yet. */
+  async markProposalsViewed(coupleId: string): Promise<void> {
+    const now = new Date().toISOString();
+    await this.mutate(coupleId, (c) => {
+      for (const p of c.proposals) if (isPresented(p) && p.status !== "discarded" && !p.viewedAt) p.viewedAt = now;
     });
   }
 
@@ -301,12 +426,24 @@ export class PortalService {
     return couple && photoId ? { coupleId: couple.id, photoId } : null;
   }
 
-  async addTask(coupleId: string, title: string): Promise<ChecklistTask> {
-    const task: ChecklistTask = { id: randomUUID(), title, done: false };
+  /** `month` ("YYYY-MM") places the task in the monthly checklist; without it the task has no month. */
+  async addTask(coupleId: string, title: string, month?: string): Promise<ChecklistTask> {
+    if (month && !MONTH.test(month)) throw new Error("Month must be YYYY-MM");
+    const task: ChecklistTask = { id: randomUUID(), title, done: false, ...(month ? { month } : {}) };
     await this.mutate(coupleId, (c) => {
       c.tasks.push(task);
     });
     return task;
+  }
+
+  async setTaskMonth(coupleId: string, taskId: string, month: string | null): Promise<void> {
+    if (month && !MONTH.test(month)) throw new Error("Month must be YYYY-MM");
+    await this.mutate(coupleId, (c) => {
+      const task = c.tasks.find((t) => t.id === taskId);
+      if (!task) throw new Error("Task not found");
+      if (month) task.month = month;
+      else delete task.month;
+    });
   }
 
   async toggleTask(coupleId: string, taskId: string): Promise<void> {
@@ -382,12 +519,9 @@ export class PortalService {
   }
 
   async addBriefBlock(coupleId: string, key: string): Promise<void> {
-    const entry = catalogBlock(key);
-    if (!entry) throw new Error("Unknown brief block");
+    if (!catalogBlock(key)) throw new Error("Unknown brief block");
     await this.mutate(coupleId, (c) => {
-      if (c.brief.some((b) => b.key === key)) return;
-      c.brief.push(newBriefBlock(entry));
-      c.brief.sort((a, b) => BRIEF_ORDER.indexOf(a.key) - BRIEF_ORDER.indexOf(b.key));
+      ensureBriefBlock(c, key);
     });
   }
 
@@ -398,7 +532,7 @@ export class PortalService {
       if (!block) throw new Error("Brief block not found");
       block.vendor = update.vendor.trim();
       block.contact = update.contact.trim();
-      block.status = update.status;
+      setBlockStatus(block, update.status);
       block.owner = update.owner.trim();
       block.fields = update.fields
         .map((f) => ({ label: f.label.trim(), detail: f.detail.trim(), note: f.note.trim() }))
@@ -422,10 +556,12 @@ export class PortalService {
     });
   }
 
+  /** Keeps only songs of the current moments, so a save racing a removal cannot bring a removed moment back. */
   async saveMusic(coupleId: string, music: Music): Promise<void> {
     await this.mutate(coupleId, (c) => {
       c.music = {
-        songs: SONG_MOMENT_KEYS.map((moment) => {
+        ...c.music,
+        songs: musicMomentKeys(c.music).map((moment) => {
           const given = music.songs.find((s) => s.moment === moment);
           return {
             moment,
@@ -439,6 +575,31 @@ export class PortalService {
         mustPlay: music.mustPlay.trim(),
         banned: music.banned.trim(),
       };
+    });
+  }
+
+  /** Returns the new moment's key. */
+  async addMusicMoment(coupleId: string, input: { label: string; group: string }): Promise<string> {
+    const label = input.label.trim();
+    const group = input.group.trim();
+    if (!label || !group) throw new Error("Moment label and group are required");
+    const key = `custom-${randomUUID().slice(0, 8)}`;
+    await this.mutate(coupleId, (c) => {
+      c.music.customMoments!.push({ key, label, group });
+    });
+    return key;
+  }
+
+  /** Default moments are hidden, custom ones deleted; the moment's song goes with it. */
+  async removeMusicMoment(coupleId: string, key: string): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      const music = c.music;
+      if (SONG_MOMENT_KEYS.includes(key)) {
+        if (!music.hiddenMoments!.includes(key)) music.hiddenMoments!.push(key);
+      } else {
+        music.customMoments = music.customMoments!.filter((m) => m.key !== key);
+      }
+      music.songs = music.songs.filter((s) => s.moment !== key);
     });
   }
 
@@ -474,6 +635,91 @@ export class PortalService {
     return photoId;
   }
 
+  async saveAesthetic(coupleId: string, input: AestheticInput): Promise<void> {
+    const palette = input.palette.slice(0, MAX_PALETTE).map((color) => {
+      if (!HEX.test(color.hex)) throw new Error("Each color must be #rrggbb");
+      return { name: color.name.trim(), hex: color.hex.toLowerCase() };
+    });
+    await this.mutate(coupleId, (c) => {
+      c.aesthetic.fonts = input.fonts.trim();
+      c.aesthetic.palette = palette;
+      c.publicInfo.dressCode = input.dressCode.trim();
+    });
+  }
+
+  async addAestheticPhoto(coupleId: string, photoId: string): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      if (c.aesthetic.photoIds.length >= MAX_AESTHETIC_PHOTOS) throw new Error("Too many photos");
+      c.aesthetic.photoIds.push(photoId);
+    });
+  }
+
+  /** Returns the file id to delete, or null when it was not one of the couple's photos. */
+  async removeAestheticPhoto(coupleId: string, photoId: string): Promise<string | null> {
+    let removed: string | null = null;
+    await this.mutate(coupleId, (c) => {
+      if (!c.aesthetic.photoIds.includes(photoId)) return;
+      removed = photoId;
+      c.aesthetic.photoIds = c.aesthetic.photoIds.filter((id) => id !== photoId);
+    });
+    return removed;
+  }
+
+  async addTimingItem(coupleId: string, input: TimingInput): Promise<TimingItem> {
+    const item: TimingItem = { id: randomUUID(), ...cleanTiming(input) };
+    await this.mutate(coupleId, (c) => {
+      if (c.timing.length >= MAX_TIMING) throw new Error("Too many timing moments");
+      c.timing.push(item);
+      c.timing.sort(byTime);
+    });
+    return item;
+  }
+
+  async updateTimingItem(coupleId: string, itemId: string, input: TimingInput): Promise<void> {
+    const clean = cleanTiming(input);
+    await this.mutate(coupleId, (c) => {
+      const item = c.timing.find((t) => t.id === itemId);
+      if (!item) throw new Error("Timing moment not found");
+      Object.assign(item, clean);
+      c.timing.sort(byTime);
+    });
+  }
+
+  async deleteTimingItem(coupleId: string, itemId: string): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      c.timing = c.timing.filter((t) => t.id !== itemId);
+    });
+  }
+
+  /** Adds one or many guests (pasted lists); blank names are skipped. */
+  async addGuests(coupleId: string, inputs: NewGuestInput[]): Promise<Guest[]> {
+    const added: Guest[] = inputs
+      .map(cleanGuest)
+      .filter((g) => g.name)
+      .map((g) => ({ id: randomUUID(), ...g }));
+    await this.mutate(coupleId, (c) => {
+      if (c.guests.length + added.length > MAX_GUESTS) throw new Error(`A list holds up to ${MAX_GUESTS} guests`);
+      c.guests.push(...added);
+    });
+    return added;
+  }
+
+  async updateGuest(coupleId: string, guestId: string, input: GuestInput): Promise<void> {
+    const clean = cleanGuest(input);
+    if (!clean.name) throw new Error("Name is required");
+    await this.mutate(coupleId, (c) => {
+      const guest = c.guests.find((g) => g.id === guestId);
+      if (!guest) throw new Error("Guest not found");
+      Object.assign(guest, clean);
+    });
+  }
+
+  async deleteGuest(coupleId: string, guestId: string): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      c.guests = c.guests.filter((g) => g.id !== guestId);
+    });
+  }
+
   /** Changes whenever the access code changes; sessions are bound to it so regenerating a code logs old devices out. */
   async credentialFingerprint(coupleId: string): Promise<string | null> {
     return (await this.repo.findById(coupleId))?.accessCodeHash ?? null;
@@ -488,7 +734,7 @@ export class PortalService {
     return run;
   }
 
-  private mutate(coupleId: string, change: (couple: Couple) => void): Promise<void> {
+  private mutate(coupleId: string, change: (couple: LoadedCouple) => void): Promise<void> {
     return this.serialize(async () => {
       const couple = await this.repo.findById(coupleId);
       if (!couple) throw new Error("Couple not found");
@@ -504,9 +750,11 @@ export class PortalService {
     return slug;
   }
 
-  private async uniqueAccessCode(): Promise<string> {
-    let code = generateAccessCode();
-    while (await this.repo.findByAccessCodeHash(hashAccessCode(code))) code = generateAccessCode();
+  /** Easy code for the couple; when taken (by another couple or the current code) appends 2, 3… */
+  private async uniqueAccessCode(names: Pick<Couple, "partnerA" | "partnerB" | "weddingDate">): Promise<string> {
+    const base = accessCodeFor(names.partnerA, names.partnerB, names.weddingDate);
+    let code = base;
+    for (let n = 2; await this.repo.findByAccessCodeHash(hashAccessCode(code)); n++) code = `${base}${n}`;
     return code;
   }
 }
