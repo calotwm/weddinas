@@ -1,7 +1,8 @@
 import { AttachmentList } from "@/components/attachments";
 import { Icon } from "@/components/icons";
 import { SubmitButton } from "@/components/submit-button";
-import type { Proposal } from "@/core/couple";
+import { isPresented, type Proposal } from "@/core/couple";
+import { daysAgo, isNewProposal, presentedAt } from "@/core/notifications";
 import { formatShortDate } from "@/lib/format";
 import { respondToProposal } from "../actions";
 import { getCurrentCouple } from "../data";
@@ -12,10 +13,17 @@ const STATUS: Record<Proposal["status"], { label: string; className: string }> =
   rejected: { label: "No va", className: "bg-ink/8 text-ink/60" },
 };
 
+function uploadedAgo(iso: string) {
+  const days = daysAgo(iso);
+  return days === 0 ? "subida hoy" : days === 1 ? "subida hace 1 día" : `subida hace ${days} días`;
+}
+
 const ORDER: Record<Proposal["status"], number> = { pending: 0, approved: 1, rejected: 2 };
 
 export default async function ProposalsPage() {
-  const { id: coupleId, proposals } = await getCurrentCouple();
+  const couple = await getCurrentCouple();
+  const coupleId = couple.id;
+  const proposals = couple.proposals.filter(isPresented);
 
   if (proposals.length === 0) {
     return (
@@ -35,10 +43,13 @@ export default async function ProposalsPage() {
         <article key={p.id} className={`card ${p.status === "pending" ? "ring-2 ring-peach" : ""}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-medium text-teal">{formatShortDate(p.createdAt)}</p>
+              <p className="text-sm font-medium text-teal">{formatShortDate(presentedAt(p))}</p>
               <h2 className="mt-1 font-display text-2xl leading-snug text-forest sm:text-3xl">{p.title}</h2>
             </div>
-            <span className={`chip ${STATUS[p.status].className}`}>{STATUS[p.status].label}</span>
+            <div className="flex flex-wrap items-center gap-2">
+              {isNewProposal(p) && <span className="chip bg-rust text-white">Nuevo · {uploadedAgo(presentedAt(p))}</span>}
+              <span className={`chip ${STATUS[p.status].className}`}>{STATUS[p.status].label}</span>
+            </div>
           </div>
 
           <p className="mt-4 whitespace-pre-line text-ink/80">{p.description}</p>

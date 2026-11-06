@@ -1,9 +1,11 @@
 import { Icon } from "@/components/icons";
-import { BudgetItemCard, BudgetOverview, RatesNote } from "@/components/planner/budget";
+import { budgetCurrency, BudgetItemCard, BudgetOverview, DueAlert, orderedBudgetItems, RatesNote } from "@/components/planner/budget";
+import { today } from "@/lib/format";
 import { loadRates } from "@/server/rates";
 import { getCurrentCouple } from "../data";
 
-export default async function BudgetPage() {
+export default async function BudgetPage({ searchParams }: { searchParams: Promise<{ moneda?: string }> }) {
+  const currency = budgetCurrency((await searchParams).moneda);
   const couple = await getCurrentCouple();
   const { budget } = couple;
   const { ipc, quote } = await loadRates(budget.usdQuote);
@@ -22,15 +24,16 @@ export default async function BudgetPage() {
 
       {budget.items.length === 0 ? (
         <div className="card text-center text-ink/60">
-          <Icon name="gift" className="mx-auto mb-2 h-8 w-8 text-mint" />
+          <Icon name="dollar" className="mx-auto mb-2 h-8 w-8 text-mint" />
           Cuando confirmen proveedores, el equipo va a cargar acá cada presupuesto y sus pagos.
         </div>
       ) : (
         <>
-          <BudgetOverview budget={budget} ipc={ipc} quote={quote} />
+          <DueAlert items={budget.items} ipc={ipc} today={today()} />
+          <BudgetOverview budget={budget} ipc={ipc} quote={quote} currency={currency} />
           <div className="grid gap-5 lg:grid-cols-2">
-            {budget.items.map((item) => (
-              <BudgetItemCard key={item.id} item={item} ipc={ipc} />
+            {orderedBudgetItems(budget.items, ipc).map(({ item, anchor }) => (
+              <BudgetItemCard key={item.id} item={item} ipc={ipc} anchor={anchor} />
             ))}
           </div>
         </>

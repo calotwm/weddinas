@@ -7,8 +7,8 @@ import { Icon, type IconName } from "@/components/icons";
 const TABS: Array<{ path: string; label: string; icon: IconName }> = [
   { path: "", label: "General", icon: "home" },
   { path: "/brief", label: "Brief", icon: "file" },
-  { path: "/presupuesto", label: "Pagos", icon: "gift" },
-  { path: "/musica", label: "Música", icon: "sparkle" },
+  { path: "/presupuesto", label: "Pagos", icon: "dollar" },
+  { path: "/musica", label: "Música", icon: "music" },
   { path: "/familia", label: "Familia", icon: "users" },
 ];
 

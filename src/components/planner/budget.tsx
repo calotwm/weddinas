@@ -1,8 +1,9 @@
+import Link from "next/link";
 import { categoryName } from "@/core/brief-catalog";
-import { summarizeBudget, summarizeItem } from "@/core/budget";
+import { dueItems, paidLast, summarizeBudget, summarizeItem } from "@/core/budget";
 import type { Budget, BudgetItem, Payment, PaymentKind } from "@/core/couple";
-import type { IpcSeries, UsdQuote } from "@/core/money";
-import { formatDay, formatMoney, formatMonth } from "@/lib/format";
+import type { Currency, IpcSeries, UsdQuote } from "@/core/money";
+import { addDays, formatDay, formatMoney, formatMonth } from "@/lib/format";
 import { Icon } from "../icons";
 
 export const PAYMENT_KIND: Record<PaymentKind, string> = {
@@ -30,23 +31,115 @@ export function RatesNote({ ipc, quote }: { ipc: IpcSeries | null; quote: UsdQuo
   );
 }
 
-export function BudgetOverview({ budget, ipc, quote }: { budget: Budget; ipc: IpcSeries | null; quote: UsdQuote | null }) {
+/** Categorical colors for the pie chart, in brand tones that stay apart from each other. */
+const SLICE_COLORS = ["#2b635a", "#c6541a", "#0a8983", "#e3a25f", "#78c1b0", "#8a5a83", "#d9826b", "#4f7fa8", "#b8a14a", "#6b7d7a"];
+
+export const categoryAnchor = (category: string) => `rubro-${category}`;
+
+/** Fully paid items go last; the first card of each category gets the anchor the overview links to. */
+export function orderedBudgetItems(items: BudgetItem[], ipc: IpcSeries | null): Array<{ item: BudgetItem; anchor?: string }> {
+  const seen = new Set<string>();
+  return paidLast(items, ipc).map((item) => {
+    if (seen.has(item.category)) return { item };
+    seen.add(item.category);
+    return { item, anchor: categoryAnchor(item.category) };
+  });
+}
+
+/** Payments due within a week, or already overdue. */
+export function DueAlert({ items, ipc, today }: { items: BudgetItem[]; ipc: IpcSeries | null; today: string }) {
+  const due = dueItems(items, ipc, today, addDays(today, 7));
+  if (due.length === 0) return null;
+  return (
+    <div role="alert" className="flex gap-3 rounded-2xl bg-rust/10 p-4 ring-1 ring-rust/20">
+      <Icon name="bell" className="mt-0.5 h-5 w-5 shrink-0 text-rust" />
+      <div>
+        <p className="font-semibold text-rust">{due.length === 1 ? "Hay un pago por realizar" : `Hay ${due.length} pagos por realizar`}</p>
+        <ul className="mt-1 space-y-0.5 text-sm text-ink/80">
+          {due.map(({ item, pending, overdue }) => (
+            <li key={item.id}>
+              <a href={`#${categoryAnchor(item.category)}`} className="font-semibold text-forest underline-offset-4 hover:underline">
+                {item.vendor || categoryName(item.category)}
+              </a>
+              : {formatMoney(pending, item.currency)} · {overdue ? "venció el" : "vence el"} {formatDay(item.dueDate!)}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function CurrencySwitch({ currency }: { currency: Currency }) {
+  return (
+    <div role="group" aria-label="Moneda" className="inline-flex rounded-full bg-white p-1 text-sm ring-1 ring-forest/10">
+      {(["ARS", "USD"] as const).map((c) => (
+        <Link
+          key={c}
+          href={`?moneda=${c.toLowerCase()}`}
+          scroll={false}
+          aria-current={currency === c ? "true" : undefined}
+          className={`rounded-full px-3 py-1 font-semibold ${currency === c ? "bg-forest text-cream" : "text-forest hover:bg-peach-soft"}`}
+        >
+          {c === "ARS" ? "$ Pesos" : "USD Dólares"}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+export const budgetCurrency = (moneda: string | string[] | undefined): Currency => (moneda === "ars" ? "ARS" : "USD");
+
+export function BudgetOverview({
+  budget,
+  ipc,
+  quote,
+  currency = "USD",
+}: {
+  budget: Budget;
+  ipc: IpcSeries | null;
+  quote: UsdQuote | null;
+  currency?: Currency;
+}) {
   const s = summarizeBudget(budget.items, ipc, quote?.sell ?? null);
+  const usd = currency === "USD";
+  const other: Currency = usd ? "ARS" : "USD";
   const perGuest = budget.guests && s.totalUsd !== null ? s.totalUsd / budget.guests : null;
   const stats = [
     { label: "Total estimado", ars: s.totalArs, usd: s.totalUsd, tone: "text-forest" },
     { label: "Ya pagado", ars: s.paidArs, usd: s.paidUsd, tone: "text-teal" },
     { label: "Falta pagar", ars: s.pendingArs, usd: s.pendingUsd, tone: "text-rust" },
   ];
+  const categories = s.categories.map((c, i) => ({
+    category: c.category,
+    color: SLICE_COLORS[i % SLICE_COLORS.length],
+    total: usd ? c.totalUsd : c.totalArs,
+    paid: usd ? c.paidUsd : c.paidArs,
+    pending: usd ? c.pendingUsd : c.pendingArs,
+  }));
+  const grand = categories.reduce((sum, c) => sum + (c.total ?? 0), 0);
+  const share = (total: number | null) => (grand ? Math.round(((total ?? 0) / grand) * 100) : 0);
+  let angle = 0;
+  const slices = categories.map((c) => {
+    const from = angle;
+    angle += grand ? ((c.total ?? 0) / grand) * 360 : 0;
+    return `${c.color} ${from}deg ${angle}deg`;
+  });
 
   return (
     <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-ink/70">
+          Montos en <strong className="text-forest">{usd ? "dólares (USD)" : "pesos ($)"}</strong>
+        </p>
+        <CurrencySwitch currency={currency} />
+      </div>
       <div className="grid gap-4 sm:grid-cols-3">
         {stats.map((stat) => (
           <div key={stat.label} className="card !p-5">
             <p className="label">{stat.label}</p>
-            <p className={`font-display text-3xl ${stat.tone}`}>{money(stat.usd, "USD")}</p>
-            <p className="text-sm text-ink/60">{money(stat.ars, "ARS")}</p>
+            <p className={`font-display text-3xl ${stat.tone}`}>{money(usd ? stat.usd : stat.ars, currency)}</p>
+            <p className="text-sm text-ink/60">{money(usd ? stat.ars : stat.usd, other)}</p>
           </div>
         ))}
       </div>
@@ -56,36 +149,49 @@ export function BudgetOverview({ budget, ipc, quote }: { budget: Budget; ipc: Ip
         </p>
       )}
 
-      {s.categories.length > 0 && (
-        <div className="card overflow-hidden !p-0">
-          <table className="w-full text-sm">
-            <thead className="bg-sand/60 text-left text-xs tracking-wider text-ink/60 uppercase">
-              <tr>
-                <th className="px-4 py-3 font-semibold sm:px-6">Rubro</th>
-                <th className="hidden px-4 py-3 text-right font-semibold sm:table-cell">Total</th>
-                <th className="px-4 py-3 text-right font-semibold">Pagado</th>
-                <th className="px-4 py-3 text-right font-semibold sm:px-6">Falta</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-forest/5">
-              {s.categories.map((c) => {
-                const pct = c.totalArs && c.paidArs !== null ? Math.min(100, Math.round((c.paidArs / c.totalArs) * 100)) : 0;
-                return (
-                  <tr key={c.category}>
-                    <td className="px-4 py-3 sm:px-6">
-                      <p className="font-semibold text-forest">{categoryName(c.category)}</p>
-                      <div className="mt-1.5 h-1.5 w-full max-w-40 overflow-hidden rounded-full bg-sand" aria-label={`${pct}% pagado`}>
-                        <div className="h-full rounded-full bg-teal" style={{ width: `${pct}%` }} />
-                      </div>
-                    </td>
-                    <td className="hidden px-4 py-3 text-right whitespace-nowrap sm:table-cell">{money(c.totalArs, "ARS")}</td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap text-teal">{money(c.paidArs, "ARS")}</td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap text-rust sm:px-6">{money(c.pendingArs, "ARS")}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      {categories.length > 0 && (
+        <div className="card grid items-center gap-6 md:grid-cols-[13rem_1fr]">
+          <div
+            role="img"
+            aria-label={`Presupuesto por rubro: ${categories.map((c) => `${categoryName(c.category)} ${share(c.total)}%`).join(", ")}`}
+            className="mx-auto aspect-square w-44 rounded-full ring-1 ring-forest/10 md:w-full"
+            style={{ background: grand ? `conic-gradient(${slices.join(", ")})` : "var(--color-sand)" }}
+          />
+          <div className="overflow-x-auto">
+            <p className="mb-2 text-xs text-ink/55">Tocá un rubro para ver su desglose.</p>
+            <table className="w-full text-sm">
+              <thead className="text-left text-xs tracking-wider text-ink/60 uppercase">
+                <tr>
+                  <th className="py-2 pr-3 font-semibold">Rubro</th>
+                  <th className="hidden px-3 py-2 text-right font-semibold sm:table-cell">Total</th>
+                  <th className="px-3 py-2 text-right font-semibold">Pagado</th>
+                  <th className="py-2 pl-3 text-right font-semibold">Falta</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-forest/5">
+                {categories.map((c) => {
+                  const pct = c.total && c.paid !== null ? Math.min(100, Math.round((c.paid / c.total) * 100)) : 0;
+                  return (
+                    <tr key={c.category}>
+                      <td className="py-2.5 pr-3">
+                        <a href={`#${categoryAnchor(c.category)}`} className="group inline-flex items-center gap-2 font-semibold text-forest">
+                          <span aria-hidden className="h-3 w-3 shrink-0 rounded-full" style={{ background: c.color }} />
+                          <span className="underline-offset-4 group-hover:underline">{categoryName(c.category)}</span>
+                          <span className="text-xs font-normal text-ink/50">{share(c.total)}%</span>
+                        </a>
+                        <div className="mt-1.5 h-1.5 w-full max-w-40 overflow-hidden rounded-full bg-sand" aria-label={`${pct}% pagado`}>
+                          <div className="h-full rounded-full bg-teal" style={{ width: `${pct}%` }} />
+                        </div>
+                      </td>
+                      <td className="hidden px-3 py-2.5 text-right whitespace-nowrap sm:table-cell">{money(c.total, currency)}</td>
+                      <td className="px-3 py-2.5 text-right whitespace-nowrap text-teal">{money(c.paid, currency)}</td>
+                      <td className="py-2.5 pl-3 text-right whitespace-nowrap text-rust">{money(c.pending, currency)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
@@ -95,11 +201,14 @@ export function BudgetOverview({ budget, ipc, quote }: { budget: Budget; ipc: Ip
 export function BudgetItemCard({
   item,
   ipc,
+  anchor,
   paymentAction,
   children,
 }: {
   item: BudgetItem;
   ipc: IpcSeries | null;
+  /** Element id the overview links to (the first card of each category). */
+  anchor?: string;
   /** Optional control rendered next to each payment (admin delete button). */
   paymentAction?: (payment: Payment) => React.ReactNode;
   children?: React.ReactNode;
@@ -108,10 +217,13 @@ export function BudgetItemCard({
   const adjusted = item.currency === "ARS" && item.adjustment === "ipc";
 
   return (
-    <article className="card space-y-4">
+    <article id={anchor} className="card scroll-mt-6 space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs tracking-[0.2em] text-rust uppercase">{categoryName(item.category)}</p>
+          <p className="flex flex-wrap items-center gap-2 text-xs tracking-[0.2em] text-rust uppercase">
+            {categoryName(item.category)}
+            {s.pending <= 0 && <span className="chip bg-mint/25 py-0.5 tracking-normal text-forest normal-case">Pagado al 100%</span>}
+          </p>
           <h3 className="font-display text-2xl text-forest">{item.vendor || "Sin proveedor"}</h3>
           {item.concept && <p className="text-sm text-ink/70">{item.concept}</p>}
         </div>
@@ -139,6 +251,12 @@ export function BudgetItemCard({
         </div>
       </div>
 
+      {item.dueDate && s.pending > 0 && (
+        <p className="flex items-center gap-2 text-sm font-medium text-rust">
+          <Icon name="calendar" className="h-4 w-4" />
+          Próximo vencimiento: {formatDay(item.dueDate)}
+        </p>
+      )}
       {item.note && <p className="text-sm text-ink/70">{item.note}</p>}
 
       {item.payments.length > 0 && (

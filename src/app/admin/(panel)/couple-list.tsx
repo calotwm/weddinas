@@ -73,7 +73,7 @@ export function CoupleList({ rows }: { rows: CoupleRow[] }) {
 
       {visible.length === 0 ? (
         <p className="px-5 py-10 text-center text-ink/50">
-          {rows.length === 0 ? "Todavía no hay parejas cargadas. Creá la primera desde el formulario." : "Ninguna pareja coincide con el filtro."}
+          {rows.length === 0 ? "Todavía no hay parejas cargadas. Agregá la primera con el botón +." : "Ninguna pareja coincide con el filtro."}
         </p>
       ) : (
         <ul className="divide-y divide-forest/6">

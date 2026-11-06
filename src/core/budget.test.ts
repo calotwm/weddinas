@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { summarizeBudget, summarizeItem } from "./budget";
+import { dueItems, isFullyPaid, paidLast, summarizeBudget, summarizeItem } from "./budget";
 import type { BudgetItem } from "./couple";
 import type { IpcSeries } from "./money";
 
@@ -78,5 +78,35 @@ describe("summarizeBudget", () => {
     const summary = summarizeBudget([item({ currency: "USD", amount: 5 })], ipc, null);
     expect(summary.totalArs).toBeNull();
     expect(summary.totalUsd).toBe(5);
+  });
+});
+
+describe("dueItems", () => {
+  it("lists items with a balance due by the cutoff, earliest first, flagging overdue ones", () => {
+    const items = [
+      item({ id: "later", dueDate: "2026-12-10" }),
+      item({ id: "soon", dueDate: "2026-11-20" }),
+      item({ id: "late", dueDate: "2026-11-01" }),
+      item({ id: "none" }),
+      item({ id: "paid", dueDate: "2026-11-15", payments: [{ id: "p", date: "2026-11-02", amount: 1000, currency: "ARS", arsPerUsd: null, kind: "saldo", note: "" }] }),
+    ];
+    expect(dueItems(items, null, "2026-11-06", "2026-11-30").map((d) => [d.item.id, d.pending, d.overdue])).toEqual([
+      ["late", 1000, true],
+      ["soon", 1000, false],
+    ]);
+  });
+});
+
+describe("isFullyPaid", () => {
+  it("is true only when nothing is left to pay", () => {
+    expect(isFullyPaid(item({}), null)).toBe(false);
+    expect(isFullyPaid(item({ payments: [{ id: "p", date: "2026-06-10", amount: 1000, currency: "ARS", arsPerUsd: null, kind: "saldo", note: "" }] }), null)).toBe(true);
+  });
+});
+
+describe("paidLast", () => {
+  it("moves fully paid items to the end keeping the rest in order", () => {
+    const paid = item({ id: "paid", payments: [{ id: "p", date: "2026-06-10", amount: 1000, currency: "ARS", arsPerUsd: null, kind: "saldo", note: "" }] });
+    expect(paidLast([paid, item({ id: "a" }), item({ id: "b" })], null).map((i) => i.id)).toEqual(["a", "b", "paid"]);
   });
 });

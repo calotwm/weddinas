@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CopyButton } from "@/components/copy-button";
 import { Icon } from "@/components/icons";
-import { coupleNames } from "@/core/couple";
+import { coupleNames, isPresented } from "@/core/couple";
 import { getCountdown } from "@/core/countdown";
 import { formatWeddingDate, weddingDateToIso } from "@/lib/format";
 import { requireAdmin } from "@/server/auth";
@@ -18,7 +18,7 @@ export default async function CoupleAdminLayout({ children, params }: { children
   const publicUrl = `${await siteOrigin()}/boda/${couple.slug}`;
   const { days, isPast } = getCountdown(new Date(weddingDateToIso(couple.weddingDate)));
   const done = couple.tasks.filter((t) => t.done).length;
-  const pending = couple.proposals.filter((p) => p.status === "pending").length;
+  const pending = couple.proposals.filter((p) => isPresented(p) && p.status === "pending").length;
   const confirmed = couple.brief.filter((b) => b.kind === "vendor" && b.status === "confirmed").length;
 
   return (

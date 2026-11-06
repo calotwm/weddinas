@@ -88,7 +88,13 @@ export async function addProposal(formData: FormData): Promise<void> {
     description: text(formData, "description"),
     amount: text(formData, "amount", 100),
     link: safeHttpUrl(text(formData, "link", 500)),
-  });
+  }, { present: formData.get("intent") !== "draft" });
+  revalidatePath("/", "layout");
+}
+
+export async function presentProposal(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.presentProposal(text(formData, "coupleId", 100), text(formData, "proposalId", 100));
   revalidatePath("/", "layout");
 }
 
@@ -97,15 +103,6 @@ export async function deleteProposal(formData: FormData): Promise<void> {
   const coupleId = text(formData, "coupleId", 100);
   const leftovers = await portal.deleteProposal(coupleId, text(formData, "proposalId", 100));
   await Promise.all(leftovers.map((id) => files.delete(coupleId, id).catch(() => undefined)));
-  revalidatePath("/", "layout");
-}
-
-export async function addReport(formData: FormData): Promise<void> {
-  await requireAdmin();
-  await portal.addReport(text(formData, "coupleId", 100), {
-    title: text(formData, "title", 200),
-    body: text(formData, "body"),
-  });
   revalidatePath("/", "layout");
 }
 

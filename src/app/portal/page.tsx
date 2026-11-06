@@ -1,20 +1,23 @@
 import Link from "next/link";
-import { CopyButton } from "@/components/copy-button";
 import { Countdown } from "@/components/countdown";
 import { Icon } from "@/components/icons";
+import { categoryName } from "@/core/brief-catalog";
+import { dueItems } from "@/core/budget";
+import { isPresented } from "@/core/couple";
 import { coverCss } from "@/core/url";
-import { formatShortDate, weddingDateToIso } from "@/lib/format";
-import { siteOrigin } from "@/server/site-url";
+import { formatDay, formatMoney, monthEnd, today, weddingDateToIso } from "@/lib/format";
+import { loadRates } from "@/server/rates";
 import { getCurrentCouple } from "./data";
 
 export default async function PortalHome() {
   const couple = await getCurrentCouple();
-  const pending = couple.proposals.filter((p) => p.status === "pending");
+  const pending = couple.proposals.filter((p) => isPresented(p) && p.status === "pending");
   const done = couple.tasks.filter((t) => t.done).length;
   const nextTasks = couple.tasks.filter((t) => !t.done).slice(0, 3);
   const progress = couple.tasks.length ? Math.round((done / couple.tasks.length) * 100) : 0;
-  const lastReport = couple.reports[0];
-  const publicUrl = `${await siteOrigin()}/boda/${couple.slug}`;
+  const { ipc } = await loadRates(couple.budget.usdQuote);
+  const day = today();
+  const due = dueItems(couple.budget.items, ipc, day, monthEnd(day));
   const cover = coverCss(couple.slug, couple.publicInfo);
 
   return (
@@ -69,41 +72,27 @@ export default async function PortalHome() {
 
       <section className="card flex flex-col">
         <div className="flex items-center gap-3">
-          <span className="icon-badge"><Icon name="file" /></span>
-          <h2 className="font-display text-2xl text-forest">Último reporte</h2>
+          <span className="icon-badge"><Icon name="dollar" /></span>
+          <h2 className="font-display text-2xl text-forest">Pagos pendientes</h2>
         </div>
-        {lastReport ? (
-          <>
-            <h3 className="mt-5 text-lg font-semibold leading-snug text-ink">{lastReport.title}</h3>
-            <p className="text-sm font-medium text-teal">{formatShortDate(lastReport.createdAt)}</p>
-            <p className="mt-3 line-clamp-3 text-sm text-ink/80">{lastReport.body}</p>
-            <Link href="/portal/reportes" className="btn-ghost mt-6 self-start">Leer reportes</Link>
-          </>
+        {due.length > 0 ? (
+          <ul className="mt-5 divide-y divide-forest/8">
+            {due.map(({ item, pending: amount, overdue }) => (
+              <li key={item.id} className="flex items-start justify-between gap-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-forest">{item.vendor || categoryName(item.category)}</p>
+                  <p className={`text-sm ${overdue ? "font-semibold text-rust" : "text-ink/60"}`}>
+                    {overdue ? "Venció el" : "Vence el"} {formatDay(item.dueDate!)}
+                  </p>
+                </div>
+                <p className="shrink-0 font-semibold text-rust">{formatMoney(amount, item.currency)}</p>
+              </li>
+            ))}
+          </ul>
         ) : (
-          <p className="mt-5 text-ink/60">Todavía no hay reportes. ¡Pronto les contamos novedades!</p>
+          <p className="mt-5 text-ink/60">No tienen pagos que venzan este mes.</p>
         )}
-      </section>
-
-      <section className="card flex flex-col gap-5 bg-peach-soft lg:col-span-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-start gap-4">
-          <span className="icon-badge bg-white"><Icon name="heart" /></span>
-          <div>
-            <p className="font-display text-2xl text-forest">Su página de casamiento</p>
-            <p className="text-ink/70">Compártanla con sus invitados: horarios, lugar, dress code y regalos.</p>
-            <p className="mt-2 font-mono text-xs break-all text-ink/50">{publicUrl}</p>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/portal/mi-pagina" className="btn-primary">
-            <Icon name="edit" className="h-4 w-4" />
-            Editar
-          </Link>
-          <CopyButton text={publicUrl} label="Copiar link" className="btn-ghost" />
-          <Link href={`/boda/${couple.slug}`} target="_blank" className="btn-ghost">
-            <Icon name="external" className="h-4 w-4" />
-            Ver
-          </Link>
-        </div>
+        <Link href="/portal/presupuesto" className="btn-ghost mt-6 self-start">Ver presupuesto</Link>
       </section>
     </div>
   );

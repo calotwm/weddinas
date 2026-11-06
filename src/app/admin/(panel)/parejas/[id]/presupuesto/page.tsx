@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { Icon } from "@/components/icons";
-import { BudgetItemCard, BudgetOverview, RatesNote } from "@/components/planner/budget";
+import { budgetCurrency, BudgetItemCard, BudgetOverview, DueAlert, orderedBudgetItems, RatesNote } from "@/components/planner/budget";
 import { SubmitButton } from "@/components/submit-button";
 import { BRIEF_CATALOG } from "@/core/brief-catalog";
 import { currentMonth, today } from "@/lib/format";
@@ -14,7 +14,14 @@ export const dynamic = "force-dynamic";
 
 const CATEGORIES = BRIEF_CATALOG.filter((b) => b.kind === "vendor").map(({ key, name }) => ({ key, name }));
 
-export default async function BudgetAdminPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function BudgetAdminPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ moneda?: string }>;
+}) {
+  const currency = budgetCurrency((await searchParams).moneda);
   await requireAdmin();
   const couple = await portal.getCouple((await params).id);
   if (!couple) notFound();
@@ -48,7 +55,8 @@ export default async function BudgetAdminPage({ params }: { params: Promise<{ id
         </form>
       </div>
 
-      <BudgetOverview budget={budget} ipc={ipc} quote={quote} />
+      <DueAlert items={budget.items} ipc={ipc} today={today()} />
+      <BudgetOverview budget={budget} ipc={ipc} quote={quote} currency={currency} />
 
       <div className="grid gap-6 lg:grid-cols-[2fr_3fr]">
         <section className="card h-fit space-y-5 lg:sticky lg:top-24">
@@ -63,11 +71,12 @@ export default async function BudgetAdminPage({ params }: { params: Promise<{ id
               Todavía no hay ítems. Cargá el primer proveedor contratado.
             </div>
           )}
-          {budget.items.map((item) => (
+          {orderedBudgetItems(budget.items, ipc).map(({ item, anchor }) => (
             <BudgetItemCard
               key={item.id}
               item={item}
               ipc={ipc}
+              anchor={anchor}
               paymentAction={(p) => (
                 <form action={deletePayment}>
                   {hidden}

@@ -94,9 +94,15 @@ export function BudgetItemForm({
           <input id={`month-${id}`} name="baseMonth" type="month" required defaultValue={item?.baseMonth ?? defaultMonth} className="field" />
         </div>
       </div>
-      <div>
-        <label htmlFor={`note-${id}`} className="label">Notas</label>
-        <input id={`note-${id}`} name="note" defaultValue={item?.note} maxLength={500} className="field" placeholder="Ej: Saldo 30 días antes del evento" />
+      <div className="grid gap-3 sm:grid-cols-[1fr_12rem]">
+        <div>
+          <label htmlFor={`note-${id}`} className="label">Notas</label>
+          <input id={`note-${id}`} name="note" defaultValue={item?.note} maxLength={500} className="field" placeholder="Ej: Saldo 30 días antes del evento" />
+        </div>
+        <div>
+          <label htmlFor={`due-${id}`} className="label">Próximo vencimiento</label>
+          <input id={`due-${id}`} name="dueDate" type="date" defaultValue={item?.dueDate} className="field" />
+        </div>
       </div>
       <Feedback state={state} />
       <SubmitButton doneText="¡Guardado!">{item ? "Guardar cambios" : "Agregar al presupuesto"}</SubmitButton>

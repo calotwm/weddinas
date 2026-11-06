@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { generateAccessCode, hashAccessCode } from "./access-code";
-import { BRIEF_CATALOG, catalogBlock, defaultBrief, defaultMusic, newBriefBlock, SONG_MOMENT_KEYS } from "./brief-catalog";
+import { BRIEF_CATALOG, catalogBlock, defaultBrief, defaultMusic, newBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
 import {
   emptyPublicInfo,
+  isPresented,
   type Attachment,
   type BlockStatus,
   type BriefField,
@@ -31,7 +32,7 @@ export interface NewCoupleInput {
   weddingDate: string;
 }
 
-export type BudgetItemInput = Omit<BudgetItem, "id" | "payments">;
+export type BudgetItemInput = Omit<BudgetItem, "id" | "payments" | "dueDate"> & { dueDate?: string };
 export type PaymentInput = Omit<Payment, "id">;
 export interface BriefBlockUpdate {
   vendor: string;
@@ -74,6 +75,7 @@ function withPlannerDefaults(couple: Couple): Couple {
   couple.ideas ??= "";
   couple.music ??= defaultMusic();
   couple.family ??= [];
+  couple.brief.forEach(withCatalogFields);
   return couple;
 }
 
@@ -83,6 +85,8 @@ function cleanBudgetItem(input: BudgetItemInput): BudgetItemInput {
   if (input.currency !== "ARS" && input.currency !== "USD") throw new Error("Unknown currency");
   if (input.adjustment !== "ipc" && input.adjustment !== "frozen") throw new Error("Unknown adjustment");
   if (!MONTH.test(input.baseMonth)) throw new Error("Base month must be YYYY-MM");
+  const dueDate = input.dueDate?.trim() ?? "";
+  if (dueDate && !DAY.test(dueDate)) throw new Error("Due date must be YYYY-MM-DD");
   return {
     category: input.category,
     vendor: input.vendor.trim(),
@@ -92,6 +96,7 @@ function cleanBudgetItem(input: BudgetItemInput): BudgetItemInput {
     adjustment: input.currency === "USD" ? "frozen" : input.adjustment,
     baseMonth: input.baseMonth,
     note: input.note.trim(),
+    dueDate,
   };
 }
 
@@ -180,7 +185,9 @@ export class PortalService {
   async addProposal(
     coupleId: string,
     input: { title: string; description: string; link?: string; amount?: string },
+    { present = true }: { present?: boolean } = {},
   ): Promise<Proposal> {
+    const createdAt = new Date().toISOString();
     const proposal: Proposal = {
       id: randomUUID(),
       title: input.title,
@@ -189,8 +196,9 @@ export class PortalService {
       amount: input.amount ?? "",
       status: "pending",
       coupleComment: "",
-      createdAt: new Date().toISOString(),
+      createdAt,
       respondedAt: null,
+      presentedAt: present ? createdAt : null,
     };
     await this.mutate(coupleId, (c) => {
       c.proposals.unshift(proposal);
@@ -201,10 +209,24 @@ export class PortalService {
   async respondToProposal(coupleId: string, proposalId: string, status: ProposalStatus, comment: string): Promise<void> {
     await this.mutate(coupleId, (c) => {
       const proposal = c.proposals.find((p) => p.id === proposalId);
-      if (!proposal) throw new Error("Proposal not found");
+      if (!proposal || !isPresented(proposal)) throw new Error("Proposal not found");
       proposal.status = status;
       proposal.coupleComment = comment;
       proposal.respondedAt = new Date().toISOString();
+    });
+  }
+
+  async presentProposal(coupleId: string, proposalId: string): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      const proposal = c.proposals.find((p) => p.id === proposalId);
+      if (!proposal) throw new Error("Proposal not found");
+      proposal.presentedAt ??= new Date().toISOString();
+    });
+  }
+
+  async markNotificationsSeen(coupleId: string): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      c.notificationsSeenAt = new Date().toISOString();
     });
   }
 

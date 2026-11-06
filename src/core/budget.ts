@@ -17,6 +17,9 @@ export interface CategorySummary {
   totalArs: number | null;
   paidArs: number | null;
   pendingArs: number | null;
+  totalUsd: number | null;
+  paidUsd: number | null;
+  pendingUsd: number | null;
 }
 
 export interface BudgetSummary {
@@ -89,6 +92,9 @@ export function summarizeBudget(items: BudgetItem[], ipc: IpcSeries | null, arsP
       totalArs: sumIn("ARS", ...b.total, arsPerUsd),
       paidArs: sumIn("ARS", ...b.paid, arsPerUsd),
       pendingArs: sumIn("ARS", ...b.pending, arsPerUsd),
+      totalUsd: sumIn("USD", ...b.total, arsPerUsd),
+      paidUsd: sumIn("USD", ...b.paid, arsPerUsd),
+      pendingUsd: sumIn("USD", ...b.pending, arsPerUsd),
     })),
     totalArs: sumIn("ARS", ...all.total, arsPerUsd),
     totalUsd: sumIn("USD", ...all.total, arsPerUsd),
@@ -98,4 +104,26 @@ export function summarizeBudget(items: BudgetItem[], ipc: IpcSeries | null, arsP
     pendingUsd: sumIn("USD", ...all.pending, arsPerUsd),
     ipcMonth,
   };
+}
+
+export const isFullyPaid = (item: BudgetItem, ipc: IpcSeries | null) => summarizeItem(item, ipc).pending <= 0;
+
+/** Items still being paid first, fully paid ones last; each group keeps its order. */
+export const paidLast = (items: BudgetItem[], ipc: IpcSeries | null) =>
+  [...items].sort((a, b) => Number(isFullyPaid(a, ipc)) - Number(isFullyPaid(b, ipc)));
+
+export interface DueItem {
+  item: BudgetItem;
+  /** Pending balance in the item's currency. */
+  pending: number;
+  overdue: boolean;
+}
+
+/** Items with a balance due on or before `until` ("YYYY-MM-DD"), earliest first; `today` decides which are overdue. */
+export function dueItems(items: BudgetItem[], ipc: IpcSeries | null, today: string, until: string): DueItem[] {
+  return items
+    .filter((item) => item.dueDate && item.dueDate <= until)
+    .map((item) => ({ item, pending: summarizeItem(item, ipc).pending, overdue: item.dueDate! < today }))
+    .filter((d) => d.pending > 0)
+    .sort((a, b) => a.item.dueDate!.localeCompare(b.item.dueDate!));
 }

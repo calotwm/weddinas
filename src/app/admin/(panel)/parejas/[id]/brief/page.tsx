@@ -20,8 +20,8 @@ export default async function BriefAdminPage({ params }: { params: Promise<{ id:
   const missing = BRIEF_CATALOG.filter((b) => !present.has(b.key));
   const hidden = <input type="hidden" name="coupleId" value={couple.id} />;
   const groups = [
-    { title: "Datos del evento", blocks: couple.brief.filter((b) => b.kind === "event") },
-    { title: "Proveedores", blocks: couple.brief.filter((b) => b.kind === "vendor") },
+    { title: "Datos del evento", kind: "event", blocks: couple.brief.filter((b) => b.kind === "event") },
+    { title: "Proveedores", kind: "vendor", blocks: couple.brief.filter((b) => b.kind === "vendor") },
   ];
 
   return (
@@ -31,23 +31,6 @@ export default async function BriefAdminPage({ params }: { params: Promise<{ id:
           <h2 className="font-display text-3xl text-forest">Brief</h2>
           <p className="hint">El detalle de cada rubro, como en el brief de Excel. La pareja ve el detalle de los rubros confirmados; las aclaraciones quedan internas.</p>
         </div>
-        {missing.length > 0 && (
-          <form action={addBriefBlock} className="flex items-end gap-2">
-            {hidden}
-            <div>
-              <label htmlFor="add-block" className="label">Agregar rubro</label>
-              <select id="add-block" name="key" className="field !py-2">
-                {missing.map((b) => (
-                  <option key={b.key} value={b.key}>{b.name}</option>
-                ))}
-              </select>
-            </div>
-            <SubmitButton className="btn-primary btn-sm mb-1" pendingText="…">
-              <Icon name="plus" className="h-3.5 w-3.5" />
-              Agregar
-            </SubmitButton>
-          </form>
-        )}
       </div>
 
       <section className="card space-y-3">
@@ -57,7 +40,24 @@ export default async function BriefAdminPage({ params }: { params: Promise<{ id:
 
       {groups.map((group) => (
         <section key={group.title} className="space-y-4">
-          <h3 className="text-xs font-semibold tracking-[0.25em] text-rust uppercase">{group.title}</h3>
+          <div className="flex flex-wrap items-center gap-3">
+            <h3 className="text-xs font-semibold tracking-[0.25em] text-rust uppercase">{group.title}</h3>
+            {missing.some((b) => b.kind === group.kind) && (
+              <form action={addBriefBlock} className="flex items-center gap-2">
+                {hidden}
+                <label htmlFor={`add-${group.kind}`} className="sr-only">Agregar a {group.title}</label>
+                <select id={`add-${group.kind}`} name="key" className="field !w-auto !py-1.5 text-sm">
+                  {missing.filter((b) => b.kind === group.kind).map((b) => (
+                    <option key={b.key} value={b.key}>{b.name}</option>
+                  ))}
+                </select>
+                <SubmitButton className="btn-icon bg-forest text-cream hover:bg-forest/90" pendingText="…">
+                  <Icon name="plus" className="h-4 w-4" />
+                  <span className="sr-only">Agregar</span>
+                </SubmitButton>
+              </form>
+            )}
+          </div>
           {group.blocks.map((block) => (
             <details key={block.key} className="card group !p-0">
               <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 px-6 py-5">

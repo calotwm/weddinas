@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/brand";
-import { Icon, type IconName } from "@/components/icons";
+import { Icon } from "@/components/icons";
 import { MadeBy } from "@/components/made-by";
 import { cssUrl } from "@/core/url";
 import { DEMO_ACCESS_CODE } from "@/server/container";
@@ -8,12 +8,6 @@ import { LoginForm } from "./login-form";
 
 const HERO_URL = "https://weddinas.com/wp-content/uploads/2025/07/portada.jpg";
 
-const FEATURES: Array<[IconName, string]> = [
-  ["clock", "Cuenta regresiva"],
-  ["sparkle", "Propuestas"],
-  ["file", "Reportes"],
-  ["heart", "Su página"],
-];
 
 export default function Home() {
   const isDemo = process.env.NODE_ENV !== "production";
@@ -50,16 +44,6 @@ export default function Home() {
             )}
           </div>
 
-          <ul className="mt-8 grid grid-cols-4 gap-2 text-cream/85">
-            {FEATURES.map(([icon, label]) => (
-              <li key={label} className="flex flex-col items-center gap-2 text-[11px] tracking-wide uppercase">
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20">
-                  <Icon name={icon} className="h-4.5 w-4.5" />
-                </span>
-                {label}
-              </li>
-            ))}
-          </ul>
 
           <p className="mt-8 text-sm text-cream/70">
             ¿Perdieron el código? Escribinos a{" "}
