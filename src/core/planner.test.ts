@@ -82,6 +82,14 @@ describe("planner workspace", () => {
       expect((await load()).budget.items).toEqual([]);
     });
 
+    it("stores an optional next due date and rejects malformed ones", async () => {
+      const item = await service.addBudgetItem(coupleId, { ...base, dueDate: "2026-11-20" });
+      expect((await load()).budget.items[0].dueDate).toBe("2026-11-20");
+      await service.updateBudgetItem(coupleId, item.id, { ...base, dueDate: "" });
+      expect((await load()).budget.items[0].dueDate).toBe("");
+      await expect(service.addBudgetItem(coupleId, { ...base, dueDate: "20/11" })).rejects.toThrow();
+    });
+
     it("stores the dollar quote and guest count settings", async () => {
       await service.updateBudgetSettings(coupleId, { usdQuote: "oficial", guests: 180 });
       expect((await load()).budget).toMatchObject({ usdQuote: "oficial", guests: 180 });
@@ -188,5 +196,30 @@ describe("planner workspace", () => {
     expect((await load()).family).toEqual([{ ...member, photoId: "photo-2" }]);
     expect(await service.removeFamilyMember(coupleId, member.id)).toBe("photo-2");
     expect((await load()).family).toEqual([]);
+  });
+
+  describe("proposals and notifications", () => {
+    it("keeps drafts hidden until they are presented, and the couple cannot answer a draft", async () => {
+      const draft = await service.addProposal(coupleId, { title: "Barra", description: "Tragos" }, { present: false });
+      expect(draft.presentedAt).toBeNull();
+      await expect(service.respondToProposal(coupleId, draft.id, "approved", "")).rejects.toThrow();
+
+      await service.presentProposal(coupleId, draft.id);
+      const presented = (await load()).proposals[0];
+      expect(presented.presentedAt).toEqual(expect.any(String));
+      await service.respondToProposal(coupleId, draft.id, "approved", "");
+      expect((await load()).proposals[0].status).toBe("approved");
+    });
+
+    it("presents right away by default", async () => {
+      const p = await service.addProposal(coupleId, { title: "Foto", description: "Cobertura" });
+      expect(p.presentedAt).toEqual(p.createdAt);
+    });
+
+    it("records when the couple opened their notifications", async () => {
+      expect((await load()).notificationsSeenAt ?? null).toBeNull();
+      await service.markNotificationsSeen(coupleId);
+      expect((await load()).notificationsSeenAt).toEqual(expect.any(String));
+    });
   });
 });

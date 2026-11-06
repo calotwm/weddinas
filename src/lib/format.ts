@@ -42,3 +42,13 @@ export const currentMonth = () => new Date(Date.now() - 3 * 3_600_000).toISOStri
 
 /** Today in Buenos Aires as "YYYY-MM-DD". */
 export const today = () => new Date(Date.now() - 3 * 3_600_000).toISOString().slice(0, 10);
+
+/** "2026-11-06" plus `n` days, as "YYYY-MM-DD". */
+export const addDays = (day: string, n: number) => new Date(Date.parse(`${day}T12:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+
+/** Last day of the month of `day`, as "YYYY-MM-DD". */
+export const monthEnd = (day: string) => {
+  const d = new Date(`${day.slice(0, 7)}-01T12:00:00Z`);
+  d.setUTCMonth(d.getUTCMonth() + 1, 0);
+  return d.toISOString().slice(0, 10);
+};
