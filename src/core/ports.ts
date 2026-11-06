@@ -15,3 +15,14 @@ export interface RatesProvider {
   /** Current dollar quotes, or an empty list when unavailable. */
   usdQuotes(): Promise<UsdQuote[]>;
 }
+
+/** Team-wide settings; every field is optional so older files keep working. */
+export interface Settings {
+  /** Welcome message template with `{nombres}`, `{link}` and `{codigo}`; the default text when missing. */
+  welcomeTemplate?: string;
+}
+
+export interface SettingsRepository {
+  get(): Promise<Settings>;
+  save(settings: Settings): Promise<void>;
+}
