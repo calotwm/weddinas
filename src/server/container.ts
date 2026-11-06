@@ -4,7 +4,9 @@ import { hashAccessCode } from "@/core/access-code";
 import { defaultBrief, defaultMusic } from "@/core/brief-catalog";
 import { emptyPublicInfo, type BriefBlock } from "@/core/couple";
 import { PortalService } from "@/core/portal-service";
+import { DEFAULT_WELCOME_TEMPLATE } from "@/core/welcome-message";
 import { JsonCoupleRepository } from "@/infra/json-couple-repository";
+import { JsonSettingsRepository } from "@/infra/json-settings-repository";
 import { LocalFileStore } from "@/infra/local-file-store";
 import { PublicRatesProvider } from "@/infra/public-rates";
 
@@ -17,6 +19,14 @@ export const rates = new PublicRatesProvider();
 
 /** Uploads live next to the database file, so on Railway they share its volume. */
 export const files = new LocalFileStore(path.join(path.dirname(dataFile), "uploads"));
+
+/** Team-wide settings, in settings.json next to the database file. */
+export const settings = new JsonSettingsRepository(path.join(path.dirname(dataFile), "settings.json"));
+
+/** The welcome message template the team edits at /admin/mensaje, or the default text. */
+export async function welcomeTemplate(): Promise<string> {
+  return (await settings.get()).welcomeTemplate || DEFAULT_WELCOME_TEMPLATE;
+}
 
 export const DEMO_ACCESS_CODE = "DEMO-BODA";
 

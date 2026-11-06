@@ -5,8 +5,9 @@ import { revalidatePath } from "next/cache";
 import { importCouple, type CoupleImport } from "@/core/couple-import";
 import { redirect } from "next/navigation";
 import { safeHttpUrl } from "@/core/url";
+import { WELCOME_TEMPLATE_MAX } from "@/core/welcome-message";
 import { adminCode, allowLoginAttempt, requireAdmin, startAdminSession } from "@/server/auth";
-import { ensureDemoData, files, portal } from "@/server/container";
+import { ensureDemoData, files, portal, settings } from "@/server/container";
 
 const text = (formData: FormData, key: string, max = 4000) => String(formData.get(key) ?? "").trim().slice(0, max);
 
@@ -120,4 +121,18 @@ export async function deleteReport(formData: FormData): Promise<void> {
   const leftovers = await portal.deleteReport(coupleId, text(formData, "reportId", 100));
   await Promise.all(leftovers.map((id) => files.delete(coupleId, id).catch(() => undefined)));
   revalidatePath("/", "layout");
+}
+
+export type TemplateResult = { error?: string; saved?: boolean } | null;
+
+/** Saves the welcome message template; "Volver al texto original" (or a blank text) restores the default. */
+export async function saveWelcomeTemplate(_prev: TemplateResult, formData: FormData): Promise<TemplateResult> {
+  await requireAdmin();
+  const raw = String(formData.get("template") ?? "").replace(/\r\n/g, "\n").trim();
+  if (raw.length > WELCOME_TEMPLATE_MAX) return { error: `El mensaje puede tener hasta ${WELCOME_TEMPLATE_MAX} caracteres.` };
+  const reset = formData.get("intent") === "reset" || !raw;
+  // An undefined template is dropped from the JSON file, so the default text applies again.
+  await settings.save({ ...(await settings.get()), welcomeTemplate: reset ? undefined : raw });
+  revalidatePath("/admin", "layout");
+  return { saved: true };
 }
