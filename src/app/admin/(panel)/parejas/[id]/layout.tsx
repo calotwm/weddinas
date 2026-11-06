@@ -1,13 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CopyButton } from "@/components/copy-button";
 import { Icon } from "@/components/icons";
 import { coupleNames, isPresented } from "@/core/couple";
 import { getCountdown } from "@/core/countdown";
 import { formatWeddingDate, weddingDateToIso } from "@/lib/format";
 import { requireAdmin } from "@/server/auth";
 import { portal } from "@/server/container";
-import { siteOrigin } from "@/server/site-url";
 import { CoupleTabs } from "./tabs";
 
 export default async function CoupleAdminLayout({ children, params }: { children: React.ReactNode; params: Promise<{ id: string }> }) {
@@ -15,7 +13,6 @@ export default async function CoupleAdminLayout({ children, params }: { children
   const couple = await portal.getCouple((await params).id);
   if (!couple) notFound();
 
-  const publicUrl = `${await siteOrigin()}/boda/${couple.slug}`;
   const { days, isPast } = getCountdown(new Date(weddingDateToIso(couple.weddingDate)));
   const done = couple.tasks.filter((t) => t.done).length;
   const pending = couple.proposals.filter((p) => isPresented(p) && p.status === "pending").length;
@@ -32,13 +29,6 @@ export default async function CoupleAdminLayout({ children, params }: { children
           <div>
             <h1 className="font-display text-4xl text-forest sm:text-5xl">{coupleNames(couple)}</h1>
             <p className="mt-1 inline-block text-ink/60 first-letter:uppercase">{formatWeddingDate(couple.weddingDate)}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <CopyButton text={publicUrl} label="Copiar link de la página" />
-            <Link href={`/boda/${couple.slug}`} target="_blank" className="btn-ghost btn-sm">
-              <Icon name="external" className="h-3.5 w-3.5" />
-              Ver página
-            </Link>
           </div>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">

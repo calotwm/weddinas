@@ -95,14 +95,6 @@ export function CoupleList({ rows }: { rows: CoupleRow[] }) {
               <span className={`chip ${r.pending ? "bg-peach text-rust" : "bg-transparent text-ink/35"}`}>
                 {r.pending ? `${r.pending} pendiente${r.pending > 1 ? "s" : ""}` : "Sin pendientes"}
               </span>
-              <Link
-                href={`/boda/${r.slug}`}
-                target="_blank"
-                aria-label={`Ver página de ${r.names}`}
-                className="btn-icon relative z-10 hover:text-teal"
-              >
-                <Icon name="external" className="h-4 w-4" />
-              </Link>
               <Icon name="arrowRight" className="h-4 w-4 text-forest/30 transition-transform group-hover:translate-x-1 group-hover:text-forest" />
             </li>
           ))}
