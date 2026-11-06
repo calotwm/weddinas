@@ -25,11 +25,11 @@ Client quotes are verbatim from the PDF; user decisions are from L1/L2.
 
 ## Tasks
 
-- [ ] T1 [S1, S2, S3, S14, S15] unit D — delegated writer (parallel, worktree)
-- [ ] T2 [S5, S6, S7] unit A — delegated writer (parallel, worktree)
-- [ ] T3 [S4, S8, S9, S10] unit B — delegated writer (parallel, worktree)
-- [ ] T4 [S11, S12, S13] unit C — delegated writer (parallel, worktree)
-- [ ] T5 merge units, full suite, build, smoke, verifier on S1 (Risk item 2: auth) — inline
+- [x] T1 [S1, S2, S3, S14, S15] unit D — delegated writer — `f279580`, `09a0238`, `10c53c8` (S2: no fixed "pagado" text in Proveedores, nothing changed)
+- [x] T2 [S5, S6, S7] unit A — delegated writer — `0cf7e3e`, `a2e382f`, `188675c`
+- [x] T3 [S4, S8, S9, S10] unit B — delegated writer — `c4dae56`, `4794336`
+- [x] T4 [S11, S12, S13] unit C — delegated writer (manual worktree) — `988b9c3`, `e957801`, `4746666`
+- [x] T5 merge, fixes, suite, build, smoke, verifier on S1 — inline — `72c0638` (merge tidy), first-name cap, login maxLength fix
 
 Route evidence: four independent units with disjoint behavior, each several files and 300+ lines, launched together (Writer trigger a); shared files (`src/core/couple.ts`, `src/core/portal-service.ts`, nav/tabs) are append-only per unit and merged by the parent.
 
@@ -38,3 +38,6 @@ Route evidence: four independent units with disjoint behavior, each several file
 - L1 (2026-11-06) "amergea rama y pushea y suma todo lo que se puede hacer ahora, el codigo facil es ese format, saca la palabra pagado si la encontras, la caratula mes a mes asi como la pidio, reportes hacer lo que pidio, los botones de sacar supongo q es pq sumamos info de la cuenta regresivas propuestas etc, en el login de los novios, saquemoslo, Supongo que dice que saquemos la pag web de invitados, armame las preguntas de lo que falta asi le mando"
 - L2 Phase 1 merged and pushed: main `a59cac5`. Login feature icons were already removed in phase 1.
 - L3 Still for the client: cuadro refe Pauli and Excel sample (comparison table + Excel import), brief per-line status color meaning, reminder days and channel, WhatsApp route, vendor titles ("Espacio, Catering... Looks..."), confirm the guest page goes away, where "pagado" shows.
+- L4 Evidence: 153 tests, tsc, eslint and `next build` clean. Smoke on a copy of the demo data: 25 admin and portal routes 200, /portal/reportes redirects, no /boda links left in the portal, new couple Delfi & Juancho gets DELFIYJUANCHO27, login works with "delfi y juancho 27" and the old DEMO-BODA. The smoke found the login input capped at 12 characters (easy codes failed in the browser); fixed to 40.
+- L5 Verifier on S1: PASS 6/6; advisory fixed (first names capped at 12 so codes fit the 40-char login). Remaining advisory: regenerating twice alternates between ...27 and ...272.
+- L6 (2026-11-06) User: "siga nomas vos ya le mande a la clienta" — questions sent to the client, including the WhatsApp proposal: store the couple's number and show an "Avisar por WhatsApp" button (wa.me with a prefilled message) when the team presents something.
