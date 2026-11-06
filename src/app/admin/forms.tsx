@@ -7,7 +7,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { adminLogin, createCouple, importCoupleFile, regenerateCode, type FormResult } from "./actions";
 
 const invitation = (names: string, code: string, origin: string) =>
-  `¡Hola ${names}! Este es su portal Weddinas, donde van a ver la cuenta regresiva, propuestas y reportes, y armar su página.\n\nEntren en ${origin} con el código: ${code}`;
+  `¡Hola ${names}! Este es su portal Weddinas, donde van a ver la cuenta regresiva, propuestas, proveedores y pagos, y armar su página.\n\nEntren en ${origin} con el código: ${code}`;
 
 function CodeNotice({ result, origin, names }: { result: FormResult; origin?: string; names?: string }) {
   if (result?.error) return <p role="alert" className="rounded-xl bg-rust/10 px-3 py-2 text-sm text-rust">{result.error}</p>;

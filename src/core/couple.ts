@@ -44,6 +44,8 @@ export interface Proposal {
   coupleComment: string;
   createdAt: string;
   respondedAt: string | null;
+  /** When the team presented it to the couple; null while it is a draft. Missing on proposals published before drafts existed. */
+  presentedAt?: string | null;
   attachments?: Attachment[];
 }
 
@@ -87,6 +89,8 @@ export interface BudgetItem {
   /** "YYYY-MM": month the amount was agreed; IPC adjustment starts there. */
   baseMonth: string;
   note: string;
+  /** "YYYY-MM-DD": next payment due date, used for the pending payments card and alerts. Optional. */
+  dueDate?: string;
   payments: Payment[];
 }
 
@@ -164,6 +168,8 @@ export interface Couple {
   ideas: string;
   music: Music;
   family: FamilyMember[];
+  /** Last time the couple opened their notifications; newer ones count as unread. */
+  notificationsSeenAt?: string | null;
   createdAt: string;
 }
 
@@ -186,5 +192,8 @@ export const emptyPublicInfo = (): PublicInfo => ({
   coverImageUrl: "",
   schedule: [],
 });
+
+/** Drafts stay hidden from the couple until the team presents them. */
+export const isPresented = (p: Pick<Proposal, "presentedAt">) => p.presentedAt !== null;
 
 export const coupleNames = (c: Pick<Couple, "partnerA" | "partnerB">) => `${c.partnerA} & ${c.partnerB}`;

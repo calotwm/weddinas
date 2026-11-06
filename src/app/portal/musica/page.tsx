@@ -1,5 +1,5 @@
 import { musicProgress, SONG_STATUS } from "@/components/planner/music";
-import { SubmitButton } from "@/components/submit-button";
+import { AutoSaveForm } from "@/components/auto-save-form";
 import { SONG_MOMENTS } from "@/core/brief-catalog";
 import { saveMusic } from "../actions";
 import { getCurrentCouple } from "../data";
@@ -11,7 +11,7 @@ export default async function MusicPage() {
   const { chosen, total } = musicProgress(music);
 
   return (
-    <form action={saveMusic} className="space-y-6">
+    <AutoSaveForm save={saveMusic} className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h2 className="font-display text-3xl text-forest">Elección de canciones</h2>
@@ -62,10 +62,6 @@ export default async function MusicPage() {
           <input id="playlistUrl" name="playlistUrl" type="url" defaultValue={music.playlistUrl} placeholder="https://open.spotify.com/playlist/…" className="field" />
         </div>
       </section>
-
-      <div className="sticky bottom-4 z-10 flex justify-end">
-        <SubmitButton className="btn-primary shadow-lg" doneText="¡Canciones guardadas!">Guardar canciones</SubmitButton>
-      </div>
-    </form>
+    </AutoSaveForm>
   );
 }
