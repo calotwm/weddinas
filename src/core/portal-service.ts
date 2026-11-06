@@ -6,9 +6,11 @@ import {
   isPresented,
   type Attachment,
   type BlockStatus,
+  type BriefBlock,
   type BriefField,
   type BudgetItem,
   type ChecklistTask,
+  type CommentAuthor,
   type Couple,
   type CoupleView,
   type FamilyMember,
@@ -17,6 +19,7 @@ import {
   type Payment,
   type PaymentKind,
   type Proposal,
+  type ProposalComment,
   type ProposalStatus,
   type PublicInfo,
   type PublicPage,
@@ -65,6 +68,35 @@ const BLOCK_STATUSES: BlockStatus[] = ["searching", "deciding", "confirmed", "na
 const SONG_STATUSES: SongStatus[] = ["chosen", "pending", "na"];
 const PAYMENT_KINDS: PaymentKind[] = ["sena", "saldo", "adicional", "iva"];
 const BRIEF_ORDER = BRIEF_CATALOG.map((b) => b.key);
+const COMMENT_AUTHORS: CommentAuthor[] = ["couple", "team"];
+
+/** Adds the catalog block when the couple does not have it yet, keeping catalog order; returns the couple's block. */
+function ensureBriefBlock(couple: Couple, key: string): BriefBlock {
+  const entry = catalogBlock(key);
+  if (!entry) throw new Error("Unknown brief block");
+  let block = couple.brief.find((b) => b.key === key);
+  if (!block) {
+    block = newBriefBlock(entry);
+    couple.brief.push(block);
+    couple.brief.sort((a, b) => BRIEF_ORDER.indexOf(a.key) - BRIEF_ORDER.indexOf(b.key));
+  }
+  return block;
+}
+
+/** Stamps the moment a block becomes confirmed (the couple's vendor notification) and clears it when it leaves that status. */
+function setBlockStatus(block: BriefBlock, status: BlockStatus) {
+  if (status !== "confirmed") block.confirmedAt = null;
+  else if (block.status !== "confirmed" || !block.confirmedAt) block.confirmedAt = new Date().toISOString();
+  block.status = status;
+}
+
+/** An optional vendor rubro of the brief catalog; empty means "Sin rubro". */
+function proposalCategory(category: string | undefined): string | undefined {
+  const key = category?.trim();
+  if (!key) return undefined;
+  if (catalogBlock(key)?.kind !== "vendor") throw new Error("Unknown proposal category");
+  return key;
+}
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -184,9 +216,10 @@ export class PortalService {
 
   async addProposal(
     coupleId: string,
-    input: { title: string; description: string; link?: string; amount?: string },
+    input: { title: string; description: string; link?: string; amount?: string; category?: string },
     { present = true }: { present?: boolean } = {},
   ): Promise<Proposal> {
+    const category = proposalCategory(input.category);
     const createdAt = new Date().toISOString();
     const proposal: Proposal = {
       id: randomUUID(),
@@ -199,6 +232,7 @@ export class PortalService {
       createdAt,
       respondedAt: null,
       presentedAt: present ? createdAt : null,
+      ...(category ? { category } : {}),
     };
     await this.mutate(coupleId, (c) => {
       c.proposals.unshift(proposal);
@@ -209,10 +243,43 @@ export class PortalService {
   async respondToProposal(coupleId: string, proposalId: string, status: ProposalStatus, comment: string): Promise<void> {
     await this.mutate(coupleId, (c) => {
       const proposal = c.proposals.find((p) => p.id === proposalId);
-      if (!proposal || !isPresented(proposal)) throw new Error("Proposal not found");
+      if (!proposal || !isPresented(proposal) || proposal.status === "discarded") throw new Error("Proposal not found");
+      if (status !== "approved" && status !== "rejected") throw new Error("Unknown answer");
       proposal.status = status;
       proposal.coupleComment = comment;
       proposal.respondedAt = new Date().toISOString();
+      if (status !== "approved" || !proposal.category) return;
+      // The chosen proposal wins its rubro: the other open ones go away and the brief block gets confirmed.
+      for (const other of c.proposals) {
+        if (other !== proposal && other.category === proposal.category && isPresented(other) && other.status === "pending") {
+          other.status = "discarded";
+        }
+      }
+      const block = ensureBriefBlock(c, proposal.category);
+      // A vendor the team already wrote in the brief is more precise than the proposal title, so it is kept.
+      if (!block.vendor) block.vendor = proposal.title;
+      setBlockStatus(block, "confirmed");
+    });
+  }
+
+  async addProposalComment(coupleId: string, proposalId: string, author: CommentAuthor, text: string): Promise<ProposalComment> {
+    if (!COMMENT_AUTHORS.includes(author)) throw new Error("Unknown comment author");
+    const body = text.trim();
+    if (!body) throw new Error("Comment is empty");
+    const comment: ProposalComment = { id: randomUUID(), author, text: body, at: new Date().toISOString() };
+    await this.mutate(coupleId, (c) => {
+      const proposal = c.proposals.find((p) => p.id === proposalId);
+      if (!proposal || !isPresented(proposal)) throw new Error("Proposal not found");
+      (proposal.comments ??= []).push(comment);
+    });
+    return comment;
+  }
+
+  /** Called when the couple opens Propuestas: stamps every presented proposal they had not seen yet. */
+  async markProposalsViewed(coupleId: string): Promise<void> {
+    const now = new Date().toISOString();
+    await this.mutate(coupleId, (c) => {
+      for (const p of c.proposals) if (isPresented(p) && p.status !== "discarded" && !p.viewedAt) p.viewedAt = now;
     });
   }
 
@@ -382,12 +449,9 @@ export class PortalService {
   }
 
   async addBriefBlock(coupleId: string, key: string): Promise<void> {
-    const entry = catalogBlock(key);
-    if (!entry) throw new Error("Unknown brief block");
+    if (!catalogBlock(key)) throw new Error("Unknown brief block");
     await this.mutate(coupleId, (c) => {
-      if (c.brief.some((b) => b.key === key)) return;
-      c.brief.push(newBriefBlock(entry));
-      c.brief.sort((a, b) => BRIEF_ORDER.indexOf(a.key) - BRIEF_ORDER.indexOf(b.key));
+      ensureBriefBlock(c, key);
     });
   }
 
@@ -398,7 +462,7 @@ export class PortalService {
       if (!block) throw new Error("Brief block not found");
       block.vendor = update.vendor.trim();
       block.contact = update.contact.trim();
-      block.status = update.status;
+      setBlockStatus(block, update.status);
       block.owner = update.owner.trim();
       block.fields = update.fields
         .map((f) => ({ label: f.label.trim(), detail: f.detail.trim(), note: f.note.trim() }))
