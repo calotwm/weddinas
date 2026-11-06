@@ -1,5 +1,7 @@
+import Link from "next/link";
 import type { BlockStatus, BriefBlock } from "@/core/couple";
 import { AttachmentList } from "@/components/attachments";
+import { Icon } from "@/components/icons";
 import { noteLines, type NoteLine } from "@/core/notes";
 
 const PREVIEW_LINES = 3;
@@ -51,8 +53,11 @@ export function StatusChip({ status }: { status: BlockStatus }) {
   return <span className={`chip ${s.className}`}>{s.label}</span>;
 }
 
-/** Couple-facing view of one brief block: only filled details; the Aclaraciones column stays internal. */
-export function BriefBlockSummary({ coupleId, block }: { coupleId: string; block: BriefBlock }) {
+/**
+ * Couple-facing view of one brief block: only filled details; the Aclaraciones column stays internal.
+ * `expanded` shows long details whole (printable pages); `download` links to the block's printable page.
+ */
+export function BriefBlockSummary({ coupleId, block, expanded = false, download }: { coupleId: string; block: BriefBlock; expanded?: boolean; download?: string }) {
   const filled = block.fields.filter((f) => f.detail);
   const shared = (block.attachments ?? []).filter((a) => !a.internal);
   return (
@@ -62,7 +67,15 @@ export function BriefBlockSummary({ coupleId, block }: { coupleId: string; block
           <h3 className="font-display text-2xl text-forest">{block.name}</h3>
           {block.vendor && <p className="text-sm font-semibold text-teal">{block.vendor}</p>}
         </div>
-        <StatusChip status={block.status} />
+        <div className="flex items-center gap-2">
+          {download && (
+            <Link href={download} className="btn-ghost btn-sm">
+              <Icon name="file" className="h-3.5 w-3.5" />
+              Descargar
+            </Link>
+          )}
+          <StatusChip status={block.status} />
+        </div>
       </div>
       {filled.length > 0 || shared.length > 0 ? (
         <>
@@ -74,7 +87,7 @@ export function BriefBlockSummary({ coupleId, block }: { coupleId: string; block
                     <span aria-hidden className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-rust" />
                     {f.label}
                   </dt>
-                  <dd className="text-ink"><NoteText text={f.detail} collapse /></dd>
+                  <dd className="text-ink"><NoteText text={f.detail} collapse={!expanded} /></dd>
                 </div>
               ))}
             </dl>
