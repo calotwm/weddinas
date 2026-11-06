@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { accessCodeFor, hashAccessCode } from "./access-code";
-import { BRIEF_CATALOG, catalogBlock, defaultBrief, defaultMusic, newBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
+import { BRIEF_CATALOG, catalogBlock, defaultBrief, defaultMusic, musicMomentKeys, newBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
 import {
   emptyPublicInfo,
   isPresented,
@@ -74,6 +74,8 @@ function withPlannerDefaults(couple: Couple): Couple {
   couple.brief ??= defaultBrief();
   couple.ideas ??= "";
   couple.music ??= defaultMusic();
+  couple.music.customMoments ??= [];
+  couple.music.hiddenMoments ??= [];
   couple.family ??= [];
   couple.brief.forEach(withCatalogFields);
   return couple;
@@ -305,12 +307,24 @@ export class PortalService {
     return couple && photoId ? { coupleId: couple.id, photoId } : null;
   }
 
-  async addTask(coupleId: string, title: string): Promise<ChecklistTask> {
-    const task: ChecklistTask = { id: randomUUID(), title, done: false };
+  /** `month` ("YYYY-MM") places the task in the monthly checklist; without it the task has no month. */
+  async addTask(coupleId: string, title: string, month?: string): Promise<ChecklistTask> {
+    if (month && !MONTH.test(month)) throw new Error("Month must be YYYY-MM");
+    const task: ChecklistTask = { id: randomUUID(), title, done: false, ...(month ? { month } : {}) };
     await this.mutate(coupleId, (c) => {
       c.tasks.push(task);
     });
     return task;
+  }
+
+  async setTaskMonth(coupleId: string, taskId: string, month: string | null): Promise<void> {
+    if (month && !MONTH.test(month)) throw new Error("Month must be YYYY-MM");
+    await this.mutate(coupleId, (c) => {
+      const task = c.tasks.find((t) => t.id === taskId);
+      if (!task) throw new Error("Task not found");
+      if (month) task.month = month;
+      else delete task.month;
+    });
   }
 
   async toggleTask(coupleId: string, taskId: string): Promise<void> {
@@ -426,10 +440,12 @@ export class PortalService {
     });
   }
 
+  /** Keeps only songs of the current moments, so a save racing a removal cannot bring a removed moment back. */
   async saveMusic(coupleId: string, music: Music): Promise<void> {
     await this.mutate(coupleId, (c) => {
       c.music = {
-        songs: SONG_MOMENT_KEYS.map((moment) => {
+        ...c.music,
+        songs: musicMomentKeys(c.music).map((moment) => {
           const given = music.songs.find((s) => s.moment === moment);
           return {
             moment,
@@ -443,6 +459,31 @@ export class PortalService {
         mustPlay: music.mustPlay.trim(),
         banned: music.banned.trim(),
       };
+    });
+  }
+
+  /** Returns the new moment's key. */
+  async addMusicMoment(coupleId: string, input: { label: string; group: string }): Promise<string> {
+    const label = input.label.trim();
+    const group = input.group.trim();
+    if (!label || !group) throw new Error("Moment label and group are required");
+    const key = `custom-${randomUUID().slice(0, 8)}`;
+    await this.mutate(coupleId, (c) => {
+      c.music.customMoments!.push({ key, label, group });
+    });
+    return key;
+  }
+
+  /** Default moments are hidden, custom ones deleted; the moment's song goes with it. */
+  async removeMusicMoment(coupleId: string, key: string): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      const music = c.music;
+      if (SONG_MOMENT_KEYS.includes(key)) {
+        if (!music.hiddenMoments!.includes(key)) music.hiddenMoments!.push(key);
+      } else {
+        music.customMoments = music.customMoments!.filter((m) => m.key !== key);
+      }
+      music.songs = music.songs.filter((s) => s.moment !== key);
     });
   }
 

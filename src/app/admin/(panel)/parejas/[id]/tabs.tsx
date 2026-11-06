@@ -8,6 +8,7 @@ const TABS: Array<{ path: string; label: string; icon: IconName }> = [
   { path: "", label: "General", icon: "home" },
   { path: "/brief", label: "Brief", icon: "file" },
   { path: "/presupuesto", label: "Pagos", icon: "dollar" },
+  { path: "/checklist", label: "Checklist", icon: "checklist" },
   { path: "/musica", label: "Música", icon: "music" },
   { path: "/familia", label: "Familia", icon: "users" },
 ];
@@ -18,7 +19,7 @@ export function CoupleTabs({ coupleId }: { coupleId: string }) {
 
   return (
     <nav aria-label="Secciones de la pareja">
-      <ul className="grid grid-cols-5 gap-1 rounded-3xl bg-white p-1 shadow-soft ring-1 ring-forest/5 sm:flex sm:w-max sm:rounded-full">
+      <ul className="grid grid-cols-3 gap-1 rounded-3xl bg-white p-1 shadow-soft ring-1 ring-forest/5 sm:flex sm:w-max sm:rounded-full">
         {TABS.map(({ path, label, icon }) => {
           const href = base + path;
           const active = pathname === href;
