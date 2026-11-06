@@ -10,6 +10,7 @@ import {
   type BudgetItem,
   type ChecklistTask,
   type Couple,
+  type CoupleSection,
   type CoupleView,
   type FamilyMember,
   type FamilySide,
@@ -111,8 +112,10 @@ const BRIEF_ORDER = BRIEF_CATALOG.map((b) => b.key);
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
+type LoadedCouple = Couple & Required<Pick<Couple, CoupleSection>>;
+
 /** Fills planner fields missing on couples stored before they existed. */
-function withPlannerDefaults(couple: Couple): Couple {
+function withPlannerDefaults(couple: Couple): LoadedCouple {
   couple.budget ??= { usdQuote: "blue", guests: null, items: [] };
   couple.brief ??= defaultBrief();
   couple.ideas ??= "";
@@ -122,7 +125,7 @@ function withPlannerDefaults(couple: Couple): Couple {
   couple.timing ??= [];
   couple.guests ??= [];
   couple.brief.forEach(withCatalogFields);
-  return couple;
+  return couple as LoadedCouple;
 }
 
 function cleanBudgetItem(input: BudgetItemInput): BudgetItemInput {
@@ -622,7 +625,7 @@ export class PortalService {
     return run;
   }
 
-  private mutate(coupleId: string, change: (couple: Couple) => void): Promise<void> {
+  private mutate(coupleId: string, change: (couple: LoadedCouple) => void): Promise<void> {
     return this.serialize(async () => {
       const couple = await this.repo.findById(coupleId);
       if (!couple) throw new Error("Couple not found");

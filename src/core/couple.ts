@@ -203,17 +203,21 @@ export interface Couple {
   ideas: string;
   music: Music;
   family: FamilyMember[];
-  aesthetic: Aesthetic;
+  /** Missing on couples stored before Estética, Timing and Invitados existed; the service fills defaults on load. */
+  aesthetic?: Aesthetic;
   /** Kept sorted by time. */
-  timing: TimingItem[];
-  guests: Guest[];
+  timing?: TimingItem[];
+  guests?: Guest[];
   /** Last time the couple opened their notifications; newer ones count as unread. */
   notificationsSeenAt?: string | null;
   createdAt: string;
 }
 
 /** Couple data safe to expose outside the server boundary. */
-export type CoupleView = Omit<Couple, "accessCodeHash">;
+export type CoupleView = Omit<Couple, "accessCodeHash"> & Required<Pick<Couple, CoupleSection>>;
+
+/** Optional in storage, always present once loaded through the service. */
+export type CoupleSection = "aesthetic" | "timing" | "guests";
 
 export type PublicPage = Pick<Couple, "slug" | "partnerA" | "partnerB" | "weddingDate" | "publicInfo">;
 
