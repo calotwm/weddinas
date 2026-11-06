@@ -1,29 +1,48 @@
 import { AttachmentList } from "@/components/attachments";
 import { Icon } from "@/components/icons";
 import { SubmitButton } from "@/components/submit-button";
+import { categoryName } from "@/core/brief-catalog";
 import { isPresented, type Proposal } from "@/core/couple";
 import { daysAgo, isNewProposal, presentedAt } from "@/core/notifications";
 import { formatShortDate } from "@/lib/format";
-import { respondToProposal } from "../actions";
+import { portal } from "@/server/container";
+import { commentOnProposal, respondToProposal } from "../actions";
 import { getCurrentCouple } from "../data";
+import { CommentThread } from "./comment-thread";
 
-const STATUS: Record<Proposal["status"], { label: string; className: string }> = {
+export const dynamic = "force-dynamic";
+
+type VisibleStatus = Exclude<Proposal["status"], "discarded">;
+
+const STATUS: Record<VisibleStatus, { label: string; className: string }> = {
   pending: { label: "Esperando respuesta", className: "bg-peach text-rust" },
   approved: { label: "Aprobada", className: "bg-mint/25 text-forest" },
   rejected: { label: "No va", className: "bg-ink/8 text-ink/60" },
 };
+
+type VisibleProposal = Proposal & { status: VisibleStatus };
 
 function uploadedAgo(iso: string) {
   const days = daysAgo(iso);
   return days === 0 ? "subida hoy" : days === 1 ? "subida hace 1 día" : `subida hace ${days} días`;
 }
 
-const ORDER: Record<Proposal["status"], number> = { pending: 0, approved: 1, rejected: 2 };
+const ORDER: Record<VisibleStatus, number> = { pending: 0, approved: 1, rejected: 2 };
+
+/** Approving one closes its rubro: tell the couple when that will discard other open options. */
+function approveConfirm(p: Proposal, all: Proposal[]) {
+  if (!p.category) return undefined;
+  const others = all.filter((o) => o.id !== p.id && o.category === p.category && o.status === "pending").length;
+  if (others === 0) return undefined;
+  return `Al aprobar "${p.title}" queda confirmado ${categoryName(p.category)} y las otras ${others === 1 ? "propuesta" : `${others} propuestas`} de ese rubro se descartan. ¿Seguimos?`;
+}
 
 export default async function ProposalsPage() {
   const couple = await getCurrentCouple();
   const coupleId = couple.id;
-  const proposals = couple.proposals.filter(isPresented);
+  // Discarded ones lost to another proposal of their rubro: the couple only keeps the chosen one.
+  const proposals = couple.proposals.filter((p): p is VisibleProposal => isPresented(p) && p.status !== "discarded");
+  if (proposals.some((p) => !p.viewedAt)) await portal.markProposalsViewed(coupleId);
 
   if (proposals.length === 0) {
     return (
@@ -43,7 +62,10 @@ export default async function ProposalsPage() {
         <article key={p.id} className={`card ${p.status === "pending" ? "ring-2 ring-peach" : ""}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-medium text-teal">{formatShortDate(presentedAt(p))}</p>
+              <p className="text-sm font-medium text-teal">
+                {formatShortDate(presentedAt(p))}
+                {p.category && <span className="text-ink/50"> · {categoryName(p.category)}</span>}
+              </p>
               <h2 className="mt-1 font-display text-2xl leading-snug text-forest sm:text-3xl">{p.title}</h2>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -80,7 +102,7 @@ export default async function ProposalsPage() {
               <label className="label" htmlFor={`comment-${p.id}`}>Comentarios (opcional)</label>
               <textarea id={`comment-${p.id}`} name="comment" rows={2} maxLength={1000} className="field" placeholder="¿Algo que quieran cambiar o preguntar?" />
               <div className="flex flex-wrap gap-3">
-                <SubmitButton name="status" value="approved" pendingText="Enviando…">
+                <SubmitButton name="status" value="approved" pendingText="Enviando…" confirm={approveConfirm(p, proposals)}>
                   <Icon name="check" className="h-4 w-4" />
                   Aprobar
                 </SubmitButton>
@@ -106,6 +128,27 @@ export default async function ProposalsPage() {
               )}
             </div>
           )}
+
+          <section className="mt-6 space-y-3 border-t border-forest/10 pt-5" aria-label={`Preguntas sobre ${p.title}`}>
+            <h3 className="label">Preguntas y aclaraciones</h3>
+            <CommentThread comments={p.comments} viewer="couple" />
+            <form action={commentOnProposal} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <input type="hidden" name="proposalId" value={p.id} />
+              <label className="sr-only" htmlFor={`question-${p.id}`}>Dejanos una pregunta sobre {p.title}</label>
+              <textarea
+                id={`question-${p.id}`}
+                name="comment"
+                required
+                rows={2}
+                maxLength={1000}
+                className="field flex-1"
+                placeholder="¿Tienen alguna pregunta o aclaración? Escríbannos acá."
+              />
+              <SubmitButton className="btn-ghost btn-sm" pendingText="Enviando…" doneText="¡Enviado!">
+                Enviar
+              </SubmitButton>
+            </form>
+          </section>
         </article>
       ))}
     </div>

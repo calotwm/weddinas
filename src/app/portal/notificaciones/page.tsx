@@ -1,12 +1,25 @@
 import Link from "next/link";
 import { AttachmentList } from "@/components/attachments";
 import { Icon } from "@/components/icons";
-import { coupleNotifications } from "@/core/notifications";
+import { coupleNotifications, type CoupleNotification } from "@/core/notifications";
 import { formatShortDate } from "@/lib/format";
 import { portal } from "@/server/container";
 import { getCurrentCouple } from "../data";
 
 export const dynamic = "force-dynamic";
+
+const KIND_LABEL: Record<CoupleNotification["kind"], string> = {
+  proposal: "Nueva propuesta",
+  report: "Reporte",
+  vendor: "Proveedor confirmado",
+  comment: "Respuesta del equipo",
+};
+
+const LINK: Record<Exclude<CoupleNotification["kind"], "report">, { href: string; label: string }> = {
+  proposal: { href: "/portal/propuestas", label: "Ver propuesta" },
+  comment: { href: "/portal/propuestas", label: "Ver conversación" },
+  vendor: { href: "/portal/proveedores", label: "Ver proveedores" },
+};
 
 export default async function NotificationsPage() {
   const couple = await getCurrentCouple();
@@ -37,13 +50,14 @@ export default async function NotificationsPage() {
             <article className="card">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-sm font-medium text-teal">{formatShortDate(n.at)}</p>
-                <span className="chip bg-sand text-ink/70">{n.kind === "proposal" ? "Nueva propuesta" : "Reporte"}</span>
+                <span className="chip bg-sand text-ink/70">{KIND_LABEL[n.kind]}</span>
                 {unread && <span className="chip bg-peach text-rust">Sin leer</span>}
               </div>
               <h2 className="mt-1 font-display text-2xl leading-snug text-forest">{n.title}</h2>
-              {n.kind === "proposal" ? (
-                <Link href="/portal/propuestas" className="btn-ghost btn-sm mt-4">
-                  Ver propuesta
+              {n.kind === "comment" && <p className="mt-3 whitespace-pre-line text-ink/80">{n.body}</p>}
+              {n.kind !== "report" ? (
+                <Link href={LINK[n.kind].href} className="btn-ghost btn-sm mt-4">
+                  {LINK[n.kind].label}
                   <Icon name="arrowRight" className="h-3.5 w-3.5" />
                 </Link>
               ) : (
