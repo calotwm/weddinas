@@ -15,6 +15,7 @@ describe("easy access codes", () => {
   it("uses only the first word and strips accents and symbols", () => {
     expect(accessCodeFor("  María José ", "Íñigo-Luis", "2026-11-06T20:00")).toBe("MARIAYINIGOLUIS26");
     expect(accessCodeFor("Sofía", "D'Angelo", "2030-01-01T10:00")).toBe("SOFIAYDANGELO30");
+    expect(accessCodeFor("Maximilianoalejandro", "Constantinopla", "2027-01-01T10:00")).toBe("MAXIMILIANOAYCONSTANTINOP27");
   });
 
   it("normalizes login input ignoring case, spaces and accents", () => {

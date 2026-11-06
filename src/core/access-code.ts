@@ -19,7 +19,8 @@ const lettersAndDigits = (input: string) =>
 
 /** Easy code the couple can remember: first names joined by "Y" plus the wedding year ("Delfi", "Juancho", 2027 -> DELFIYJUANCHO27). */
 export function accessCodeFor(partnerA: string, partnerB: string, weddingDate: string): string {
-  const first = (name: string) => lettersAndDigits(name.trim().split(/\s+/)[0] ?? "");
+  // Capped so the code stays well under the 40 characters the login form accepts.
+  const first = (name: string) => lettersAndDigits(name.trim().split(/\s+/)[0] ?? "").slice(0, 12);
   const [a, b] = [first(partnerA), first(partnerB)];
   if (!a || !b) return generateAccessCode();
   return `${a}Y${b}${weddingDate.slice(2, 4)}`;
