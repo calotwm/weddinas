@@ -66,7 +66,8 @@ export async function commentOnProposal(formData: FormData): Promise<void> {
 export async function addTask(formData: FormData): Promise<void> {
   const coupleId = await requireCoupleId();
   const title = text(formData, "title", 200);
-  if (title) await portal.addTask(coupleId, title);
+  const month = text(formData, "month", 7);
+  if (title) await portal.addTask(coupleId, title, /^\d{4}-(0[1-9]|1[0-2])$/.test(month) ? month : undefined);
   revalidatePath("/portal", "layout");
 }
 
@@ -101,6 +102,22 @@ export async function saveMusic(formData: FormData): Promise<void> {
     mustPlay: text(formData, "mustPlay"),
     banned: text(formData, "banned"),
   });
+  revalidatePath("/", "layout");
+}
+
+export async function addMusicMoment(formData: FormData): Promise<void> {
+  const coupleId = await requireCoupleId();
+  const label = text(formData, "label", 120);
+  // A new group name wins over the selected existing group.
+  const group = text(formData, "newGroup", 60) || text(formData, "group", 60);
+  if (!label || !group) return;
+  await portal.addMusicMoment(coupleId, { label, group });
+  revalidatePath("/", "layout");
+}
+
+export async function removeMusicMoment(formData: FormData): Promise<void> {
+  const coupleId = await requireCoupleId();
+  await portal.removeMusicMoment(coupleId, text(formData, "moment", 60));
   revalidatePath("/", "layout");
 }
 

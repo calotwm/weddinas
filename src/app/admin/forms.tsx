@@ -95,8 +95,8 @@ export function RegenerateCodeForm({ coupleId, names, origin }: { coupleId: stri
     <form action={action} className="space-y-3">
       <input type="hidden" name="coupleId" value={coupleId} />
       <p className="text-sm text-ink/70">
-        Los códigos se guardan cifrados, así que no se pueden ver. Si la pareja lo perdió, generá uno nuevo: el anterior deja de
-        funcionar y se cierran sus sesiones abiertas.
+        Los códigos se guardan cifrados, así que no se pueden ver. Si la pareja lo perdió, generá uno nuevo con sus nombres y el
+        año (por ej. DELFIYJUANCHO27): el anterior deja de funcionar y se cierran sus sesiones abiertas.
       </p>
       <CodeNotice result={state} names={names} origin={origin} />
       <SubmitButton

@@ -150,6 +150,52 @@ export async function saveBriefBlock(_prev: PlannerResult, formData: FormData): 
   return done();
 }
 
+const month = (formData: FormData) => {
+  const value = text(formData, "month", 7);
+  return /^\d{4}-(0[1-9]|1[0-2])$/.test(value) ? value : null;
+};
+
+export async function addChecklistTask(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const title = text(formData, "title", 200);
+  if (title) await portal.addTask(text(formData, "coupleId", 100), title, month(formData) ?? undefined);
+  revalidatePath("/", "layout");
+}
+
+export async function setChecklistTaskMonth(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.setTaskMonth(text(formData, "coupleId", 100), text(formData, "taskId", 100), month(formData));
+  revalidatePath("/", "layout");
+}
+
+export async function toggleChecklistTask(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.toggleTask(text(formData, "coupleId", 100), text(formData, "taskId", 100));
+  revalidatePath("/", "layout");
+}
+
+export async function deleteChecklistTask(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.deleteTask(text(formData, "coupleId", 100), text(formData, "taskId", 100));
+  revalidatePath("/", "layout");
+}
+
+export async function addMusicMoment(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const label = text(formData, "label", 120);
+  // A new group name wins over the selected existing group.
+  const group = text(formData, "newGroup", 60) || text(formData, "group", 60);
+  if (!label || !group) return;
+  await portal.addMusicMoment(text(formData, "coupleId", 100), { label, group });
+  revalidatePath("/", "layout");
+}
+
+export async function removeMusicMoment(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.removeMusicMoment(text(formData, "coupleId", 100), text(formData, "moment", 60));
+  revalidatePath("/", "layout");
+}
+
 export async function saveIdeas(_prev: PlannerResult, formData: FormData): Promise<PlannerResult> {
   await requireAdmin();
   await portal.updateIdeas(text(formData, "coupleId", 100), text(formData, "ideas", 6000));

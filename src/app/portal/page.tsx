@@ -5,10 +5,10 @@ import { categoryName } from "@/core/brief-catalog";
 import { dueItems } from "@/core/budget";
 import { GuestSummaryView } from "@/components/planner/guest-summary";
 import { TimingList } from "@/components/planner/timing";
-import { isPresented } from "@/core/couple";
+import { checklistSections, isPresented } from "@/core/couple";
 import { guestSummary } from "@/core/guests";
 import { coverCss } from "@/core/url";
-import { formatDay, formatMoney, monthEnd, today, weddingDateToIso } from "@/lib/format";
+import { currentMonth, formatDay, formatMoney, monthEnd, today, weddingDateToIso } from "@/lib/format";
 import { loadRates } from "@/server/rates";
 import { getCurrentCouple } from "./data";
 
@@ -16,7 +16,10 @@ export default async function PortalHome() {
   const couple = await getCurrentCouple();
   const pending = couple.proposals.filter((p) => isPresented(p) && p.status === "pending");
   const done = couple.tasks.filter((t) => t.done).length;
-  const nextTasks = couple.tasks.filter((t) => !t.done).slice(0, 3);
+  const checklist = checklistSections(couple.tasks, currentMonth());
+  const thisMonthOpen = checklist.thisMonth.filter((t) => !t.done);
+  const noMonthOpen = checklist.noMonth.filter((t) => !t.done);
+  const upcomingOpen = checklist.upcoming.flatMap((g) => g.tasks).filter((t) => !t.done).length;
   const progress = couple.tasks.length ? Math.round((done / couple.tasks.length) * 100) : 0;
   const { ipc } = await loadRates(couple.budget.usdQuote);
   const day = today();
@@ -60,11 +63,30 @@ export default async function PortalHome() {
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-sand" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
           <div className="h-full rounded-full bg-gradient-to-r from-mint to-teal transition-all" style={{ width: `${progress}%` }} />
         </div>
-        {nextTasks.length > 0 && (
+        {checklist.overdue.length > 0 && (
+          <p className="mt-4 text-sm font-semibold text-rust">
+            {checklist.overdue.length} pendiente{checklist.overdue.length === 1 ? "" : "s"} de meses anteriores
+          </p>
+        )}
+        {thisMonthOpen.length > 0 && (
+          <div className="mt-4">
+            <p className="label !mb-1.5">Este mes</p>
+            <ul className="space-y-1.5 text-sm text-ink/80">
+              {thisMonthOpen.slice(0, 3).map((t) => (
+                <li key={t.id} className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-rust" />
+                  <span className="line-clamp-1">{t.title}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {upcomingOpen > 0 && <p className="mt-3 text-sm text-ink/60">Próximos meses: {upcomingOpen} tarea{upcomingOpen === 1 ? "" : "s"}</p>}
+        {noMonthOpen.length > 0 && thisMonthOpen.length === 0 && (
           <ul className="mt-4 space-y-1.5 text-sm text-ink/80">
-            {nextTasks.map((t) => (
+            {noMonthOpen.slice(0, 3).map((t) => (
               <li key={t.id} className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-rust" />
+                <span className="h-1.5 w-1.5 rounded-full bg-teal" />
                 <span className="line-clamp-1">{t.title}</span>
               </li>
             ))}

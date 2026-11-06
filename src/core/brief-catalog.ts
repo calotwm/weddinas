@@ -136,4 +136,30 @@ export const defaultMusic = (): Music => ({
   playlistUrl: "",
   mustPlay: "",
   banned: "",
+  customMoments: [],
+  hiddenMoments: [],
 });
+
+export interface MusicMoment {
+  key: string;
+  label: string;
+  custom: boolean;
+}
+
+/** Effective song moments: defaults minus hidden ones, plus custom moments in their group (new groups go last). Empty groups are dropped. */
+export function musicMoments(music: Pick<Music, "customMoments" | "hiddenMoments">): Array<{ group: string; moments: MusicMoment[] }> {
+  const hidden = new Set(music.hiddenMoments ?? []);
+  const groups = SONG_MOMENTS.map((g) => ({
+    group: g.group,
+    moments: g.moments.filter((m) => !hidden.has(m.key)).map((m) => ({ ...m, custom: false })),
+  }));
+  for (const m of music.customMoments ?? []) {
+    let group = groups.find((g) => g.group.toLowerCase() === m.group.toLowerCase());
+    if (!group) groups.push((group = { group: m.group, moments: [] }));
+    group.moments.push({ key: m.key, label: m.label, custom: true });
+  }
+  return groups.filter((g) => g.moments.length > 0);
+}
+
+export const musicMomentKeys = (music: Pick<Music, "customMoments" | "hiddenMoments">) =>
+  musicMoments(music).flatMap((g) => g.moments.map((m) => m.key));

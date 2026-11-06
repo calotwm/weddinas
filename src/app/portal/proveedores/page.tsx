@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Icon } from "@/components/icons";
 import { BriefBlockSummary } from "@/components/planner/brief";
 import { getCurrentCouple } from "../data";
@@ -10,11 +11,19 @@ export default async function VendorsPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="font-display text-3xl text-forest">Proveedores</h2>
-        <p className="mt-1 text-sm text-ink/70">
-          {vendors.length === 1 ? "1 proveedor confirmado" : `${vendors.length} proveedores confirmados`}. El equipo va completando el detalle de cada uno.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h2 className="font-display text-3xl text-forest">Proveedores</h2>
+          <p className="mt-1 text-sm text-ink/70">
+            {vendors.length === 1 ? "1 proveedor confirmado" : `${vendors.length} proveedores confirmados`}. El equipo va completando el detalle de cada uno.
+          </p>
+        </div>
+        {vendors.length > 0 && (
+          <Link href="/portal/descargas/proveedores" className="btn-ghost btn-sm">
+            <Icon name="file" className="h-3.5 w-3.5" />
+            Descargar todo
+          </Link>
+        )}
       </div>
 
       {vendors.length === 0 && (
@@ -25,7 +34,12 @@ export default async function VendorsPage() {
       )}
       <div className="grid gap-5 lg:grid-cols-2">
         {vendors.map((block) => (
-          <BriefBlockSummary key={block.key} coupleId={couple.id} block={block} />
+          <BriefBlockSummary
+            key={block.key}
+            coupleId={couple.id}
+            block={block}
+            download={`/portal/descargas/proveedores?rubro=${encodeURIComponent(block.key)}`}
+          />
         ))}
       </div>
 
