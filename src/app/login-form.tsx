@@ -14,11 +14,11 @@ export function LoginForm() {
         id="code"
         name="code"
         required
-        maxLength={12}
+        maxLength={40}
         autoComplete="one-time-code"
         autoCapitalize="characters"
         spellCheck={false}
-        placeholder="XXXX-XXXX"
+        placeholder="Ej: DELFIYJUANCHO27"
         aria-invalid={Boolean(state?.error)}
         aria-describedby={state?.error ? "code-error" : undefined}
         className="field text-center font-display text-2xl tracking-[0.3em] uppercase"
