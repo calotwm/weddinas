@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
 import { Icon } from "@/components/icons";
 import { SubmitButton } from "@/components/submit-button";
-import { coupleNames, type Proposal } from "@/core/couple";
+import { coupleNames, isPresented, type Proposal } from "@/core/couple";
 import { formatShortDate } from "@/lib/format";
 import { requireAdmin } from "@/server/auth";
 import { portal } from "@/server/container";
 import { siteOrigin } from "@/server/site-url";
-import { addProposal, addReport, deleteProposal, deleteReport, updateCouple } from "../../../actions";
+import { addProposal, deleteProposal, deleteReport, presentProposal, updateCouple } from "../../../actions";
 import { AdminAttachments } from "../../../admin-attachments";
 import { RegenerateCodeForm } from "../../../forms";
 
@@ -52,23 +52,11 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
                 <input id="p-link" name="link" type="url" maxLength={500} placeholder="https://… (opcional)" className="field" />
               </div>
             </div>
-            <SubmitButton className="btn-accent" pendingText="Publicando…" doneText="¡Publicada!">Publicar propuesta</SubmitButton>
-          </form>
-        </section>
-
-        <section className="card space-y-5">
-          <h2 className="section-title">Nuevo reporte</h2>
-          <form action={addReport} className="space-y-4">
-            {hidden}
-            <div>
-              <label htmlFor="r-title" className="label">Título</label>
-              <input id="r-title" name="title" required maxLength={200} placeholder="Ej: Reporte mensual · Noviembre" className="field" />
+            <div className="flex flex-wrap gap-3">
+              <SubmitButton name="intent" value="present" className="btn-accent" pendingText="Presentando…" doneText="¡Presentada!">Presentar a los novios</SubmitButton>
+              <SubmitButton name="intent" value="draft" className="btn-ghost" pendingText="Guardando…" doneText="¡Guardada!">Guardar borrador</SubmitButton>
             </div>
-            <div>
-              <label htmlFor="r-body" className="label">Contenido</label>
-              <textarea id="r-body" name="body" required rows={7} placeholder="Avances, pagos, próximos pasos…" className="field" />
-            </div>
-            <SubmitButton className="btn-accent" pendingText="Publicando…" doneText="¡Publicado!">Publicar reporte</SubmitButton>
+            <p className="hint">Los borradores no los ven los novios hasta que los presentes.</p>
           </form>
         </section>
 
@@ -81,10 +69,14 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-semibold text-ink">{p.title}</p>
-                    <span className={`chip py-0.5 ${STATUS[p.status].className}`}>{STATUS[p.status].label}</span>
+                    {isPresented(p) ? (
+                      <span className={`chip py-0.5 ${STATUS[p.status].className}`}>{STATUS[p.status].label}</span>
+                    ) : (
+                      <span className="chip bg-sand py-0.5 text-ink/70">Borrador</span>
+                    )}
                   </div>
                   <p className="text-xs text-ink/50">
-                    Publicada {formatShortDate(p.createdAt)}
+                    {isPresented(p) ? "Presentada" : "Creada"} {formatShortDate(p.presentedAt ?? p.createdAt)}
                     {p.respondedAt && ` · respondida ${formatShortDate(p.respondedAt)}`}
                     {p.amount && ` · ${p.amount}`}
                   </p>
@@ -95,6 +87,15 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
                       <AdminAttachments coupleId={couple.id} kind="proposal" targetId={p.id} attachments={p.attachments} />
                     </div>
                   </details>
+                  {!isPresented(p) && (
+                    <form action={presentProposal} className="mt-3">
+                      {hidden}
+                      <input type="hidden" name="proposalId" value={p.id} />
+                      <SubmitButton className="btn-accent btn-sm" pendingText="Presentando…" confirm={`¿Presentar "${p.title}" a los novios?`}>
+                        Presentar
+                      </SubmitButton>
+                    </form>
+                  )}
                 </div>
                 <form action={deleteProposal}>
                   {hidden}
@@ -109,9 +110,9 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
           </ul>
         </section>
 
+        {couple.reports.length > 0 && (
         <section className="card">
-          <h2 className="section-title mb-4">Reportes <span className="text-ink/40">({couple.reports.length})</span></h2>
-          {couple.reports.length === 0 && <p className="text-sm text-ink/50">Todavía no publicaste reportes.</p>}
+          <h2 className="section-title mb-4">Reportes anteriores <span className="text-ink/40">({couple.reports.length})</span></h2>
           <ul className="divide-y divide-forest/8">
             {couple.reports.map((r) => (
               <li key={r.id} className="flex items-start justify-between gap-3 py-4">
@@ -138,6 +139,7 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
             ))}
           </ul>
         </section>
+        )}
 
         <section className="card space-y-5">
           <h2 className="section-title">Datos de la pareja</h2>

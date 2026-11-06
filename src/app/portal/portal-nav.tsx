@@ -9,16 +9,29 @@ const LINKS: Array<{ href: string; label: string; short: string; icon: IconName 
   { href: "/portal", label: "Resumen", short: "Resumen", icon: "home" },
   { href: "/portal/propuestas", label: "Propuestas", short: "Propuestas", icon: "sparkle" },
   { href: "/portal/proveedores", label: "Proveedores", short: "Proveedores", icon: "users" },
-  { href: "/portal/presupuesto", label: "Presupuesto", short: "Presupuesto", icon: "gift" },
-  { href: "/portal/reportes", label: "Reportes", short: "Reportes", icon: "file" },
+  { href: "/portal/presupuesto", label: "Presupuesto", short: "Presupuesto", icon: "dollar" },
+  { href: "/portal/notificaciones", label: "Notificaciones", short: "Notificaciones", icon: "bell" },
   { href: "/portal/checklist", label: "Checklist", short: "Checklist", icon: "checklist" },
-  { href: "/portal/musica", label: "Música", short: "Música", icon: "clock" },
+  { href: "/portal/musica", label: "Música", short: "Música", icon: "music" },
   { href: "/portal/familia", label: "Fotos familiares", short: "Familia", icon: "heart" },
   { href: "/portal/mi-pagina", label: "Nuestra página", short: "Página", icon: "edit" },
 ];
 
-export function PortalNav({ pendingProposals }: { pendingProposals: number }) {
+function Badge({ count }: { count: number }) {
+  return (
+    <span className="absolute top-1 right-2 rounded-full bg-rust px-1.5 text-[11px] leading-5 font-semibold text-white lg:static">
+      {count}
+    </span>
+  );
+}
+
+export function PortalNav({ pendingProposals, unread }: { pendingProposals: number; unread: number }) {
   const pathname = usePathname();
+  // Opening Notificaciones marks them read, so its badge goes away right there.
+  const badges: Record<string, number> = {
+    "/portal/propuestas": pendingProposals,
+    "/portal/notificaciones": pathname === "/portal/notificaciones" ? 0 : unread,
+  };
 
   return (
     <nav aria-label="Secciones del portal">
@@ -37,11 +50,7 @@ export function PortalNav({ pendingProposals }: { pendingProposals: number }) {
               >
                 <Icon name={icon} className="h-5 w-5 lg:h-4 lg:w-4" />
                 <span className="max-w-full truncate">{short}</span>
-                {href === "/portal/propuestas" && pendingProposals > 0 && (
-                  <span className="absolute top-1 right-2 rounded-full bg-rust px-1.5 text-[11px] leading-5 font-semibold text-white lg:static">
-                    {pendingProposals}
-                  </span>
-                )}
+                {(badges[href] ?? 0) > 0 && <Badge count={badges[href]} />}
               </Link>
             </li>
           );

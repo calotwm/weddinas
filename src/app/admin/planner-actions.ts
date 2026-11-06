@@ -36,6 +36,7 @@ function budgetItemInput(formData: FormData): BudgetItemInput {
     adjustment: (text(formData, "adjustment", 10) === "ipc" ? "ipc" : "frozen") as Adjustment,
     baseMonth: text(formData, "baseMonth", 7),
     note: text(formData, "note", 500),
+    dueDate: text(formData, "dueDate", 10),
   };
 }
 

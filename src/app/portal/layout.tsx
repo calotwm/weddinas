@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { SiteFooter, TopBar } from "@/components/brand";
 import { Icon } from "@/components/icons";
-import { coupleNames } from "@/core/couple";
+import { coupleNames, isPresented } from "@/core/couple";
 import { getCountdown } from "@/core/countdown";
+import { coupleNotifications, unreadCount } from "@/core/notifications";
 import { formatWeddingDate, weddingDateToIso } from "@/lib/format";
 import { logout } from "../actions";
 import { getCurrentCouple } from "./data";
@@ -10,7 +11,8 @@ import { PortalNav } from "./portal-nav";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const couple = await getCurrentCouple();
-  const pending = couple.proposals.filter((p) => p.status === "pending").length;
+  const pending = couple.proposals.filter((p) => isPresented(p) && p.status === "pending").length;
+  const unread = unreadCount(coupleNotifications(couple), couple.notificationsSeenAt);
   const { days, isPast } = getCountdown(new Date(weddingDateToIso(couple.weddingDate)));
 
   return (
@@ -43,7 +45,7 @@ export default async function PortalLayout({ children }: { children: React.React
             {isPast ? "¡Ya se casaron!" : days === 0 ? "¡Es hoy!" : `Faltan ${days} días`}
           </span>
         </div>
-        <PortalNav pendingProposals={pending} />
+        <PortalNav pendingProposals={pending} unread={unread} />
         <div className="mt-8">{children}</div>
       </main>
       <SiteFooter />
