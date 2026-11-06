@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { generateAccessCode, hashAccessCode } from "./access-code";
+import { accessCodeFor, hashAccessCode } from "./access-code";
 import { BRIEF_CATALOG, catalogBlock, defaultBrief, defaultMusic, newBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
 import {
   emptyPublicInfo,
@@ -137,7 +137,7 @@ export class PortalService {
   }
 
   private async insertCouple(input: NewCoupleInput): Promise<{ couple: CoupleView; accessCode: string }> {
-    const accessCode = await this.uniqueAccessCode();
+    const accessCode = await this.uniqueAccessCode(input);
     const couple: Couple = {
       id: randomUUID(),
       slug: await this.uniqueSlug(`${input.partnerA} & ${input.partnerB}`),
@@ -160,12 +160,16 @@ export class PortalService {
     return { couple: toView(couple), accessCode };
   }
 
+  /** The current code counts as taken, so the new one always differs and the old one stops working. */
   async regenerateCode(coupleId: string): Promise<string> {
-    const accessCode = await this.uniqueAccessCode();
-    await this.mutate(coupleId, (c) => {
-      c.accessCodeHash = hashAccessCode(accessCode);
+    return this.serialize(async () => {
+      const couple = await this.repo.findById(coupleId);
+      if (!couple) throw new Error("Couple not found");
+      const accessCode = await this.uniqueAccessCode(couple);
+      couple.accessCodeHash = hashAccessCode(accessCode);
+      await this.repo.save(withPlannerDefaults(couple));
+      return accessCode;
     });
-    return accessCode;
   }
 
   async updateCoupleDetails(coupleId: string, details: Partial<NewCoupleInput>): Promise<void> {
@@ -504,9 +508,11 @@ export class PortalService {
     return slug;
   }
 
-  private async uniqueAccessCode(): Promise<string> {
-    let code = generateAccessCode();
-    while (await this.repo.findByAccessCodeHash(hashAccessCode(code))) code = generateAccessCode();
+  /** Easy code for the couple; when taken (by another couple or the current code) appends 2, 3… */
+  private async uniqueAccessCode(names: Pick<Couple, "partnerA" | "partnerB" | "weddingDate">): Promise<string> {
+    const base = accessCodeFor(names.partnerA, names.partnerB, names.weddingDate);
+    let code = base;
+    for (let n = 2; await this.repo.findByAccessCodeHash(hashAccessCode(code)); n++) code = `${base}${n}`;
     return code;
   }
 }
