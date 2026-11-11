@@ -318,13 +318,29 @@ export interface Couple {
   whatsapp?: string;
   /** Vendors' schedule for the day, edited by the team. */
   vendorTiming?: VendorTimingItem[];
+  /** Secret in the invitation form's webhook URL; created by the team, never shown to the couple. */
+  rsvpToken?: string;
+  /** Answers received from the invitation web, oldest first. */
+  rsvpInbox?: RsvpEntry[];
+}
+
+/** One RSVP answer from the invitation web; guestId is null until it is matched to a guest. */
+export interface RsvpEntry {
+  id: string;
+  receivedAt: string;
+  name: string;
+  attending: boolean | null;
+  menu: string;
+  song: string;
+  message: string;
+  guestId: string | null;
 }
 
 /** Couple data safe to expose outside the server boundary. */
-export type CoupleView = Omit<Couple, "accessCodeHash"> & Required<Pick<Couple, CoupleSection>>;
+export type CoupleView = Omit<Couple, "accessCodeHash" | "rsvpToken"> & Required<Pick<Couple, CoupleSection>>;
 
 /** Optional in storage, always present once loaded through the service. */
-export type CoupleSection = "aesthetic" | "timing" | "guests" | "vendorTiming";
+export type CoupleSection = "aesthetic" | "timing" | "guests" | "vendorTiming" | "rsvpInbox";
 
 export type PublicPage = Pick<Couple, "slug" | "partnerA" | "partnerB" | "weddingDate" | "publicInfo">;
 

@@ -355,3 +355,29 @@ export async function importGuests(_prev: GuestImportResult, formData: FormData)
   refresh();
   return result;
 }
+
+// "Respuestas de la web": the Elementor invitation form posts to /api/rsvp/<coupleId>/<token>.
+
+export async function createRsvpLink(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.rsvpToken(coupleOf(formData));
+  refresh();
+}
+
+export async function rotateRsvpLink(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.rotateRsvpToken(coupleOf(formData));
+  refresh();
+}
+
+export async function assignRsvp(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.assignRsvp(coupleOf(formData), text(formData, "entryId", 100), text(formData, "guestId", 100)).catch(() => undefined);
+  refresh();
+}
+
+export async function dismissRsvp(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.dismissRsvp(coupleOf(formData), text(formData, "entryId", 100));
+  refresh();
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchGuest, parseRsvp } from "./rsvp";
+import { matchGuest, parseRsvp, rsvpBodyEntries } from "./rsvp";
 
 describe("parseRsvp", () => {
   it("reads the simple Elementor webhook, keyed by label or by field id when the field has no label", () => {
@@ -67,5 +67,27 @@ describe("matchGuest", () => {
     expect(matchGuest(guests, "Juancho")).toBeNull();
     expect(matchGuest(guests, "Ana")).toBeNull();
     expect(matchGuest(guests, "Luz Díaz")).toBeNull();
+  });
+});
+
+describe("rsvpBodyEntries", () => {
+  it("reads form-urlencoded bodies, as Elementor sends them", () => {
+    expect(rsvpBodyEntries("name=Ana+P%C3%A9rez&Tipo+de+men%C3%BA=Vegano", "application/x-www-form-urlencoded; charset=UTF-8")).toEqual([
+      ["name", "Ana Pérez"],
+      ["Tipo de menú", "Vegano"],
+    ]);
+  });
+
+  it("flattens JSON bodies into the same bracket keys", () => {
+    expect(rsvpBodyEntries(JSON.stringify({ fields: { name: { title: "", value: "Ana" } }, form: { id: "x" } }), "application/json")).toEqual([
+      ["fields[name][title]", ""],
+      ["fields[name][value]", "Ana"],
+      ["form[id]", "x"],
+    ]);
+  });
+
+  it("returns nothing for other or broken bodies", () => {
+    expect(rsvpBodyEntries("{oops", "application/json")).toEqual([]);
+    expect(rsvpBodyEntries("name=Ana", "text/plain")).toEqual([]);
   });
 });

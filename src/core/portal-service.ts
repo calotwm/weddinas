@@ -1,4 +1,5 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { matchGuest, plain, type RsvpAnswer } from "./rsvp";
 import { accessCodeFor, hashAccessCode } from "./access-code";
 import type { ComparisonTable } from "./comparison-table";
 import { byDayTime } from "./timing";
@@ -213,6 +214,7 @@ function withPlannerDefaults(couple: Couple): LoadedCouple {
   couple.timing ??= [];
   couple.vendorTiming ??= [];
   couple.guests ??= [];
+  couple.rsvpInbox ??= [];
   couple.brief.forEach(withCatalogFields);
   return couple as LoadedCouple;
 }
@@ -245,9 +247,24 @@ function checkReceiptId(receiptId: string | undefined) {
   if (receiptId !== undefined && (!isFileId(receiptId) || receiptId.endsWith(".xlsx"))) throw new Error("Invalid receipt file");
 }
 
+const MAX_RSVP_INBOX = 1000;
+
+function sameSecret(given: string, stored: string): boolean {
+  const a = Buffer.from(given);
+  const b = Buffer.from(stored);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+/** "Sí" confirms, "No" declines, no answer keeps the status; the menu replaces the restriction ("Sin restricciones" clears it). */
+function applyRsvp(guest: Guest, answer: Pick<RsvpAnswer, "attending" | "menu">) {
+  if (answer.attending !== null) guest.status = answer.attending ? "confirmed" : "declined";
+  if (answer.menu) guest.restriction = plain(answer.menu).startsWith("sin restric") ? "" : answer.menu;
+}
+
 function toView(couple: Couple): CoupleView {
   const view: Partial<Couple> = { ...withPlannerDefaults(couple) };
   delete view.accessCodeHash;
+  delete view.rsvpToken;
   return view as CoupleView;
 }
 
@@ -972,6 +989,68 @@ export class PortalService {
   async deleteGuest(coupleId: string, guestId: string): Promise<void> {
     await this.mutate(coupleId, (c) => {
       c.guests = c.guests.filter((g) => g.id !== guestId);
+    });
+  }
+
+  /** The secret for the invitation form's webhook URL, created on first use. */
+  async rsvpToken(coupleId: string): Promise<string> {
+    let token = "";
+    await this.mutate(coupleId, (c) => {
+      c.rsvpToken ??= randomBytes(24).toString("hex");
+      token = c.rsvpToken;
+    });
+    return token;
+  }
+
+  /** The current webhook secret, or null before the team created one (read-only). */
+  async currentRsvpToken(coupleId: string): Promise<string | null> {
+    return (await this.repo.findById(coupleId))?.rsvpToken ?? null;
+  }
+
+  /** Whether the webhook URL's secret is this couple's current one (false for unknown couples). */
+  async isRsvpToken(coupleId: string, token: string): Promise<boolean> {
+    const stored = (await this.repo.findById(coupleId))?.rsvpToken;
+    return !!stored && sameSecret(token, stored);
+  }
+
+  /** A new secret: the old webhook URL stops working. */
+  async rotateRsvpToken(coupleId: string): Promise<string> {
+    const token = randomBytes(24).toString("hex");
+    await this.mutate(coupleId, (c) => {
+      c.rsvpToken = token;
+    });
+    return token;
+  }
+
+  /** Logs an answer from the invitation web and applies it to the guest it names, when exactly one matches. */
+  async receiveRsvp(coupleId: string, token: string, answer: RsvpAnswer): Promise<"matched" | "unmatched"> {
+    let result: "matched" | "unmatched" = "unmatched";
+    await this.mutate(coupleId, (c) => {
+      if (!c.rsvpToken || !sameSecret(token, c.rsvpToken)) throw new Error("Invalid RSVP token");
+      const guest = matchGuest(c.guests, answer.name);
+      if (guest) applyRsvp(guest, answer);
+      result = guest ? "matched" : "unmatched";
+      c.rsvpInbox.push({ id: randomUUID(), receivedAt: new Date().toISOString(), ...answer, guestId: guest?.id ?? null });
+      if (c.rsvpInbox.length > MAX_RSVP_INBOX) c.rsvpInbox.splice(0, c.rsvpInbox.length - MAX_RSVP_INBOX);
+    });
+    return result;
+  }
+
+  /** Applies a logged answer to the guest the team or the couple picked. */
+  async assignRsvp(coupleId: string, entryId: string, guestId: string): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      const entry = c.rsvpInbox.find((e) => e.id === entryId);
+      if (!entry) throw new Error("Answer not found");
+      const guest = c.guests.find((g) => g.id === guestId);
+      if (!guest) throw new Error("Guest not found");
+      applyRsvp(guest, entry);
+      entry.guestId = guest.id;
+    });
+  }
+
+  async dismissRsvp(coupleId: string, entryId: string): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      c.rsvpInbox = c.rsvpInbox.filter((e) => e.id !== entryId);
     });
   }
 

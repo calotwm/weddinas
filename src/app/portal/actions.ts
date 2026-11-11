@@ -238,3 +238,17 @@ export async function uploadPaymentReceipt(_prev: ReceiptResult, formData: FormD
   if (result?.ok) revalidatePath("/", "layout");
   return result;
 }
+
+// Answers from the invitation web that did not match a guest: the couple can assign or dismiss them too.
+
+export async function assignRsvp(formData: FormData): Promise<void> {
+  const coupleId = await requireCoupleId();
+  await portal.assignRsvp(coupleId, text(formData, "entryId", 100), text(formData, "guestId", 100)).catch(() => undefined);
+  revalidatePath("/portal", "layout");
+}
+
+export async function dismissRsvp(formData: FormData): Promise<void> {
+  const coupleId = await requireCoupleId();
+  await portal.dismissRsvp(coupleId, text(formData, "entryId", 100));
+  revalidatePath("/portal", "layout");
+}

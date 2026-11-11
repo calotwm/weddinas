@@ -77,3 +77,25 @@ export function matchGuest<G extends { name: string; lastName?: string }>(guests
   });
   return found.length === 1 ? found[0] : null;
 }
+
+/** Webhook body as key/value pairs: form-urlencoded as is, JSON flattened to Elementor's bracket keys; anything else is empty. */
+export function rsvpBodyEntries(body: string, contentType: string): [string, string][] {
+  const type = contentType.split(";")[0].trim().toLowerCase();
+  if (type === "application/x-www-form-urlencoded") return [...new URLSearchParams(body)];
+  if (type !== "application/json") return [];
+  let data: unknown;
+  try {
+    data = JSON.parse(body);
+  } catch {
+    return [];
+  }
+  const entries: [string, string][] = [];
+  const walk = (value: unknown, key: string, depth: number) => {
+    if (depth > 4 || entries.length > 200) return;
+    if (value !== null && typeof value === "object") {
+      for (const [k, v] of Object.entries(value)) walk(v, key ? `${key}[${k}]` : k, depth + 1);
+    } else if (key) entries.push([key, value === null || value === undefined ? "" : String(value)]);
+  };
+  walk(data, "", 0);
+  return entries;
+}
