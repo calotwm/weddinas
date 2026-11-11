@@ -51,17 +51,7 @@ function AgeSelect({ id, defaultValue }: { id?: string; defaultValue?: string })
   );
 }
 
-function TravelsSelect({ id, defaultValue }: { id?: string; defaultValue?: boolean }) {
-  return (
-    <select id={id} name="travels" defaultValue={defaultValue === undefined ? "" : defaultValue ? "yes" : "no"} aria-label={id ? undefined : "Viaja"} className="field py-2">
-      <option value="">Viaja: sin dato</option>
-      <option value="yes">Viaja: sí</option>
-      <option value="no">Viaja: no</option>
-    </select>
-  );
-}
-
-/** Edad, invitado de, combi, viaja and teléfono: the less used columns of the agency's sheet. */
+/** Edad, invitado de, combi and teléfono: the less used columns of the agency's sheet. */
 function ExtraFields({ guest, idPrefix }: { guest?: Guest; idPrefix?: string }) {
   const id = (name: string) => (idPrefix ? `${idPrefix}-${name}` : undefined);
   const labelled = (name: string, label: string, input: React.ReactNode) =>
@@ -78,7 +68,6 @@ function ExtraFields({ guest, idPrefix }: { guest?: Guest; idPrefix?: string }) 
       {labelled("age", "Edad", <AgeSelect id={id("age")} defaultValue={guest?.age} />)}
       {labelled("side", "Invitado de", <input id={id("side")} name="side" maxLength={80} defaultValue={guest?.side} aria-label={idPrefix ? undefined : "Invitado de"} placeholder="Invitado de" className="field py-2" />)}
       {labelled("transport", "Combi", <input id={id("transport")} name="transport" maxLength={80} defaultValue={guest?.transport} aria-label={idPrefix ? undefined : "Combi"} placeholder="Combi" className="field py-2" />)}
-      {labelled("travels", "Viaja", <TravelsSelect id={id("travels")} defaultValue={guest?.travels} />)}
       {labelled("phone", "Teléfono", <input id={id("phone")} name="phone" type="tel" maxLength={40} defaultValue={guest?.phone} aria-label={idPrefix ? undefined : "Teléfono"} placeholder="Teléfono" className="field py-2" />)}
     </>
   );
@@ -103,7 +92,7 @@ function GuestRow({ guest, actions, coupleId }: { guest: Guest; actions: GuestAc
         </SubmitButton>
         <details className="col-span-full">
           <summary className="cursor-pointer text-xs font-semibold text-teal">Más datos</summary>
-          <div className="mt-2 grid grid-cols-2 gap-2 lg:grid-cols-5">
+          <div className="mt-2 grid grid-cols-2 gap-2 lg:grid-cols-4">
             <ExtraFields guest={guest} />
           </div>
         </details>
@@ -130,7 +119,7 @@ function GuestImport({ actions, coupleId, count }: { actions: GuestActions; coup
       <div>
         <h3 className="section-title">Importar desde Excel</h3>
         <p className="text-sm text-ink/60">
-          {team ? "Subí" : "Suban"} la lista en .xlsx (hasta 5 MB). Leemos las columnas APELLIDO, NOMBRE, EDAD, RSVP, MESA, MENÚ, COMBI, RELACIÓN, INVITADO, VIAJA y TELEFONO.
+          {team ? "Subí" : "Suban"} la lista en .xlsx (hasta 5 MB). Leemos las columnas APELLIDO, NOMBRE, EDAD, RSVP, MESA, MENÚ, COMBI, RELACIÓN, INVITADO y TELEFONO.
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -163,11 +152,29 @@ function GuestImport({ actions, coupleId, count }: { actions: GuestActions; coup
   );
 }
 
-/** Guest list: add one, paste many (one per line), import the Excel, edit inline, delete and filter by status. */
+/** Table filter value for guests without a table (a table name is never blank). */
+const NO_TABLE = " ";
+
+/** Distinct tables in natural order ("2" before "10", names after numbers). */
+function tableNames(guests: Guest[]): string[] {
+  const names = [...new Set(guests.map((g) => g.table.trim()).filter(Boolean))];
+  return names.sort((a, b) => a.localeCompare(b, "es", { numeric: true, sensitivity: "base" }));
+}
+
+/** Guest list: add one, paste many (one per line), import the Excel, edit inline, delete and filter by status and table. */
 export function GuestManager({ guests, actions, coupleId }: { guests: Guest[]; actions: GuestActions; coupleId?: string }) {
   const [filter, setFilter] = useState<GuestStatus | "all">("all");
+  const [table, setTable] = useState("");
   const sorted = useMemo(() => sortGuests(guests), [guests]);
-  const visible = useMemo(() => (filter === "all" ? sorted : sorted.filter((g) => g.status === filter)), [sorted, filter]);
+  const tables = useMemo(() => tableNames(guests), [guests]);
+  const unseated = useMemo(() => guests.filter((g) => !g.table.trim()).length, [guests]);
+  const visible = useMemo(
+    () =>
+      sorted.filter(
+        (g) => (filter === "all" || g.status === filter) && (!table || (table === NO_TABLE ? !g.table.trim() : g.table.trim() === table)),
+      ),
+    [sorted, filter, table],
+  );
   const counts = useMemo(() => Object.fromEntries(GUEST_STATUSES.map((s) => [s, guests.filter((g) => g.status === s).length])), [guests]);
 
   return (
@@ -251,8 +258,22 @@ export function GuestManager({ guests, actions, coupleId }: { guests: Guest[]; a
             ))}
           </div>
         </div>
+        {(tables.length > 0 || table) && (
+          <div className="flex flex-wrap items-center gap-2">
+            <label htmlFor="g-table-filter" className="text-sm font-semibold text-forest">Ver mesa</label>
+            <select id="g-table-filter" value={table} onChange={(e) => setTable(e.target.value)} className="field !w-auto py-2">
+              <option value="">Todas las mesas</option>
+              {tables.map((t) => (
+                <option key={t} value={t}>
+                  Mesa {t} ({guests.filter((g) => g.table.trim() === t).length})
+                </option>
+              ))}
+              {unseated > 0 && <option value={NO_TABLE}>Sin mesa ({unseated})</option>}
+            </select>
+          </div>
+        )}
         {visible.length === 0 ? (
-          <p className="text-sm text-ink/50">{guests.length === 0 ? "Todavía no hay invitados cargados." : "Nadie con ese estado."}</p>
+          <p className="text-sm text-ink/50">{guests.length === 0 ? "Todavía no hay invitados cargados." : "Nadie con ese filtro."}</p>
         ) : (
           <ul className="space-y-2">
             {visible.map((g) => (
