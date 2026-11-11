@@ -20,8 +20,8 @@ function TallyList({ title, items, empty }: { title: string; items: Tally[]; emp
 }
 
 /**
- * The blocks of the agency's sheet: confirmed share, composition by age, confirmations, guests per table and menu.
- * Declined guests are left out of the percent, tables and menu; age and confirmations count the whole list.
+ * The blocks of the agency's sheet: confirmed out of all guests (in numbers), composition by age, confirmations,
+ * guests per table and menu. Declined guests are left out of tables and menu; the rest counts the whole list.
  */
 export function GuestSummaryView({ summary, compact = false }: { summary: GuestSummary; compact?: boolean }) {
   const ages: Tally[] = [
@@ -38,15 +38,25 @@ export function GuestSummaryView({ summary, compact = false }: { summary: GuestS
   return (
     <div className="space-y-4">
       <div>
-        <div className="flex items-baseline gap-2">
-          <p className="font-display text-5xl text-forest">{summary.confirmedPercent}%</p>
-          <p className="text-sm text-ink/60">confirmados</p>
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          <p className="font-display text-5xl text-forest tabular-nums">
+            {summary.confirmed}
+            <span className="text-3xl text-ink/40"> / {summary.total}</span>
+          </p>
+          <p className="text-sm text-ink/60">confirmados / invitados totales</p>
         </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-sand" role="progressbar" aria-valuenow={summary.confirmedPercent} aria-valuemin={0} aria-valuemax={100}>
-          <div className="h-full rounded-full bg-gradient-to-r from-mint to-teal" style={{ width: `${summary.confirmedPercent}%` }} />
+        <div
+          className="mt-3 h-2 overflow-hidden rounded-full bg-sand"
+          role="progressbar"
+          aria-label="Invitados confirmados"
+          aria-valuenow={summary.confirmed}
+          aria-valuemin={0}
+          aria-valuemax={summary.total}
+        >
+          <div className="h-full rounded-full bg-gradient-to-r from-mint to-teal" style={{ width: `${summary.total ? (summary.confirmed / summary.total) * 100 : 0}%` }} />
         </div>
         <p className="mt-2 text-sm text-ink/60">
-          {summary.confirmed} de {summary.expected} invitados · {summary.sent} enviado{summary.sent === 1 ? "" : "s"} sin respuesta · {summary.pending} sin enviar · {summary.declined} no viene{summary.declined === 1 ? "" : "n"}
+          {summary.sent} enviado{summary.sent === 1 ? "" : "s"} sin respuesta · {summary.pending} sin enviar · {summary.declined} no viene{summary.declined === 1 ? "" : "n"}
         </p>
       </div>
       {!compact && (

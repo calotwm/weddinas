@@ -7,7 +7,7 @@ import { isPresented, type Proposal } from "@/core/couple";
 import { daysAgo, isNewProposal, presentedAt } from "@/core/notifications";
 import { formatShortDate } from "@/lib/format";
 import { portal } from "@/server/container";
-import { commentOnProposal, respondToProposal } from "../actions";
+import { commentOnProposal, respondToProposal, setProposalFinalist } from "../actions";
 import { getCurrentCouple } from "../data";
 import { CommentThread } from "./comment-thread";
 
@@ -17,7 +17,7 @@ type VisibleStatus = Exclude<Proposal["status"], "discarded">;
 
 const STATUS: Record<VisibleStatus, { label: string; className: string }> = {
   pending: { label: "Esperando respuesta", className: "bg-peach text-rust" },
-  approved: { label: "Aprobada", className: "bg-mint/25 text-forest" },
+  approved: { label: "Elegida", className: "bg-mint/25 text-forest" },
   rejected: { label: "No va", className: "bg-ink/8 text-ink/60" },
 };
 
@@ -30,12 +30,12 @@ function uploadedAgo(iso: string) {
 
 const ORDER: Record<VisibleStatus, number> = { pending: 0, approved: 1, rejected: 2 };
 
-/** Approving one closes its rubro: tell the couple when that will discard other open options. */
+/** Choosing one ("Elegir") closes its rubro: tell the couple when that will discard other open options. */
 function approveConfirm(p: Proposal, all: Proposal[]) {
   if (!p.category) return undefined;
   const others = all.filter((o) => o.id !== p.id && o.category === p.category && o.status === "pending").length;
   if (others === 0) return undefined;
-  return `Al aprobar "${p.title}" queda confirmado ${categoryName(p.category)} y las otras ${others === 1 ? "propuesta" : `${others} propuestas`} de ese rubro se descartan. ¿Seguimos?`;
+  return `Al elegir "${p.title}" queda confirmado ${categoryName(p.category)} y las otras ${others === 1 ? "propuesta" : `${others} propuestas`} de ese rubro se descartan. ¿Seguimos?`;
 }
 
 export default async function ProposalsPage() {
@@ -50,7 +50,7 @@ export default async function ProposalsPage() {
       <div className="card flex flex-col items-center py-12 text-center">
         <span className="icon-badge mb-4"><Icon name="sparkle" /></span>
         <p className="font-display text-2xl text-forest">Todavía no hay propuestas</p>
-        <p className="mt-1 text-ink/60">Cuando les armemos una, la van a ver acá para aprobarla o comentarla.</p>
+        <p className="mt-1 text-ink/60">Cuando les armemos una, la van a ver acá para elegirla o comentarla.</p>
       </div>
     );
   }
@@ -58,9 +58,10 @@ export default async function ProposalsPage() {
   const sorted = [...proposals].sort((a, b) => ORDER[a.status] - ORDER[b.status]);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="space-y-6">
       {sorted.map((p) => (
-        <article key={p.id} className={`card ${p.status === "pending" ? "ring-2 ring-peach" : ""}`}>
+        // A comparison table needs room: that proposal takes the whole page width, the rest keep a readable column.
+        <article key={p.id} className={`card mx-auto ${p.comparison ? "w-full" : "max-w-3xl"} ${p.status === "pending" ? "ring-2 ring-peach" : ""}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-sm font-medium text-teal">
@@ -71,6 +72,12 @@ export default async function ProposalsPage() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {isNewProposal(p) && <span className="chip bg-rust text-white">Nuevo · {uploadedAgo(presentedAt(p))}</span>}
+              {p.finalist && (
+                <span className="chip bg-teal/15 text-forest">
+                  <Icon name="heart" className="h-3.5 w-3.5 text-rust" />
+                  Finalista
+                </span>
+              )}
               <span className={`chip ${STATUS[p.status].className}`}>{STATUS[p.status].label}</span>
             </div>
           </div>
@@ -103,6 +110,15 @@ export default async function ProposalsPage() {
             </div>
           )}
 
+          <form action={setProposalFinalist} className="mt-5">
+            <input type="hidden" name="proposalId" value={p.id} />
+            <input type="hidden" name="finalist" value={p.finalist ? "false" : "true"} />
+            <SubmitButton className="btn-ghost btn-sm" pendingText="…">
+              <Icon name="heart" className="h-3.5 w-3.5" />
+              {p.finalist ? "Quitar de finalistas" : "Marcar como finalista"}
+            </SubmitButton>
+          </form>
+
           {p.status === "pending" ? (
             <form action={respondToProposal} className="mt-6 space-y-3 border-t border-forest/10 pt-6">
               <input type="hidden" name="proposalId" value={p.id} />
@@ -111,7 +127,7 @@ export default async function ProposalsPage() {
               <div className="flex flex-wrap gap-3">
                 <SubmitButton name="status" value="approved" pendingText="Enviando…" confirm={approveConfirm(p, proposals)}>
                   <Icon name="check" className="h-4 w-4" />
-                  Aprobar
+                  Elegir
                 </SubmitButton>
                 <SubmitButton
                   name="status"

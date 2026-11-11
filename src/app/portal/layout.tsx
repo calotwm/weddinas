@@ -6,6 +6,7 @@ import { coupleNotifications, unreadCount } from "@/core/notifications";
 import { formatWeddingDate, weddingDateToIso } from "@/lib/format";
 import { logout } from "../actions";
 import { getCurrentCouple } from "./data";
+import { NotificationsBell } from "./notifications-bell";
 import { PortalNav } from "./portal-nav";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
@@ -17,6 +18,7 @@ export default async function PortalLayout({ children }: { children: React.React
   return (
     <div className="flex min-h-screen flex-col">
       <TopBar label="Portal de novios">
+        <NotificationsBell unread={unread} />
         <form action={logout}>
           <button className="btn-light btn-sm" aria-label="Cerrar sesión">
             <Icon name="logout" className="h-3.5 w-3.5" />
@@ -40,7 +42,7 @@ export default async function PortalLayout({ children }: { children: React.React
             {isPast ? "¡Ya se casaron!" : days === 0 ? "¡Es hoy!" : `Faltan ${days} días`}
           </span>
         </div>
-        <PortalNav pendingProposals={pending} unread={unread} />
+        <PortalNav pendingProposals={pending} />
         <div className="mt-8">{children}</div>
       </main>
       <SiteFooter />

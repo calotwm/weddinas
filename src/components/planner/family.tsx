@@ -4,7 +4,7 @@ import { Icon } from "../icons";
 
 export const photoUrl = (coupleId: string, photoId: string) => `/archivos/${coupleId}/${photoId}`;
 
-export function FamilyPhoto({ coupleId, member, className = "h-16 w-16" }: { coupleId: string; member: FamilyMember; className?: string }) {
+export function FamilyPhoto({ coupleId, member, className = "h-28 w-28 sm:h-36 sm:w-36" }: { coupleId: string; member: FamilyMember; className?: string }) {
   return member.photoId ? (
     <img src={photoUrl(coupleId, member.photoId)} alt={`Foto de ${member.name}`} className={`${className} shrink-0 rounded-2xl object-cover ring-1 ring-forest/10`} />
   ) : (
@@ -36,11 +36,17 @@ export function FamilyColumns({
             {members.length === 0 && <p className="text-sm text-ink/50">Todavía no hay nadie cargado.</p>}
             <ul className="space-y-3">
               {members.map((m) => (
-                <li key={m.id} className="flex flex-wrap items-center gap-4 rounded-2xl p-2 ring-1 ring-forest/5">
+                <li key={m.id} className="flex flex-wrap items-start gap-4 rounded-2xl p-2 ring-1 ring-forest/5">
                   <FamilyPhoto coupleId={coupleId} member={m} />
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-forest">{m.name}</p>
                     {m.relation && <p className="text-sm text-ink/60">{m.relation}</p>}
+                    {m.notes && (
+                      <p className="mt-2 text-sm whitespace-pre-line text-ink/80">
+                        <span className="font-semibold text-forest">Aclaraciones: </span>
+                        {m.notes}
+                      </p>
+                    )}
                   </div>
                   {action?.(m)}
                 </li>

@@ -18,7 +18,7 @@ const summaryBlock: CellValue[][] = [
 ];
 
 describe("parseGuestGrid", () => {
-  it("finds the header row below a summary block and maps every column", () => {
+  it("finds the header row below a summary block, maps every column and ignores VIAJA", () => {
     const guests = parseGuestGrid([
       sheet([
         ...summaryBlock,
@@ -38,7 +38,6 @@ describe("parseGuestGrid", () => {
         transport: "Si (ida y vuelta)",
         group: "Familia",
         side: "Anita",
-        travels: true,
         phone: "11 5555-5555",
       },
       {
@@ -51,7 +50,6 @@ describe("parseGuestGrid", () => {
         transport: "No",
         group: "Amigos",
         side: "Fran",
-        travels: false,
         phone: "1155556666",
       },
     ]);

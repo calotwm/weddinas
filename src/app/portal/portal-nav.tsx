@@ -4,14 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon, type IconName } from "@/components/icons";
 
-// `short` is the visible label (eleven sections must fit one row on desktop); `label` is the full name shown on hover.
+// `short` is the visible label (ten sections must fit one row on desktop); `label` is the full name shown on hover.
 // The guest web page (/portal/mi-pagina) is no longer linked: "Estética" replaced it.
+// Notificaciones lives in the header bell next to "Salir" (NotificationsBell), not here.
 const LINKS: Array<{ href: string; label: string; short: string; icon: IconName }> = [
   { href: "/portal", label: "Resumen", short: "Resumen", icon: "home" },
   { href: "/portal/propuestas", label: "Propuestas", short: "Propuestas", icon: "sparkle" },
   { href: "/portal/proveedores", label: "Proveedores", short: "Proveedores", icon: "users" },
   { href: "/portal/presupuesto", label: "Presupuesto", short: "Presupuesto", icon: "dollar" },
-  { href: "/portal/notificaciones", label: "Notificaciones", short: "Notificaciones", icon: "bell" },
   { href: "/portal/checklist", label: "Temas del mes", short: "Temas del mes", icon: "checklist" },
   { href: "/portal/musica", label: "Música", short: "Música", icon: "music" },
   { href: "/portal/familia", label: "Fotos familiares", short: "Familia", icon: "heart" },
@@ -28,17 +28,13 @@ function Badge({ count }: { count: number }) {
   );
 }
 
-export function PortalNav({ pendingProposals, unread }: { pendingProposals: number; unread: number }) {
+export function PortalNav({ pendingProposals }: { pendingProposals: number }) {
   const pathname = usePathname();
-  // Opening Notificaciones marks them read, so its badge goes away right there.
-  const badges: Record<string, number> = {
-    "/portal/propuestas": pendingProposals,
-    "/portal/notificaciones": pathname === "/portal/notificaciones" ? 0 : unread,
-  };
+  const badges: Record<string, number> = { "/portal/propuestas": pendingProposals };
 
   return (
     <nav aria-label="Secciones del portal">
-      <ul className="grid grid-cols-4 gap-1 rounded-3xl bg-white p-1 shadow-soft ring-1 ring-forest/5 sm:grid-cols-6 lg:grid-cols-11">
+      <ul className="grid grid-cols-4 gap-1 rounded-3xl bg-white p-1 shadow-soft ring-1 ring-forest/5 sm:grid-cols-5 lg:grid-cols-10">
         {LINKS.map(({ href, label, short, icon }) => {
           const active = pathname === href;
           return (

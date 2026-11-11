@@ -1,14 +1,13 @@
 import { Icon } from "@/components/icons";
 import { ChecklistBoard } from "@/components/planner/checklist";
-import { SubmitButton } from "@/components/submit-button";
 import type { ChecklistTask } from "@/core/couple";
 import { currentMonth, formatMonth } from "@/lib/format";
-import { addTask, deleteTask, toggleTask } from "../actions";
+import { toggleTask } from "../actions";
 import { getCurrentCouple } from "../data";
 
 function TaskRow({ task, month }: { task: ChecklistTask; month: string }) {
   return (
-    <li className="group flex items-center gap-3 py-3">
+    <li className="flex items-center gap-3 py-3">
       <form action={toggleTask}>
         <input type="hidden" name="taskId" value={task.id} />
         <button
@@ -22,12 +21,6 @@ function TaskRow({ task, month }: { task: ChecklistTask; month: string }) {
       </form>
       <span className={`flex-1 ${task.done ? "text-ink/40 line-through" : ""}`}>{task.title}</span>
       {task.month && task.month < month && <span className="chip bg-peach py-0.5 text-rust normal-case tracking-normal">{formatMonth(task.month)}</span>}
-      <form action={deleteTask}>
-        <input type="hidden" name="taskId" value={task.id} />
-        <button aria-label={`Borrar ${task.title}`} className="btn-icon opacity-60 group-hover:opacity-100">
-          <Icon name="trash" className="h-4 w-4" />
-        </button>
-      </form>
     </li>
   );
 }
@@ -51,18 +44,8 @@ export default async function ChecklistPage() {
         <div className="h-full rounded-full bg-gradient-to-r from-mint to-teal" style={{ width: `${progress}%` }} />
       </div>
 
-      <form action={addTask} className="flex flex-wrap gap-2 sm:flex-nowrap">
-        <label htmlFor="title" className="sr-only">Nueva tarea</label>
-        <input id="title" name="title" required maxLength={200} className="field" placeholder="Ej: Elegir las flores del ramo" />
-        <label htmlFor="month" className="sr-only">Mes</label>
-        <input id="month" name="month" type="month" defaultValue={month} className="field sm:!w-44" />
-        <SubmitButton pendingText="…" className="btn-primary shrink-0">
-          <Icon name="plus" className="h-4 w-4" />
-          <span className="hidden sm:inline">Agregar</span>
-        </SubmitButton>
-      </form>
 
-      {tasks.length === 0 && <p className="py-8 text-center text-ink/50">Sumen acá todo lo que no se quieren olvidar.</p>}
+      {tasks.length === 0 && <p className="py-8 text-center text-ink/50">Todavía no les cargamos temas. Cuando los sumemos, los van a ver acá para marcarlos.</p>}
 
       <ChecklistBoard tasks={tasks} month={month} renderTask={(t) => <TaskRow key={t.id} task={t} month={month} />} />
     </div>

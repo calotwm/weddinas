@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useId } from "react";
 import type { BlockStatus, BriefBlock } from "@/core/couple";
 import { AttachmentList } from "@/components/attachments";
 import { LINE_STATE_DOT, LineStateChip } from "@/components/planner/line-state";
@@ -24,21 +25,26 @@ function NoteLines({ lines }: { lines: NoteLine[] }) {
   );
 }
 
-/** A planner's note as a list: one item per line, with headings for its groups. Long notes show a "Ver más". */
+/**
+ * A planner's note as a list: one item per line, with headings for its groups. Long notes show "Ver más", and
+ * "Ver menos" once open. A visually hidden checkbox drives it, so it works without client JavaScript.
+ */
 export function NoteText({ text, collapse = false }: { text: string; collapse?: boolean }) {
+  const id = useId();
   const lines = noteLines(text);
   if (lines.length <= 1) return <>{lines[0]?.text}</>;
   if (!collapse || lines.length <= PREVIEW_LINES + 1) return <NoteLines lines={lines} />;
+  const toggle = "mt-1 inline-block cursor-pointer text-sm font-semibold text-teal peer-focus-visible:underline";
   return (
-    <details className="group">
-      <summary className="list-none">
-        <NoteLines lines={lines.slice(0, PREVIEW_LINES)} />
-        <span className="mt-1 inline-block cursor-pointer text-sm font-semibold text-teal group-open:hidden">Ver más ({lines.length - PREVIEW_LINES})</span>
-      </summary>
-      <div className="mt-1">
+    <div>
+      <input id={id} type="checkbox" className="peer sr-only" aria-label="Ver la nota completa" />
+      <NoteLines lines={lines.slice(0, PREVIEW_LINES)} />
+      <div className="mt-1 hidden peer-checked:block">
         <NoteLines lines={lines.slice(PREVIEW_LINES)} />
       </div>
-    </details>
+      <label htmlFor={id} className={`${toggle} peer-checked:hidden`}>Ver más ({lines.length - PREVIEW_LINES})</label>
+      <label htmlFor={id} className={`${toggle} hidden peer-checked:inline-block`}>Ver menos</label>
+    </div>
   );
 }
 
@@ -105,7 +111,8 @@ export function BriefBlockSummary({ coupleId, block, expanded = false, download,
             </dl>
           )}
           {shared.length > 0 && (
-            <div>
+            // Printed vendor sheets leave the attachments out: they are files, not readable on paper.
+            <div className="print:hidden">
               <p className="mb-2 text-sm font-semibold text-forest">Documentos</p>
               <AttachmentList coupleId={coupleId} attachments={shared} />
             </div>

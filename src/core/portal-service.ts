@@ -204,6 +204,7 @@ function withPlannerDefaults(couple: Couple): LoadedCouple {
   couple.music.customMoments ??= [];
   couple.music.hiddenMoments ??= [];
   couple.family ??= [];
+  for (const member of couple.family) member.notes ??= "";
   couple.aesthetic ??= { fonts: "", palette: [], photoIds: [] };
   couple.aesthetic.titleFont ??= "";
   couple.aesthetic.bodyFont ??= "";
@@ -407,6 +408,15 @@ export class PortalService {
       // A vendor the team already wrote in the brief is more precise than the proposal title, so it is kept.
       if (!block.vendor) block.vendor = proposal.title;
       setBlockStatus(block, "confirmed");
+    });
+  }
+
+  /** The couple's shortlist ("Finalista"): reversible and independent of the answer; drafts and discarded ones refuse it. */
+  async setProposalFinalist(coupleId: string, proposalId: string, finalist: boolean): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      const proposal = c.proposals.find((p) => p.id === proposalId);
+      if (!proposal || !isPresented(proposal) || proposal.status === "discarded") throw new Error("Proposal not found");
+      proposal.finalist = finalist;
     });
   }
 
@@ -769,14 +779,34 @@ export class PortalService {
     });
   }
 
-  async addFamilyMember(coupleId: string, input: { side: FamilySide; name: string; relation: string }): Promise<FamilyMember> {
+  async addFamilyMember(coupleId: string, input: { side: FamilySide; name: string; relation: string; notes?: string }): Promise<FamilyMember> {
     if (input.side !== "a" && input.side !== "b") throw new Error("Unknown side");
     if (!input.name.trim()) throw new Error("Name is required");
-    const member: FamilyMember = { id: randomUUID(), side: input.side, name: input.name.trim(), relation: input.relation.trim(), photoId: null };
+    const member: FamilyMember = {
+      id: randomUUID(),
+      side: input.side,
+      name: input.name.trim(),
+      relation: input.relation.trim(),
+      photoId: null,
+      notes: (input.notes ?? "").trim(),
+    };
     await this.mutate(coupleId, (c) => {
       c.family.push(member);
     });
     return member;
+  }
+
+  /** Edits a member's name, relation and "Aclaraciones"; the side and the photo stay. */
+  async updateFamilyMember(coupleId: string, memberId: string, input: { name: string; relation: string; notes: string }): Promise<void> {
+    const name = input.name.trim();
+    if (!name) throw new Error("Name is required");
+    await this.mutate(coupleId, (c) => {
+      const member = c.family.find((m) => m.id === memberId);
+      if (!member) throw new Error("Family member not found");
+      member.name = name;
+      member.relation = input.relation.trim();
+      member.notes = input.notes.trim();
+    });
   }
 
   /** Returns the member's previous photo id so the caller can delete that file. */
