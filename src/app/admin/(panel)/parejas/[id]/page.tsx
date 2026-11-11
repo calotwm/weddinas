@@ -12,6 +12,7 @@ import { portal, welcomeTemplate } from "@/server/container";
 import { siteOrigin } from "@/server/site-url";
 import { addProposal, deleteProposal, deleteReport, presentProposal, replyToProposal, updateCouple } from "../../../actions";
 import { AdminAttachments } from "../../../admin-attachments";
+import { AdminComparison } from "../../../comparison-form";
 import { RegenerateCodeForm } from "../../../forms";
 
 export const dynamic = "force-dynamic";
@@ -130,6 +131,7 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
                       <AdminAttachments coupleId={couple.id} kind="proposal" targetId={p.id} attachments={p.attachments} />
                     </div>
                   </details>
+                  <AdminComparison coupleId={couple.id} proposalId={p.id} comparison={p.comparison} />
                   {!isPresented(p) && (
                     <form action={presentProposal} className="mt-3">
                       {hidden}

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { accessCodeFor, hashAccessCode } from "./access-code";
+import type { ComparisonTable } from "./comparison-table";
 import { normalizeWhatsapp } from "./whatsapp";
 import { BRIEF_CATALOG, catalogBlock, defaultBrief, defaultMusic, musicMomentKeys, newBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
 import {
@@ -354,6 +355,16 @@ export class PortalService {
       const proposal = c.proposals.find((p) => p.id === proposalId);
       if (!proposal) throw new Error("Proposal not found");
       proposal.presentedAt ??= new Date().toISOString();
+    });
+  }
+
+  /** Sets or (with null) removes the comparison table shown inside a proposal. */
+  async setProposalComparison(coupleId: string, proposalId: string, table: ComparisonTable | null): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      const proposal = c.proposals.find((p) => p.id === proposalId);
+      if (!proposal) throw new Error("Proposal not found");
+      if (table) proposal.comparison = table;
+      else delete proposal.comparison;
     });
   }
 

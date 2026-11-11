@@ -1,3 +1,4 @@
+import type { ComparisonTable } from "./comparison-table";
 import type { Adjustment, Currency } from "./money";
 
 /** "discarded": another proposal of the same rubro was approved; hidden from the couple, still shown to the team. */
@@ -64,6 +65,8 @@ export interface Proposal {
   comments?: ProposalComment[];
   /** First time the couple opened Propuestas while it was presented. */
   viewedAt?: string | null;
+  /** Vendor comparison table parsed from the agency's Excel; its original file is kept apart. */
+  comparison?: ComparisonTable | null;
 }
 
 export interface Report {
