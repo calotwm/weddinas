@@ -358,14 +358,36 @@ export class PortalService {
     });
   }
 
-  /** Sets or (with null) removes the comparison table shown inside a proposal. */
-  async setProposalComparison(coupleId: string, proposalId: string, table: ComparisonTable | null): Promise<void> {
+  /**
+   * Sets or (with null) removes the comparison table shown inside a proposal. `file` is the stored original,
+   * attached to the proposal for the team only. Returns the previous original's file id to delete, if still attached.
+   */
+  async setProposalComparison(
+    coupleId: string,
+    proposalId: string,
+    table: ComparisonTable | null,
+    file?: { id: string; name: string; size: number },
+  ): Promise<string | null> {
+    let removed: string | null = null;
     await this.mutate(coupleId, (c) => {
       const proposal = c.proposals.find((p) => p.id === proposalId);
       if (!proposal) throw new Error("Proposal not found");
-      if (table) proposal.comparison = table;
-      else delete proposal.comparison;
+      const attachments = (proposal.attachments ??= []);
+      const previous = attachments.findIndex((a) => a.id === proposal.comparison?.attachmentId);
+      if (previous >= 0) removed = attachments.splice(previous, 1)[0].id;
+      if (!table) {
+        delete proposal.comparison;
+        return;
+      }
+      proposal.comparison = { ...table };
+      delete proposal.comparison.attachmentId;
+      if (file) {
+        // Unlike the files the team attaches for the couple, the spreadsheet stays internal.
+        attachments.push({ id: file.id, name: safeFileName(file.name), size: file.size, uploadedAt: new Date().toISOString(), internal: true });
+        proposal.comparison.attachmentId = file.id;
+      }
     });
+    return removed;
   }
 
   async markNotificationsSeen(coupleId: string): Promise<void> {
@@ -424,6 +446,10 @@ export class PortalService {
       const list = attachmentsOf(c, target);
       const index = list.findIndex((a) => a.id === fileId);
       if (index >= 0) removed = list.splice(index, 1)[0].id;
+      if (target.kind === "proposal") {
+        const comparison = c.proposals.find((p) => p.id === target.id)?.comparison;
+        if (comparison?.attachmentId === fileId) delete comparison.attachmentId;
+      }
     });
     return removed;
   }

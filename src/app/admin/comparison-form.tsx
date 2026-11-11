@@ -19,6 +19,12 @@ export function AdminComparison({ coupleId, proposalId, comparison }: { coupleId
         {comparison && (
           <>
             <ComparisonTableView table={comparison} />
+            {comparison.attachmentId && (
+              <a href={`/archivos/${coupleId}/${comparison.attachmentId}`} download={comparison.fileName} className="inline-flex items-center gap-1 text-xs font-semibold text-teal underline">
+                <Icon name="file" className="h-3.5 w-3.5" />
+                Descargar {comparison.fileName}
+              </a>
+            )}
             <form action={removeComparison}>
               <input type="hidden" name="coupleId" value={coupleId} />
               <input type="hidden" name="proposalId" value={proposalId} />

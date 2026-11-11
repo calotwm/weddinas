@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { detectDocument, detectImage, isFileId, MAX_DOCUMENT_BYTES, MAX_IMAGE_BYTES, mimeForFileId, type FileType } from "@/core/uploads";
+import { detectDocument, detectImage, detectXlsx, isFileId, MAX_DOCUMENT_BYTES, MAX_IMAGE_BYTES, MAX_SPREADSHEET_BYTES, mimeForFileId, type FileType } from "@/core/uploads";
 
 const COUPLE_ID = /^[A-Za-z0-9-]{1,64}$/;
 
-/** Stores uploaded images on disk, one folder per couple (on Railway: the same volume as the JSON database). */
+/** Stores uploaded files on disk, one folder per couple (on Railway: the same volume as the JSON database). */
 export class LocalFileStore {
   constructor(private readonly root: string) {}
 
@@ -16,6 +16,11 @@ export class LocalFileStore {
   /** PDF or image, for attachments. */
   saveDocument(coupleId: string, bytes: Uint8Array): Promise<string> {
     return this.save(coupleId, bytes, MAX_DOCUMENT_BYTES, detectDocument, "Not a supported file");
+  }
+
+  /** Excel workbook only (a comparison table's original file); the other flows never accept it. */
+  saveSpreadsheet(coupleId: string, bytes: Uint8Array): Promise<string> {
+    return this.save(coupleId, bytes, MAX_SPREADSHEET_BYTES, detectXlsx, "Not a supported spreadsheet");
   }
 
   private async save(
