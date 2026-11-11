@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { accessCodeFor, hashAccessCode } from "./access-code";
+import { normalizeWhatsapp } from "./whatsapp";
 import { BRIEF_CATALOG, catalogBlock, defaultBrief, defaultMusic, musicMomentKeys, newBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
 import {
   emptyPublicInfo,
@@ -259,8 +260,14 @@ export class PortalService {
     });
   }
 
-  async updateCoupleDetails(coupleId: string, details: Partial<NewCoupleInput>): Promise<void> {
+  /** `whatsapp` is normalized ("11 2233-4455" -> "5491122334455"); "" clears it; an invalid number changes nothing. */
+  async updateCoupleDetails(coupleId: string, details: Partial<NewCoupleInput> & { whatsapp?: string }): Promise<void> {
+    const whatsapp = details.whatsapp === undefined ? undefined : normalizeWhatsapp(details.whatsapp);
     await this.mutate(coupleId, (c) => {
+      if (whatsapp !== undefined) {
+        if (whatsapp) c.whatsapp = whatsapp;
+        else delete c.whatsapp;
+      }
       if (details.partnerA) c.partnerA = details.partnerA.trim();
       if (details.partnerB) c.partnerB = details.partnerB.trim();
       if (details.weddingDate) c.weddingDate = details.weddingDate;

@@ -2,10 +2,13 @@ import { notFound } from "next/navigation";
 import { Icon } from "@/components/icons";
 import { ChecklistBoard } from "@/components/planner/checklist";
 import { SubmitButton } from "@/components/submit-button";
-import type { ChecklistTask } from "@/core/couple";
-import { currentMonth } from "@/lib/format";
+import { WhatsappButton } from "@/components/whatsapp-button";
+import { checklistSections, coupleNames, type ChecklistTask } from "@/core/couple";
+import { monthTopicsMessage } from "@/core/whatsapp";
+import { currentMonth, formatMonth } from "@/lib/format";
 import { requireAdmin } from "@/server/auth";
 import { portal } from "@/server/container";
+import { siteOrigin } from "@/server/site-url";
 import { addChecklistTask, deleteChecklistTask, setChecklistTaskMonth, toggleChecklistTask } from "@/app/admin/planner-actions";
 
 export const dynamic = "force-dynamic";
@@ -49,14 +52,23 @@ export default async function ChecklistAdminPage({ params }: { params: Promise<{
   const couple = await portal.getCouple((await params).id);
   if (!couple) notFound();
   const month = currentMonth();
+  const sections = checklistSections(couple.tasks, month);
+  const topics = sections.thisMonth.filter((t) => !t.done).map((t) => t.title);
+  const overdue = sections.overdue.map((t) => t.title);
+  const message = monthTopicsMessage(coupleNames(couple), formatMonth(month), topics, overdue, `${await siteOrigin()}/portal/checklist`);
 
   return (
     <div className="card space-y-2">
-      <div>
-        <h2 className="font-display text-3xl text-forest">Temas del mes</h2>
-        <p className="hint">
-          Cargá las tareas de cada mes. La pareja ve las pendientes de meses anteriores, las de este mes y las próximas.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-display text-3xl text-forest">Temas del mes</h2>
+          <p className="hint">
+            Cargá las tareas de cada mes. La pareja ve las pendientes de meses anteriores, las de este mes y las próximas.
+          </p>
+        </div>
+        {topics.length + overdue.length > 0 && (
+          <WhatsappButton phone={couple.whatsapp} text={message}>Enviar temas por WhatsApp</WhatsappButton>
+        )}
       </div>
 
       <form action={addChecklistTask} className="flex flex-wrap gap-2 pt-2 sm:flex-nowrap">

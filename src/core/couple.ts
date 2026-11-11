@@ -257,6 +257,8 @@ export interface Couple {
   /** Last time the couple opened their notifications; newer ones count as unread. */
   notificationsSeenAt?: string | null;
   createdAt: string;
+  /** WhatsApp number in international digits ("5491122334455"); the team's buttons open this chat. */
+  whatsapp?: string;
 }
 
 /** Couple data safe to expose outside the server boundary. */

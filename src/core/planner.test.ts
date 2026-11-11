@@ -96,6 +96,23 @@ describe("planner workspace", () => {
     });
   });
 
+  describe("couple details", () => {
+    it("stores the WhatsApp number normalized, clears it, and rejects invalid ones without changing anything", async () => {
+      await service.updateCoupleDetails(coupleId, { whatsapp: "11 2233-4455" });
+      expect((await load()).whatsapp).toBe("5491122334455");
+
+      const before = readFileSync(file, "utf8");
+      await expect(service.updateCoupleDetails(coupleId, { partnerA: "Otro", whatsapp: "123" })).rejects.toThrow();
+      expect(readFileSync(file, "utf8")).toBe(before);
+
+      await service.updateCoupleDetails(coupleId, { partnerA: "Delfina" });
+      expect(await load()).toMatchObject({ partnerA: "Delfina", whatsapp: "5491122334455" });
+
+      await service.updateCoupleDetails(coupleId, { whatsapp: "" });
+      expect((await load()).whatsapp).toBeUndefined();
+    });
+  });
+
   describe("brief", () => {
     it("adds catalog blocks once and updates and removes them", async () => {
       await service.addBriefBlock(coupleId, "cotillon");

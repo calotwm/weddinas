@@ -6,6 +6,8 @@ import { BRIEF_CATALOG, categoryName } from "@/core/brief-catalog";
 import { coupleNames, isPresented, type Proposal } from "@/core/couple";
 import { formatShortDate } from "@/lib/format";
 import { requireAdmin } from "@/server/auth";
+import { WhatsappButton } from "@/components/whatsapp-button";
+import { proposalMessage } from "@/core/whatsapp";
 import { portal, welcomeTemplate } from "@/server/container";
 import { siteOrigin } from "@/server/site-url";
 import { addProposal, deleteProposal, deleteReport, presentProposal, replyToProposal, updateCouple } from "../../../actions";
@@ -101,6 +103,11 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
                       {p.viewedAt ? `Vista por los novios el ${formatShortDate(p.viewedAt)}` : "Todavía no la vieron"}
                     </p>
                   )}
+                  {isPresented(p) && p.status === "pending" && (
+                    <div className="mt-2">
+                      <WhatsappButton phone={couple.whatsapp} text={proposalMessage(names, p.title, `${origin}/portal/propuestas`)} />
+                    </div>
+                  )}
                   {p.coupleComment && <p className="mt-2 rounded-xl bg-peach-soft px-3 py-2 text-sm text-ink/80">“{p.coupleComment}”</p>}
                   {isPresented(p) && (
                     <details className="mt-3" open={(p.comments?.length ?? 0) > 0}>
@@ -194,6 +201,21 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
             <div>
               <label htmlFor="weddingDate" className="label">Fecha y hora</label>
               <input id="weddingDate" name="weddingDate" type="datetime-local" required defaultValue={couple.weddingDate} className="field" />
+            </div>
+            <div>
+              <label htmlFor="whatsapp" className="label">WhatsApp de los novios</label>
+              <input
+                id="whatsapp"
+                name="whatsapp"
+                type="tel"
+                inputMode="tel"
+                maxLength={25}
+                pattern="\+?[0-9 \-]{8,24}"
+                defaultValue={couple.whatsapp ? `+${couple.whatsapp}` : ""}
+                className="field"
+                placeholder="Ej: 11 2233 4455"
+              />
+              <p className="hint">Con este número, los botones “Avisar por WhatsApp” abren directo su chat.</p>
             </div>
             <SubmitButton doneText="¡Guardado!">Guardar</SubmitButton>
           </form>

@@ -77,6 +77,7 @@ export async function updateCouple(formData: FormData): Promise<void> {
     partnerA: text(formData, "partnerA", 80),
     partnerB: text(formData, "partnerB", 80),
     weddingDate: isLocalDateTime(weddingDate) ? weddingDate : undefined,
+    whatsapp: text(formData, "whatsapp", 25),
   });
   revalidatePath("/", "layout");
 }
