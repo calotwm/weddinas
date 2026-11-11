@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { SubmitButton } from "@/components/submit-button";
+import { FREIGHT_LABEL, PAYMENT_KIND } from "@/components/planner/budget";
 import type { BudgetItem } from "@/core/couple";
 import type { Currency } from "@/core/money";
 import { addPayment, saveBudgetItem, type PlannerResult } from "@/app/admin/planner-actions";
@@ -104,6 +105,14 @@ export function BudgetItemForm({
           <input id={`due-${id}`} name="dueDate" type="date" defaultValue={item?.dueDate} className="field" />
         </div>
       </div>
+      <div className="sm:w-1/2">
+        <label htmlFor={`freight-${id}`} className="label">Flete/Viáticos</label>
+        <select id={`freight-${id}`} name="freight" defaultValue={item?.freight ?? ""} className="field">
+          <option value="">{FREIGHT_LABEL.unknown}</option>
+          <option value="yes">{FREIGHT_LABEL.yes}</option>
+          <option value="no">{FREIGHT_LABEL.no}</option>
+        </select>
+      </div>
       <Feedback state={state} />
       <SubmitButton doneText="¡Guardado!">{item ? "Guardar cambios" : "Agregar al presupuesto"}</SubmitButton>
     </form>
@@ -123,10 +132,9 @@ export function PaymentForm({ coupleId, item, today, arsPerUsd }: { coupleId: st
       <p className="text-sm font-semibold text-forest">Registrar pago</p>
       <div className="grid grid-cols-2 gap-3">
         <select name="kind" aria-label="Tipo de pago" defaultValue={item.payments.length ? "saldo" : "sena"} className="field">
-          <option value="sena">Seña</option>
-          <option value="saldo">Saldo</option>
-          <option value="adicional">Adicional</option>
-          <option value="iva">IVA</option>
+          {Object.entries(PAYMENT_KIND).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
         </select>
         <input name="date" type="date" required aria-label="Fecha del pago" defaultValue={today} className="field" />
         <input name="amount" required inputMode="decimal" aria-label="Monto pagado" placeholder="Monto" className="field" />
@@ -142,6 +150,11 @@ export function PaymentForm({ coupleId, item, today, arsPerUsd }: { coupleId: st
         </div>
       )}
       <input name="note" maxLength={300} aria-label="Nota del pago" placeholder="Nota (opcional): ej. transferencia, recibo n°…" className="field" />
+      <div>
+        <label htmlFor={`receipt-${item.id}`} className="label">Comprobante (opcional)</label>
+        <input id={`receipt-${item.id}`} name="receipt" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" className="text-sm" />
+        <p className="hint mt-1">PDF o imagen, hasta 10 MB (imágenes hasta 5 MB).</p>
+      </div>
       <Feedback state={state} />
       <SubmitButton className="btn-ghost btn-sm" doneText="¡Registrado!">Registrar pago</SubmitButton>
     </form>

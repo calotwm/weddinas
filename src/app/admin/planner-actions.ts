@@ -16,6 +16,7 @@ import type { Adjustment, Currency } from "@/core/money";
 import type { BudgetItemInput } from "@/core/portal-service";
 import { requireAdmin } from "@/server/auth";
 import { files, portal } from "@/server/container";
+import { attachReceipt, deleteReceipts, pickedReceipt, saveReceipt, type ReceiptResult } from "@/server/receipts";
 
 const text = (formData: FormData, key: string, max = 4000) => String(formData.get(key) ?? "").trim().slice(0, max);
 
@@ -47,6 +48,7 @@ function budgetItemInput(formData: FormData): BudgetItemInput {
     baseMonth: text(formData, "baseMonth", 7),
     note: text(formData, "note", 500),
     dueDate: text(formData, "dueDate", 10),
+    freight: ["yes", "no"].includes(text(formData, "freight", 3)) ? (text(formData, "freight", 3) as "yes" | "no") : undefined,
   };
 }
 
@@ -73,7 +75,8 @@ export async function saveBudgetItem(_prev: PlannerResult, formData: FormData): 
 
 export async function deleteBudgetItem(formData: FormData): Promise<void> {
   await requireAdmin();
-  await portal.deleteBudgetItem(text(formData, "coupleId", 100), text(formData, "itemId", 100));
+  const coupleId = text(formData, "coupleId", 100);
+  await deleteReceipts(coupleId, await portal.deleteBudgetItem(coupleId, text(formData, "itemId", 100)));
   revalidatePath("/", "layout");
 }
 
@@ -84,16 +87,22 @@ export async function addPayment(_prev: PlannerResult, formData: FormData): Prom
   const date = text(formData, "date", 10);
   if (!(value > 0)) return { error: "Ingresá el monto pagado." };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Elegí la fecha del pago." };
+  const coupleId = text(formData, "coupleId", 100);
+  const receipt = pickedReceipt(formData);
+  const saved = receipt ? await saveReceipt(coupleId, receipt) : null;
+  if (saved && "error" in saved) return saved;
   try {
-    await portal.addPayment(text(formData, "coupleId", 100), text(formData, "itemId", 100), {
+    await portal.addPayment(coupleId, text(formData, "itemId", 100), {
       date,
       amount: value,
       currency: currency(formData),
       arsPerUsd: rate > 0 ? rate : null,
       kind: text(formData, "kind", 10) as PaymentKind,
       note: text(formData, "note", 300),
+      receiptId: saved?.id,
     });
   } catch (e) {
+    if (saved) await deleteReceipts(coupleId, [saved.id]);
     const message = e instanceof Error ? e.message : "";
     return { error: message.includes("exchange rate") ? "Si pagaron en otra moneda, cargá el tipo de cambio de ese día." : "No se pudo registrar el pago." };
   }
@@ -102,8 +111,16 @@ export async function addPayment(_prev: PlannerResult, formData: FormData): Prom
 
 export async function deletePayment(formData: FormData): Promise<void> {
   await requireAdmin();
-  await portal.deletePayment(text(formData, "coupleId", 100), text(formData, "itemId", 100), text(formData, "paymentId", 100));
+  const coupleId = text(formData, "coupleId", 100);
+  await deleteReceipts(coupleId, [await portal.deletePayment(coupleId, text(formData, "itemId", 100), text(formData, "paymentId", 100))]);
   revalidatePath("/", "layout");
+}
+
+export async function uploadPaymentReceipt(_prev: ReceiptResult, formData: FormData): Promise<ReceiptResult> {
+  await requireAdmin();
+  const result = await attachReceipt(text(formData, "coupleId", 100), formData);
+  if (result?.ok) revalidatePath("/", "layout");
+  return result;
 }
 
 export async function saveBudgetSettings(formData: FormData): Promise<void> {

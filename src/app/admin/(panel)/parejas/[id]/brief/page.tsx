@@ -4,8 +4,11 @@ import { StatusChip } from "@/components/planner/brief";
 import { LineStateLegend } from "@/components/planner/line-state";
 import { SubmitButton } from "@/components/submit-button";
 import { BRIEF_CATALOG } from "@/core/brief-catalog";
+import { briefPaymentLabel } from "@/core/budget";
+import { formatMoney } from "@/lib/format";
 import { requireAdmin } from "@/server/auth";
 import { portal } from "@/server/container";
+import { loadRates } from "@/server/rates";
 import { AdminAttachments } from "@/app/admin/admin-attachments";
 import { addBriefBlock, removeBriefBlock } from "@/app/admin/planner-actions";
 import { BriefBlockForm, IdeasForm } from "./forms";
@@ -17,6 +20,7 @@ export default async function BriefAdminPage({ params }: { params: Promise<{ id:
   const couple = await portal.getCouple((await params).id);
   if (!couple) notFound();
 
+  const { ipc } = await loadRates(couple.budget.usdQuote);
   const present = new Set(couple.brief.map((b) => b.key));
   const missing = BRIEF_CATALOG.filter((b) => !present.has(b.key));
   const hidden = <input type="hidden" name="coupleId" value={couple.id} />;
@@ -73,7 +77,7 @@ export default async function BriefAdminPage({ params }: { params: Promise<{ id:
                 </span>
               </summary>
               <div className="space-y-4 border-t border-forest/5 px-6 py-5">
-                <BriefBlockForm coupleId={couple.id} block={block} />
+                <BriefBlockForm coupleId={couple.id} block={block} budgetPayment={briefPaymentLabel(couple.budget.items, block.key, ipc, formatMoney)} />
                 <AdminAttachments coupleId={couple.id} kind="brief" targetId={block.key} attachments={block.attachments} allowInternal />
                 <form action={removeBriefBlock} className="text-right">
                   {hidden}
