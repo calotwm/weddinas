@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import ExcelJS from "exceljs";
-import { contentDispositionForFileId, detectDocument, detectImage, detectXlsx, isFileId, MAX_DOCUMENT_BYTES, MAX_IMAGE_BYTES, MAX_SPREADSHEET_BYTES, mimeForFileId } from "./uploads";
+import { contentDispositionForFileId, xlsxLimitError, detectDocument, detectImage, detectXlsx, isFileId, MAX_DOCUMENT_BYTES, MAX_IMAGE_BYTES, MAX_SPREADSHEET_BYTES, mimeForFileId } from "./uploads";
 import { LocalFileStore } from "@/infra/local-file-store";
 
 const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
@@ -56,11 +56,13 @@ async function realXlsx(): Promise<Buffer> {
 }
 
 /** A stored (uncompressed) zip with the given entries; CRCs are left at 0 since only names are checked. */
-function zip(names: string[]): Buffer {
+function zip(entries: (string | { name: string; size: number })[]): Buffer {
+  const names = entries.map((e) => (typeof e === "string" ? e : e.name));
   const locals: Buffer[] = [];
   const centrals: Buffer[] = [];
   let offset = 0;
-  for (const name of names) {
+  for (const [i, name] of names.entries()) {
+    const entry = entries[i];
     const n = Buffer.from(name, "latin1");
     const local = Buffer.alloc(30);
     local.writeUInt32LE(0x04034b50, 0);
@@ -68,6 +70,7 @@ function zip(names: string[]): Buffer {
     const central = Buffer.alloc(46);
     central.writeUInt32LE(0x02014b50, 0);
     central.writeUInt16LE(n.length, 28);
+    if (typeof entry !== "string") central.writeUInt32LE(entry.size, 24);
     central.writeUInt32LE(offset, 42);
     locals.push(local, n);
     centrals.push(central, n);
@@ -82,6 +85,33 @@ function zip(names: string[]): Buffer {
   end.writeUInt32LE(offset, 16);
   return Buffer.concat([...locals, dir, end]);
 }
+
+describe("xlsxLimitError", () => {
+  const limits = { maxUncompressedBytes: 1000, maxSheets: 2 };
+
+  it("accepts real workbooks within the limits", async () => {
+    expect(xlsxLimitError(await realXlsx())).toBeNull();
+    expect(xlsxLimitError(zip(["xl/workbook.xml", { name: "xl/worksheets/sheet1.xml", size: 600 }]), limits)).toBeNull();
+  });
+
+  it("does not count embedded images towards the limit", () => {
+    expect(xlsxLimitError(zip(["xl/workbook.xml", { name: "xl/media/image1.png", size: 5000 }]), limits)).toBeNull();
+  });
+
+  it("rejects archives that would inflate past the limit before opening them", () => {
+    expect(xlsxLimitError(zip(["xl/workbook.xml", { name: "xl/worksheets/sheet1.xml", size: 600 }, { name: "xl/sharedStrings.xml", size: 600 }]), limits)).toBe("too-big");
+  });
+
+  it("rejects workbooks with too many sheets", () => {
+    const sheets = [1, 2, 3].map((n) => `xl/worksheets/sheet${n}.xml`);
+    expect(xlsxLimitError(zip(["xl/workbook.xml", ...sheets]), limits)).toBe("too-many-sheets");
+  });
+
+  it("calls anything that is not a readable workbook unreadable", () => {
+    expect(xlsxLimitError(pdf)).toBe("unreadable");
+    expect(xlsxLimitError(zip(["word/document.xml"]))).toBe("unreadable");
+  });
+});
 
 describe("detectXlsx", () => {
   it("accepts a real workbook", async () => {

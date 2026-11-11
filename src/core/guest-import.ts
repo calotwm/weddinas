@@ -10,7 +10,7 @@
  * - EDAD Adulto/Teen/Niño/Bebé and RSVP Si/No/Enviado are mapped; unknown values stay empty / pending.
  */
 
-import { readComparisonWorkbook, type CellValue, type GridSheet } from "./comparison-table";
+import { readComparisonWorkbook, WorkbookLimitError, workbookLimitMessage, type CellValue, type GridSheet } from "./comparison-table";
 import type { Guest, GuestAge, GuestStatus } from "./couple";
 import { MAX_GUESTS } from "./guests";
 
@@ -136,7 +136,8 @@ export async function parseGuestFile(fileName: string, bytes: Uint8Array): Promi
   let sheets: GridSheet[];
   try {
     sheets = await readComparisonWorkbook(bytes);
-  } catch {
+  } catch (e) {
+    if (e instanceof WorkbookLimitError && e.reason !== "unreadable") throw new GuestImportError(workbookLimitMessage(e.reason, "La lista"));
     throw new GuestImportError("No pudimos leer la lista. Descargala de nuevo como .xlsx y volvé a subirla.");
   }
   return parseGuestGrid(sheets);
