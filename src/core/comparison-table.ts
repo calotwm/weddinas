@@ -228,7 +228,11 @@ export async function readComparisonWorkbook(bytes: Uint8Array): Promise<GridShe
   if (limit) throw new WorkbookLimitError(limit);
   const { default: ExcelJS } = await import("exceljs");
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(Buffer.from(bytes) as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+  // Only cells matter here. Google Sheets exports write drawings (the agency's logo) without the xdr: prefix,
+  // which exceljs cannot parse and then crashes on, so drawings are skipped: their files and the sheets' links to them.
+  (workbook.xlsx as unknown as { _processDrawingEntry: () => Promise<void> })._processDrawingEntry = async () => undefined;
+  const skipDrawings = { ignoreNodes: ["drawing"] } as unknown as Parameters<typeof workbook.xlsx.load>[1];
+  await workbook.xlsx.load(Buffer.from(bytes) as unknown as Parameters<typeof workbook.xlsx.load>[0], skipDrawings);
   return workbook.worksheets
     .filter((ws) => ws.state === "visible" || ws.state === undefined)
     .map((ws) => {

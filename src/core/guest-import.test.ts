@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
 import type { CellValue, GridSheet } from "./comparison-table";
 import { GUEST_IMPORT_LIMITS, GuestImportError, parseGuestFile, parseGuestGrid } from "./guest-import";
@@ -142,6 +143,23 @@ describe("parseGuestFile", () => {
   it("reads a real xlsx file", async () => {
     const bytes = await xlsx([["Resumen"], HEADER, [1, "Pérez", "Ana", "Adulto", "Enviado", 4]]);
     expect(await parseGuestFile("Lista de invitados.xlsx", bytes)).toEqual([{ lastName: "Pérez", name: "Ana", age: "adult", status: "sent", table: "4" }]);
+  });
+
+  it("reads Google Sheets exports whose logo drawing has no xdr: prefix (exceljs cannot parse it)", async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Lista");
+    sheet.addRows([["Resumen"], HEADER, [1, "Pérez", "Ana", "Adulto", "Si", "PRINCIPAL"]]);
+    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
+    sheet.addImage(workbook.addImage({ buffer: png as unknown as ExcelJS.Buffer, extension: "png" }), "B1:C2");
+    const zip = await JSZip.loadAsync(await workbook.xlsx.writeBuffer());
+    const drawing = Object.keys(zip.files).find((name) => /^xl\/drawings\/drawing\d+\.xml$/.test(name))!;
+    // What Google Sheets writes: the spreadsheetDrawing namespace as default, unprefixed tags.
+    zip.file(
+      drawing,
+      '<wsDr xmlns="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"><oneCellAnchor><from><col>1</col><colOff>0</colOff><row>0</row><rowOff>0</rowOff></from><ext cx="1" cy="1"/><pic><nvPicPr><cNvPr id="0" name="image1.png"/><cNvPicPr/></nvPicPr><blipFill><a:blip xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rId1"/></blipFill><spPr/></pic><clientData/></oneCellAnchor></wsDr>',
+    );
+    const bytes = new Uint8Array(await zip.generateAsync({ type: "uint8array" }));
+    expect(await parseGuestFile("Lista de invitados.xlsx", bytes)).toEqual([{ lastName: "Pérez", name: "Ana", age: "adult", status: "confirmed", table: "PRINCIPAL" }]);
   });
 
   it("rejects other formats, big files and broken files with a message", async () => {
