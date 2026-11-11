@@ -1,4 +1,5 @@
 import { AttachmentList } from "@/components/attachments";
+import { ComparisonTableView } from "@/components/planner/comparison-table";
 import { Icon } from "@/components/icons";
 import { SubmitButton } from "@/components/submit-button";
 import { categoryName } from "@/core/brief-catalog";
@@ -78,6 +79,12 @@ export default async function ProposalsPage() {
           <div className="mt-4">
             <AttachmentList coupleId={coupleId} attachments={p.attachments} />
           </div>
+          {p.comparison && (
+            <div className="mt-5 space-y-2">
+              <h3 className="text-sm font-semibold text-forest">Cuadro comparativo</h3>
+              <ComparisonTableView table={p.comparison} />
+            </div>
+          )}
 
           {(p.amount || p.link) && (
             <div className="mt-5 flex flex-wrap items-center gap-3">

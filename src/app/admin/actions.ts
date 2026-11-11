@@ -2,6 +2,7 @@
 
 import { timingSafeEqual } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { COMPARISON_LIMITS, ComparisonTableError, parseComparisonFile } from "@/core/comparison-table";
 import { importCouple, type CoupleImport } from "@/core/couple-import";
 import { redirect } from "next/navigation";
 import { safeHttpUrl } from "@/core/url";
@@ -112,6 +113,33 @@ export async function deleteProposal(formData: FormData): Promise<void> {
   const coupleId = text(formData, "coupleId", 100);
   const leftovers = await portal.deleteProposal(coupleId, text(formData, "proposalId", 100));
   await Promise.all(leftovers.map((id) => files.delete(coupleId, id).catch(() => undefined)));
+  revalidatePath("/", "layout");
+}
+
+export type ComparisonResult = { error?: string; ok?: number } | null;
+
+/** Parses the rubro's comparison Excel and shows it inside the proposal; a new upload replaces the previous table. */
+export async function uploadComparison(_prev: ComparisonResult, formData: FormData): Promise<ComparisonResult> {
+  await requireAdmin();
+  const coupleId = text(formData, "coupleId", 100);
+  const proposalId = text(formData, "proposalId", 100);
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { error: "Elegí el cuadro comparativo (.xlsx)." };
+  if (file.size > COMPARISON_LIMITS.maxBytes) return { error: "El cuadro pesa más de 5 MB." };
+  try {
+    const table = await parseComparisonFile(file.name, new Uint8Array(await file.arrayBuffer()), new Date().toISOString());
+    await portal.setProposalComparison(coupleId, proposalId, table);
+  } catch (e) {
+    if (e instanceof ComparisonTableError) return { error: e.message };
+    return { error: "No se encontró la propuesta. Recargá la página." };
+  }
+  revalidatePath("/", "layout");
+  return { ok: Date.now() };
+}
+
+export async function removeComparison(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.setProposalComparison(text(formData, "coupleId", 100), text(formData, "proposalId", 100), null);
   revalidatePath("/", "layout");
 }
 
