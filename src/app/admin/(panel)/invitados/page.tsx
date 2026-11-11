@@ -46,15 +46,18 @@ export default async function AllGuestsPage() {
                   {s.confirmedPercent}% · {s.confirmed} de {s.expected}
                 </p>
               </div>
-              <span className={`chip ${s.pending ? "bg-peach text-forest" : "bg-mint/25 text-forest"}`}>
-                {s.pending} pendiente{s.pending === 1 ? "" : "s"}
+              <span
+                className={`chip ${s.pending + s.sent ? "bg-peach text-forest" : "bg-mint/25 text-forest"}`}
+                title={`${s.sent} enviado${s.sent === 1 ? "" : "s"} sin respuesta · ${s.pending} sin enviar`}
+              >
+                {s.pending + s.sent} sin respuesta
               </span>
               <span className="chip bg-sand text-forest">
                 {s.tables.length} mesa{s.tables.length === 1 ? "" : "s"}
                 {s.unseated > 0 && ` · ${s.unseated} sin mesa`}
               </span>
               <span className="chip bg-sand text-forest" title={s.restrictions.map((r) => `${r.name}: ${r.count}`).join(", ")}>
-                {s.restrictions.reduce((n, r) => n + r.count, 0)} con restricciones
+                {s.restrictions.reduce((n, r) => n + r.count, 0)} con menú cargado
               </span>
             </>
           )}

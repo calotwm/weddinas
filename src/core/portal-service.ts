@@ -36,7 +36,7 @@ import {
   type TimingItem,
   type VendorTimingItem,
 } from "./couple";
-import { GUEST_STATUSES, MAX_GUESTS } from "./guests";
+import { GUEST_AGES, GUEST_STATUSES, MAX_GUESTS } from "./guests";
 import type { CoupleRepository } from "./ports";
 import { slugify } from "./slug";
 
@@ -91,13 +91,30 @@ function cleanVendorTiming(input: VendorTimingInput): VendorTimingInput {
 function cleanGuest(input: NewGuestInput): GuestInput {
   const status: GuestStatus = input.status ?? "pending";
   if (!GUEST_STATUSES.includes(status)) throw new Error("Unknown guest status");
-  return {
+  if (input.age !== undefined && !GUEST_AGES.includes(input.age)) throw new Error("Unknown guest age");
+  const guest: GuestInput = {
     name: input.name.trim(),
     group: (input.group ?? "").trim(),
     status,
     table: (input.table ?? "").trim(),
     restriction: (input.restriction ?? "").trim(),
   };
+  // Optional fields are stored only when set, so older guests and blank answers stay as they were.
+  for (const key of ["lastName", "side", "transport", "phone"] as const) {
+    const value = (input[key] ?? "").trim();
+    if (value) guest[key] = value;
+  }
+  if (input.age) guest.age = input.age;
+  if (typeof input.travels === "boolean") guest.travels = input.travels;
+  return guest;
+}
+
+/** Cleans new guests and gives them ids; blank names are skipped. */
+function newGuests(inputs: NewGuestInput[]): Guest[] {
+  return inputs
+    .map(cleanGuest)
+    .filter((g) => g.name)
+    .map((g) => ({ id: randomUUID(), ...g }));
 }
 
 
@@ -775,10 +792,7 @@ export class PortalService {
 
   /** Adds one or many guests (pasted lists); blank names are skipped. */
   async addGuests(coupleId: string, inputs: NewGuestInput[]): Promise<Guest[]> {
-    const added: Guest[] = inputs
-      .map(cleanGuest)
-      .filter((g) => g.name)
-      .map((g) => ({ id: randomUUID(), ...g }));
+    const added = newGuests(inputs);
     await this.mutate(coupleId, (c) => {
       if (c.guests.length + added.length > MAX_GUESTS) throw new Error(`A list holds up to ${MAX_GUESTS} guests`);
       c.guests.push(...added);
@@ -786,13 +800,24 @@ export class PortalService {
     return added;
   }
 
+  /** Replaces the whole list (an imported Excel); same cleaning and limit as addGuests. */
+  async replaceGuests(coupleId: string, inputs: NewGuestInput[]): Promise<Guest[]> {
+    const guests = newGuests(inputs);
+    if (guests.length > MAX_GUESTS) throw new Error(`A list holds up to ${MAX_GUESTS} guests`);
+    await this.mutate(coupleId, (c) => {
+      c.guests = guests;
+    });
+    return guests;
+  }
+
   async updateGuest(coupleId: string, guestId: string, input: GuestInput): Promise<void> {
     const clean = cleanGuest(input);
     if (!clean.name) throw new Error("Name is required");
     await this.mutate(coupleId, (c) => {
-      const guest = c.guests.find((g) => g.id === guestId);
-      if (!guest) throw new Error("Guest not found");
-      Object.assign(guest, clean);
+      const index = c.guests.findIndex((g) => g.id === guestId);
+      if (index === -1) throw new Error("Guest not found");
+      // Replaced rather than merged, so cleared optional fields go away.
+      c.guests[index] = { id: guestId, ...clean };
     });
   }
 

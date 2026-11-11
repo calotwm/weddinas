@@ -1,6 +1,7 @@
-import type { Guest, GuestStatus } from "./couple";
+import type { Guest, GuestAge, GuestStatus } from "./couple";
 
-export const GUEST_STATUSES: GuestStatus[] = ["confirmed", "pending", "declined"];
+export const GUEST_STATUSES: GuestStatus[] = ["confirmed", "pending", "sent", "declined"];
+export const GUEST_AGES: GuestAge[] = ["adult", "teen", "child", "baby"];
 export const MAX_GUESTS = 1000;
 const MAX_PASTED = 500;
 const MAX_NAME = 120;
@@ -13,12 +14,17 @@ export interface Tally {
 export interface GuestSummary {
   total: number;
   confirmed: number;
+  /** Invitation not sent yet ("Sin enviar"). */
   pending: number;
+  /** Invitation sent, no answer yet. */
+  sent: number;
   declined: number;
   /** Guests still invited: everyone except the ones who declined. */
   expected: number;
   /** Confirmed over `expected` (declined guests are left out), rounded; 0 when nobody is expected. */
   confirmedPercent: number;
+  /** Composition by age over the whole list, like the agency's sheet; `unknown` counts guests without an age. */
+  ages: Record<GuestAge | "unknown", number>;
   /** Tables with the number of expected guests seated there. */
   tables: Tally[];
   /** Expected guests without a table yet. */
@@ -45,6 +51,7 @@ function tally(values: string[]): Tally[] {
 
 export function guestSummary(guests: Guest[]): GuestSummary {
   const count = (status: GuestStatus) => guests.filter((g) => g.status === status).length;
+  const aged = (age: GuestAge) => guests.filter((g) => g.age === age).length;
   const confirmed = count("confirmed");
   const declined = count("declined");
   const coming = guests.filter((g) => g.status !== "declined");
@@ -52,13 +59,33 @@ export function guestSummary(guests: Guest[]): GuestSummary {
     total: guests.length,
     confirmed,
     pending: count("pending"),
+    sent: count("sent"),
     declined,
     expected: coming.length,
     confirmedPercent: coming.length ? Math.round((confirmed / coming.length) * 100) : 0,
+    ages: {
+      adult: aged("adult"),
+      teen: aged("teen"),
+      child: aged("child"),
+      baby: aged("baby"),
+      unknown: guests.filter((g) => !g.age || !GUEST_AGES.includes(g.age)).length,
+    },
     tables: tally(coming.map((g) => g.table)),
     unseated: coming.filter((g) => !g.table.trim()).length,
     restrictions: tally(coming.map((g) => g.restriction)),
   };
+}
+
+/** "Pérez, Ana" when the guest has a last name, else the name alone. */
+export function guestDisplayName(guest: Pick<Guest, "name" | "lastName">): string {
+  const lastName = guest.lastName?.trim();
+  return lastName ? `${lastName}, ${guest.name}` : guest.name;
+}
+
+/** A sorted copy: by last name (or the name when there is none), then name; ties keep their order. */
+export function sortGuests<T extends Pick<Guest, "name" | "lastName">>(guests: T[]): T[] {
+  const key = (g: T) => g.lastName?.trim() || g.name;
+  return [...guests].sort((a, b) => collator.compare(key(a), key(b)) || collator.compare(a.name, b.name));
 }
 
 /** One guest per pasted line; drops blank lines and list bullets or numbering ("- ", "• ", "2. "). */
@@ -73,5 +100,13 @@ export function parseGuestNames(pasted: string): string[] {
 export const GUEST_STATUS_LABEL: Record<GuestStatus, string> = {
   confirmed: "Confirmado",
   pending: "Pendiente",
+  sent: "Enviado",
   declined: "No viene",
+};
+
+export const GUEST_AGE_LABEL: Record<GuestAge, string> = {
+  adult: "Adulto",
+  teen: "Teen",
+  child: "Niño",
+  baby: "Bebé",
 };

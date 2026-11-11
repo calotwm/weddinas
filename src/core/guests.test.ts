@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Guest } from "./couple";
-import { guestSummary, parseGuestNames } from "./guests";
+import { guestDisplayName, guestSummary, parseGuestNames, sortGuests } from "./guests";
 
 const guest = (over: Partial<Guest>): Guest => ({ id: "x", name: "N", group: "", status: "pending", table: "", restriction: "", ...over });
 
@@ -17,7 +17,19 @@ describe("guest summary", () => {
   });
 
   it("is zero percent for an empty list", () => {
-    expect(guestSummary([])).toEqual({ total: 0, confirmed: 0, pending: 0, declined: 0, expected: 0, confirmedPercent: 0, tables: [], unseated: 0, restrictions: [] });
+    expect(guestSummary([])).toEqual({
+      total: 0,
+      confirmed: 0,
+      pending: 0,
+      sent: 0,
+      declined: 0,
+      expected: 0,
+      confirmedPercent: 0,
+      ages: { adult: 0, teen: 0, child: 0, baby: 0, unknown: 0 },
+      tables: [],
+      unseated: 0,
+      restrictions: [],
+    });
   });
 
   it("groups tables and restrictions of guests still invited, case-insensitively, sorted", () => {
@@ -42,6 +54,43 @@ describe("guest summary", () => {
   it("sorts numbered tables naturally", () => {
     const summary = guestSummary([guest({ table: "10" }), guest({ table: "2" })]);
     expect(summary.tables.map((t) => t.name)).toEqual(["2", "10"]);
+  });
+});
+
+describe("guest summary like the agency's sheet", () => {
+  it("counts sent invitations apart from the ones not sent yet; both are still expected", () => {
+    const summary = guestSummary([guest({ status: "confirmed" }), guest({ status: "sent" }), guest({ status: "sent" }), guest({ status: "pending" }), guest({ status: "declined" })]);
+    expect(summary).toMatchObject({ total: 5, confirmed: 1, sent: 2, pending: 1, declined: 1, expected: 4, confirmedPercent: 25 });
+  });
+
+  it("counts the composition by age over the whole list, with guests without age apart", () => {
+    const summary = guestSummary([
+      guest({ age: "adult" }),
+      guest({ age: "adult", status: "declined" }),
+      guest({ age: "teen" }),
+      guest({ age: "child" }),
+      guest({ age: "baby" }),
+      guest({}),
+    ]);
+    expect(summary.ages).toEqual({ adult: 2, teen: 1, child: 1, baby: 1, unknown: 1 });
+  });
+});
+
+describe("guest names", () => {
+  it("shows the last name first when there is one", () => {
+    expect(guestDisplayName(guest({ name: "Ana", lastName: "Pérez" }))).toBe("Pérez, Ana");
+    expect(guestDisplayName(guest({ name: "Juan" }))).toBe("Juan");
+  });
+
+  it("sorts by last name, then name, accent-insensitively, without changing the input", () => {
+    const list = [
+      guest({ id: "1", name: "Sofi", lastName: "Ruiz" }),
+      guest({ id: "2", name: "Ana", lastName: "Álvarez" }),
+      guest({ id: "3", name: "Bruno" }),
+      guest({ id: "4", name: "Abril", lastName: "Ruiz" }),
+    ];
+    expect(sortGuests(list).map((g) => g.id)).toEqual(["2", "3", "4", "1"]);
+    expect(list.map((g) => g.id)).toEqual(["1", "2", "3", "4"]);
   });
 });
 
