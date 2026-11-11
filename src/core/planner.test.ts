@@ -96,6 +96,23 @@ describe("planner workspace", () => {
     });
   });
 
+  describe("couple details", () => {
+    it("stores the WhatsApp number normalized, clears it, and rejects invalid ones without changing anything", async () => {
+      await service.updateCoupleDetails(coupleId, { whatsapp: "11 2233-4455" });
+      expect((await load()).whatsapp).toBe("5491122334455");
+
+      const before = readFileSync(file, "utf8");
+      await expect(service.updateCoupleDetails(coupleId, { partnerA: "Otro", whatsapp: "123" })).rejects.toThrow();
+      expect(readFileSync(file, "utf8")).toBe(before);
+
+      await service.updateCoupleDetails(coupleId, { partnerA: "Delfina" });
+      expect(await load()).toMatchObject({ partnerA: "Delfina", whatsapp: "5491122334455" });
+
+      await service.updateCoupleDetails(coupleId, { whatsapp: "" });
+      expect((await load()).whatsapp).toBeUndefined();
+    });
+  });
+
   describe("brief", () => {
     it("adds catalog blocks once and updates and removes them", async () => {
       await service.addBriefBlock(coupleId, "cotillon");
@@ -110,6 +127,19 @@ describe("planner workspace", () => {
 
       await service.removeBriefBlock(coupleId, "cotillon");
       expect((await load()).brief.some((b) => b.key === "cotillon")).toBe(false);
+    });
+
+    it("keeps each line's state and drops unknown ones", async () => {
+      await service.addBriefBlock(coupleId, "cotillon");
+      const [first, second, third] = (await load()).brief.find((b) => b.key === "cotillon")!.fields;
+      const fields = [
+        { ...first, state: "couple" as const },
+        { ...second, state: "bogus" as never },
+        { ...third, state: "" as never },
+      ];
+      await service.updateBriefBlock(coupleId, "cotillon", { vendor: "", contact: "", status: "searching", owner: "", fields });
+      const saved = (await load()).brief.find((b) => b.key === "cotillon")!.fields;
+      expect(saved.slice(0, 3).map((f) => f.state)).toEqual(["couple", undefined, undefined]);
     });
 
     it("gives stored vendor blocks the common fields, renaming old labels without losing their detail", async () => {

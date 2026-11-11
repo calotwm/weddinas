@@ -9,7 +9,7 @@ import {
   timingInput,
   uploadAestheticPhotos as savePhotos,
 } from "@/components/planner/section-forms";
-import type { BlockStatus, PaymentKind } from "@/core/couple";
+import type { BlockStatus, BriefField, LineState, PaymentKind } from "@/core/couple";
 import type { Adjustment, Currency } from "@/core/money";
 import type { BudgetItemInput } from "@/core/portal-service";
 import { requireAdmin } from "@/server/auth";
@@ -133,8 +133,9 @@ export async function saveBriefBlock(_prev: PlannerResult, formData: FormData): 
   const labels = formData.getAll("label").map((v) => String(v).slice(0, 120));
   const details = formData.getAll("detail").map((v) => String(v).slice(0, 2000));
   const notes = formData.getAll("fieldNote").map((v) => String(v).slice(0, 2000));
+  const states = formData.getAll("fieldState").map(String);
   const extra = text(formData, "newLabel", 120);
-  const fields = labels.map((label, i) => ({ label, detail: details[i] ?? "", note: notes[i] ?? "" }));
+  const fields: BriefField[] = labels.map((label, i) => ({ label, detail: details[i] ?? "", note: notes[i] ?? "", state: states[i] as LineState }));
   if (extra) fields.push({ label: extra, detail: text(formData, "newDetail", 2000), note: "" });
   try {
     await portal.updateBriefBlock(text(formData, "coupleId", 100), text(formData, "key", 60), {

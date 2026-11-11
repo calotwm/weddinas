@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { BlockStatus, BriefBlock } from "@/core/couple";
 import { AttachmentList } from "@/components/attachments";
+import { LINE_STATE_DOT, LineStateChip } from "@/components/planner/line-state";
 import { Icon } from "@/components/icons";
 import { noteLines, type NoteLine } from "@/core/notes";
 
@@ -58,7 +59,7 @@ export function StatusChip({ status }: { status: BlockStatus }) {
  * `expanded` shows long details whole (printable pages); `download` links to the block's printable page.
  */
 export function BriefBlockSummary({ coupleId, block, expanded = false, download }: { coupleId: string; block: BriefBlock; expanded?: boolean; download?: string }) {
-  const filled = block.fields.filter((f) => f.detail);
+  const filled = block.fields.filter((f) => f.detail || f.state);
   const shared = (block.attachments ?? []).filter((a) => !a.internal);
   return (
     <article className="card space-y-4">
@@ -84,10 +85,13 @@ export function BriefBlockSummary({ coupleId, block, expanded = false, download 
               {filled.map((f, i) => (
                 <div key={`${f.label}-${i}`} className="grid gap-1 py-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] sm:gap-4">
                   <dt className="flex items-start gap-2 text-sm font-semibold text-forest">
-                    <span aria-hidden className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-rust" />
+                    <span aria-hidden className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${f.state ? LINE_STATE_DOT[f.state] : "bg-rust"}`} />
                     {f.label}
                   </dt>
-                  <dd className="text-ink"><NoteText text={f.detail} collapse={!expanded} /></dd>
+                  <dd className="space-y-1 text-ink">
+                    {f.detail && <NoteText text={f.detail} collapse={!expanded} />}
+                    {f.state && <LineStateChip state={f.state} />}
+                  </dd>
                 </div>
               ))}
             </dl>

@@ -3,6 +3,7 @@ import { categoryName } from "./brief-catalog";
 import { coupleNames, isPresented, type Couple } from "./couple";
 import type { Currency, IpcSeries } from "./money";
 import { daysAgo, presentedAt } from "./notifications";
+import { reminderDue } from "./whatsapp";
 
 /** Days a presented proposal can wait for an answer before the team is alerted. */
 export const PROPOSAL_ALERT_DAYS = 7;
@@ -20,18 +21,21 @@ interface AlertBase {
 export type CoupleAlert =
   | (AlertBase & { kind: "payment"; amount: number; currency: Currency; dueDate: string; overdue: boolean })
   | (AlertBase & { kind: "proposal"; days: number })
+  /** Time to remind the couple about a proposal (2 days later, 19:00); `whatsapp` is their number when known. */
+  | (AlertBase & { kind: "reminder"; whatsapp?: string })
   | (AlertBase & { kind: "task"; month: string });
 
-type AlertCouple = Pick<Couple, "id" | "partnerA" | "partnerB" | "proposals" | "tasks" | "budget">;
+type AlertCouple = Pick<Couple, "id" | "partnerA" | "partnerB" | "proposals" | "tasks" | "budget" | "whatsapp">;
 
 const plusDays = (day: string, n: number) => new Date(Date.parse(`${day}T12:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 
 /**
- * What the team should look at: payments due within a week or overdue, proposals waiting for an answer
- * for a week or more, and open checklist tasks of past months. `today` is "YYYY-MM-DD" (Buenos Aires).
+ * What the team should look at: payments due within a week or overdue, proposals to remind the couple about,
+ * proposals waiting for an answer for a week or more, and open tasks of past months. `today` is "YYYY-MM-DD" (Buenos Aires).
  */
 export function coupleAlerts(couples: AlertCouple[], today: string, now: Date, ipc: IpcSeries | null = null): CoupleAlert[] {
   const payments: Extract<CoupleAlert, { kind: "payment" }>[] = [];
+  const reminders: Extract<CoupleAlert, { kind: "reminder" }>[] = [];
   const proposals: Extract<CoupleAlert, { kind: "proposal" }>[] = [];
   const tasks: Extract<CoupleAlert, { kind: "task" }>[] = [];
   const thisMonth = today.slice(0, 7);
@@ -47,6 +51,7 @@ export function coupleAlerts(couples: AlertCouple[], today: string, now: Date, i
       if (!isPresented(p) || p.status !== "pending") continue;
       const days = daysAgo(presentedAt(p), now);
       if (days >= PROPOSAL_ALERT_DAYS) proposals.push({ kind: "proposal", ...base, id: p.id, title: p.title, days });
+      else if (reminderDue(presentedAt(p), now)) reminders.push({ kind: "reminder", ...base, id: p.id, title: p.title, ...(c.whatsapp && { whatsapp: c.whatsapp }) });
     }
 
     for (const t of c.tasks) {
@@ -59,5 +64,5 @@ export function coupleAlerts(couples: AlertCouple[], today: string, now: Date, i
   payments.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   proposals.sort((a, b) => b.days - a.days);
   tasks.sort((a, b) => a.month.localeCompare(b.month));
-  return [...payments, ...proposals, ...tasks];
+  return [...payments, ...reminders, ...proposals, ...tasks];
 }

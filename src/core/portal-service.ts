@@ -1,8 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { accessCodeFor, hashAccessCode } from "./access-code";
+import type { ComparisonTable } from "./comparison-table";
+import { normalizeWhatsapp } from "./whatsapp";
 import { BRIEF_CATALOG, catalogBlock, defaultBrief, defaultMusic, musicMomentKeys, newBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
 import {
   emptyPublicInfo,
+  isLineState,
   isPresented,
   type Attachment,
   type BlockStatus,
@@ -258,8 +261,14 @@ export class PortalService {
     });
   }
 
-  async updateCoupleDetails(coupleId: string, details: Partial<NewCoupleInput>): Promise<void> {
+  /** `whatsapp` is normalized ("11 2233-4455" -> "5491122334455"); "" clears it; an invalid number changes nothing. */
+  async updateCoupleDetails(coupleId: string, details: Partial<NewCoupleInput> & { whatsapp?: string }): Promise<void> {
+    const whatsapp = details.whatsapp === undefined ? undefined : normalizeWhatsapp(details.whatsapp);
     await this.mutate(coupleId, (c) => {
+      if (whatsapp !== undefined) {
+        if (whatsapp) c.whatsapp = whatsapp;
+        else delete c.whatsapp;
+      }
       if (details.partnerA) c.partnerA = details.partnerA.trim();
       if (details.partnerB) c.partnerB = details.partnerB.trim();
       if (details.weddingDate) c.weddingDate = details.weddingDate;
@@ -346,6 +355,16 @@ export class PortalService {
       const proposal = c.proposals.find((p) => p.id === proposalId);
       if (!proposal) throw new Error("Proposal not found");
       proposal.presentedAt ??= new Date().toISOString();
+    });
+  }
+
+  /** Sets or (with null) removes the comparison table shown inside a proposal. */
+  async setProposalComparison(coupleId: string, proposalId: string, table: ComparisonTable | null): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      const proposal = c.proposals.find((p) => p.id === proposalId);
+      if (!proposal) throw new Error("Proposal not found");
+      if (table) proposal.comparison = table;
+      else delete proposal.comparison;
     });
   }
 
@@ -535,7 +554,7 @@ export class PortalService {
       setBlockStatus(block, update.status);
       block.owner = update.owner.trim();
       block.fields = update.fields
-        .map((f) => ({ label: f.label.trim(), detail: f.detail.trim(), note: f.note.trim() }))
+        .map((f) => ({ label: f.label.trim(), detail: f.detail.trim(), note: f.note.trim(), ...(isLineState(f.state) && { state: f.state }) }))
         .filter((f) => f.label);
     });
   }

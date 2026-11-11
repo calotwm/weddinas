@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Icon } from "@/components/icons";
 import { BriefBlockSummary } from "@/components/planner/brief";
+import { LineStateLegend } from "@/components/planner/line-state";
 import { getCurrentCouple } from "../data";
 
 export default async function VendorsPage() {
@@ -17,6 +18,7 @@ export default async function VendorsPage() {
           <p className="mt-1 text-sm text-ink/70">
             {vendors.length === 1 ? "1 proveedor confirmado" : `${vendors.length} proveedores confirmados`}. El equipo va completando el detalle de cada uno.
           </p>
+          {vendors.some((b) => b.fields.some((f) => f.state)) && <div className="mt-3"><LineStateLegend /></div>}
         </div>
         {vendors.length > 0 && (
           <Link href="/portal/descargas/proveedores" className="btn-ghost btn-sm">

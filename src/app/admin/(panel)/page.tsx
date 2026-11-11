@@ -7,6 +7,8 @@ import { formatDay, formatMoney, formatMonth, formatShortDate, today, weddingDat
 import { requireAdmin } from "@/server/auth";
 import { portal, rates, welcomeTemplate } from "@/server/container";
 import { siteOrigin } from "@/server/site-url";
+import { WhatsappButton } from "@/components/whatsapp-button";
+import { reminderMessage } from "@/core/whatsapp";
 import { CreateCoupleForm, ImportCoupleForm } from "../forms";
 import { CoupleList, type CoupleRow } from "./couple-list";
 
@@ -24,13 +26,15 @@ function Stat({ icon, value, label, tone = "text-forest" }: { icon: IconName; va
   );
 }
 
-const ALERT_LINK: Record<CoupleAlert["kind"], string> = { payment: "/presupuesto", proposal: "", task: "" };
-const ALERT_ICON: Record<CoupleAlert["kind"], IconName> = { payment: "dollar", proposal: "sparkle", task: "checklist" };
+const ALERT_LINK: Record<CoupleAlert["kind"], string> = { payment: "/presupuesto", reminder: "", proposal: "", task: "" };
+const ALERT_ICON: Record<CoupleAlert["kind"], IconName> = { payment: "dollar", reminder: "chat", proposal: "sparkle", task: "checklist" };
 
 function alertText(a: CoupleAlert): string {
   switch (a.kind) {
     case "payment":
       return `${a.title}: ${formatMoney(a.amount, a.currency)} · ${a.overdue ? "venció el" : "vence el"} ${formatDay(a.dueDate)}`;
+    case "reminder":
+      return `Recordarles “${a.title}”`;
     case "proposal":
       return `“${a.title}” sin responder hace ${a.days} días`;
     case "task":
@@ -38,7 +42,7 @@ function alertText(a: CoupleAlert): string {
   }
 }
 
-function Alerts({ alerts }: { alerts: CoupleAlert[] }) {
+function Alerts({ alerts, origin }: { alerts: CoupleAlert[]; origin: string }) {
   if (alerts.length === 0) return null;
   return (
     <section aria-labelledby="alerts-title" className="card">
@@ -48,10 +52,10 @@ function Alerts({ alerts }: { alerts: CoupleAlert[] }) {
       </h2>
       <ul className="mt-3 divide-y divide-forest/6">
         {alerts.map((a) => (
-          <li key={`${a.kind}-${a.coupleId}-${a.id}`}>
+          <li key={`${a.kind}-${a.coupleId}-${a.id}`} className="flex flex-wrap items-center gap-x-3">
             <Link
               href={`/admin/parejas/${a.coupleId}${ALERT_LINK[a.kind]}`}
-              className="flex items-start gap-3 rounded-xl py-2.5 text-sm hover:bg-peach-soft/60"
+              className="flex min-w-0 flex-1 items-start gap-3 rounded-xl py-2.5 text-sm hover:bg-peach-soft/60"
             >
               <Icon name={ALERT_ICON[a.kind]} className={`mt-0.5 h-4 w-4 shrink-0 ${a.kind === "payment" && a.overdue ? "text-rust" : "text-forest/60"}`} />
               <span className="min-w-0">
@@ -59,6 +63,11 @@ function Alerts({ alerts }: { alerts: CoupleAlert[] }) {
                 <span className="text-ink/75"> · {alertText(a)}</span>
               </span>
             </Link>
+            {a.kind === "reminder" && (
+              <WhatsappButton phone={a.whatsapp} text={reminderMessage(a.names, a.title, `${origin}/portal/propuestas`)}>
+                Recordar por WhatsApp
+              </WhatsappButton>
+            )}
           </li>
         ))}
       </ul>
@@ -110,7 +119,7 @@ export default async function AdminHome() {
         <Stat icon="check" value={answered} label="Propuestas respondidas" tone="text-teal" />
       </div>
 
-      <Alerts alerts={alerts} />
+      <Alerts alerts={alerts} origin={origin} />
 
       <div className="space-y-4">
         <CoupleList rows={rows} />

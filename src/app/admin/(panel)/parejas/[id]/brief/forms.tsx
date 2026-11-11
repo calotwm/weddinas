@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { SubmitButton } from "@/components/submit-button";
-import type { BriefBlock } from "@/core/couple";
+import { LINE_STATES, type BriefBlock } from "@/core/couple";
 import { saveBriefBlock, saveIdeas } from "@/app/admin/planner-actions";
 import { BLOCK_STATUS } from "@/components/planner/brief";
 import { NoteField } from "@/components/planner/note-field";
@@ -43,18 +43,25 @@ export function BriefBlockForm({ coupleId, block }: { coupleId: string; block: B
       </div>
 
       <div className="overflow-hidden rounded-2xl ring-1 ring-forest/10">
-        <div className="hidden grid-cols-[minmax(8rem,1fr)_2fr_2fr] gap-3 bg-sand/60 px-4 py-2 text-xs font-semibold tracking-wider text-ink/60 uppercase sm:grid">
+        <div className="hidden grid-cols-[minmax(8rem,1fr)_2fr_2fr_10rem] gap-3 bg-sand/60 px-4 py-2 text-xs font-semibold tracking-wider text-ink/60 uppercase sm:grid">
           <span>Campo</span>
           <span>Detalle</span>
           <span>Aclaraciones (solo equipo)</span>
+          <span>Estado</span>
         </div>
         <div className="divide-y divide-forest/5">
           {block.fields.map((f, i) => (
-            <div key={`${f.label}-${i}`} className="grid gap-2 px-4 py-3 sm:grid-cols-[minmax(8rem,1fr)_2fr_2fr] sm:items-center sm:gap-3">
+            <div key={`${f.label}-${i}`} className="grid gap-2 px-4 py-3 sm:grid-cols-[minmax(8rem,1fr)_2fr_2fr_10rem] sm:items-center sm:gap-3">
               <input type="hidden" name="label" value={f.label} />
               <span className="text-sm font-semibold text-forest">{f.label}</span>
               <NoteField name="detail" defaultValue={f.detail} aria-label={`${f.label}: detalle`} placeholder="Detalle" className="field !py-2" />
               <input name="fieldNote" defaultValue={f.note} aria-label={`${f.label}: aclaraciones`} placeholder="Aclaraciones" className="field !py-2" />
+              <select name="fieldState" defaultValue={f.state ?? ""} aria-label={`${f.label}: estado`} className="field !py-2 text-sm">
+                <option value="">Sin estado</option>
+                {LINE_STATES.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
             </div>
           ))}
           <div className="grid gap-2 bg-peach-soft/50 px-4 py-3 sm:grid-cols-[minmax(8rem,1fr)_4fr] sm:items-center sm:gap-3">

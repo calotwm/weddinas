@@ -1,3 +1,4 @@
+import type { ComparisonTable } from "./comparison-table";
 import type { Adjustment, Currency } from "./money";
 
 /** "discarded": another proposal of the same rubro was approved; hidden from the couple, still shown to the team. */
@@ -64,6 +65,8 @@ export interface Proposal {
   comments?: ProposalComment[];
   /** First time the couple opened Propuestas while it was presented. */
   viewedAt?: string | null;
+  /** Vendor comparison table parsed from the agency's Excel; its original file is kept apart. */
+  comparison?: ComparisonTable | null;
 }
 
 export interface Report {
@@ -122,10 +125,24 @@ export interface Budget {
 
 export type BlockStatus = "searching" | "deciding" | "confirmed" | "na";
 
+/** Who a brief line is waiting on, as the agency colors it: violet, yellow, orange, green. */
+export type LineState = "weddinas" | "couple" | "vendor" | "confirmed";
+
+export const LINE_STATES: { value: LineState; label: string }[] = [
+  { value: "weddinas", label: "Pendiente Weddinas" },
+  { value: "couple", label: "Pendiente novios" },
+  { value: "vendor", label: "Pendiente proveedor" },
+  { value: "confirmed", label: "Confirmado" },
+];
+
+export const isLineState = (value: unknown): value is LineState => LINE_STATES.some((s) => s.value === value);
+
 export interface BriefField {
   label: string;
   detail: string;
   note: string;
+  /** Unset while nobody marked the line. */
+  state?: LineState;
 }
 
 /** One section of the planner brief: event data (civil, ceremony…) or one vendor category. */
@@ -243,6 +260,8 @@ export interface Couple {
   /** Last time the couple opened their notifications; newer ones count as unread. */
   notificationsSeenAt?: string | null;
   createdAt: string;
+  /** WhatsApp number in international digits ("5491122334455"); the team's buttons open this chat. */
+  whatsapp?: string;
 }
 
 /** Couple data safe to expose outside the server boundary. */

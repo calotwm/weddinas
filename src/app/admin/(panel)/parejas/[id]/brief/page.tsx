@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { Icon } from "@/components/icons";
 import { StatusChip } from "@/components/planner/brief";
+import { LineStateLegend } from "@/components/planner/line-state";
 import { SubmitButton } from "@/components/submit-button";
 import { BRIEF_CATALOG } from "@/core/brief-catalog";
 import { requireAdmin } from "@/server/auth";
@@ -30,6 +31,7 @@ export default async function BriefAdminPage({ params }: { params: Promise<{ id:
         <div>
           <h2 className="font-display text-3xl text-forest">Brief</h2>
           <p className="hint">El detalle de cada rubro, como en el brief de Excel. La pareja ve el detalle de los rubros confirmados; las aclaraciones quedan internas.</p>
+          <div className="mt-3"><LineStateLegend /></div>
         </div>
       </div>
 

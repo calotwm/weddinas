@@ -86,11 +86,11 @@ export function CoupleList({ rows }: { rows: CoupleRow[] }) {
                 <p className="text-sm text-ink/55">{r.date}</p>
               </div>
               <DaysChip row={r} />
-              <div className="hidden w-28 sm:block" title={`Checklist ${r.progress}%`}>
+              <div className="hidden w-28 sm:block" title={`Temas del mes ${r.progress}%`}>
                 <div className="h-1.5 overflow-hidden rounded-full bg-sand">
                   <div className="h-full rounded-full bg-teal" style={{ width: `${r.progress}%` }} />
                 </div>
-                <p className="mt-1 text-[11px] text-ink/50">Checklist {r.progress}%</p>
+                <p className="mt-1 text-[11px] text-ink/50">Temas {r.progress}%</p>
               </div>
               <span className={`chip ${r.pending ? "bg-peach text-rust" : "bg-transparent text-ink/35"}`}>
                 {r.pending ? `${r.pending} pendiente${r.pending > 1 ? "s" : ""}` : "Sin pendientes"}

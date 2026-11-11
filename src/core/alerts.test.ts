@@ -61,10 +61,34 @@ describe("coupleAlerts", () => {
       today,
       now,
     );
-    expect(alerts).toEqual([
+    expect(alerts.filter((x) => x.kind === "proposal")).toEqual([
       { kind: "proposal", coupleId: "c1", names: "Delfi & Juancho", id: "legacy", title: "Ambientación", days: 36 },
       { kind: "proposal", coupleId: "c1", names: "Delfi & Juancho", id: "old", title: "Ambientación", days: 7 },
     ]);
+  });
+
+  it("asks to remind the couple from 19:00 of the second day until the week alert takes over", () => {
+    const at = (iso: string) =>
+      coupleAlerts(
+        [
+          couple({
+            whatsapp: "5491122334455",
+            proposals: [
+              // Presented 10 Nov, 15:00 in Buenos Aires: reminder from 12 Nov, 19:00.
+              proposal({ id: "dj", title: "DJ", presentedAt: "2026-11-10T18:00:00.000Z" }),
+              proposal({ id: "answered", presentedAt: "2026-11-01T18:00:00.000Z", status: "rejected" }),
+              proposal({ id: "draft", presentedAt: null }),
+            ],
+          }),
+        ],
+        iso.slice(0, 10),
+        new Date(iso),
+      );
+    expect(at("2026-11-12T21:59:00.000Z")).toEqual([]);
+    expect(at("2026-11-12T22:00:00.000Z")).toEqual([
+      { kind: "reminder", coupleId: "c1", names: "Delfi & Juancho", id: "dj", title: "DJ", whatsapp: "5491122334455" },
+    ]);
+    expect(at("2026-11-17T22:00:00.000Z").map((x) => x.kind)).toEqual(["proposal"]);
   });
 
   it("flags payments due within 7 days or overdue with a pending balance", () => {
@@ -105,14 +129,15 @@ describe("coupleAlerts", () => {
     ]);
   });
 
-  it("lists payments first, then proposals, then tasks, across couples", () => {
+  it("lists payments first, then reminders, proposals and tasks, across couples", () => {
     const a = couple({ id: "a", tasks: [{ id: "t", title: "T", done: false, month: "2026-01" } as ChecklistTask] });
     const b = couple({
       id: "b",
       proposals: [proposal({ id: "p", presentedAt: "2026-10-01T10:00:00.000Z" })],
       budget: { usdQuote: "blue", guests: null, items: [item({ id: "i", dueDate: "2026-11-07" })] },
     });
-    expect(coupleAlerts([a, b], today, now).map((x) => `${x.kind}:${x.coupleId}`)).toEqual(["payment:b", "proposal:b", "task:a"]);
+    const c = couple({ id: "c", proposals: [proposal({ id: "r", presentedAt: "2026-11-02T10:00:00.000Z" })] });
+    expect(coupleAlerts([a, b, c], today, now).map((x) => `${x.kind}:${x.coupleId}`)).toEqual(["payment:b", "reminder:c", "proposal:b", "task:a"]);
   });
 
   it("returns nothing when no couple needs attention", () => {

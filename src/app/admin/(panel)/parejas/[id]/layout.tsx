@@ -42,7 +42,7 @@ export default async function CoupleAdminLayout({ children, params }: { children
           </span>
           <span className="chip bg-white text-forest ring-1 ring-forest/10">
             <Icon name="checklist" className="h-3.5 w-3.5" />
-            Checklist {done}/{couple.tasks.length}
+            Temas {done}/{couple.tasks.length}
           </span>
           <span className={`chip ring-1 ring-forest/10 ${pending ? "bg-peach text-rust" : "bg-white text-forest"}`}>
             <Icon name="sparkle" className="h-3.5 w-3.5" />
