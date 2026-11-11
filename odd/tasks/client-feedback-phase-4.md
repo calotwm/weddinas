@@ -12,10 +12,10 @@ Branch: `feat/client-feedback-phase-4` · Delivery: ask-on-risk (user: "dale y s
 
 ## Tasks
 
-- [ ] T1 [S1, S2] guests like her Excel + import — delegated writer (worktree)
-- [ ] T2 [S4] xlsx attachments for comparison tables — delegated writer (worktree) — Risk item 2 (upload validation)
-- [ ] T3 [S3] timing durations + vendor timing — inline
-- [ ] T4 merge, suite, build, smoke, independent verifier for S4 (item 2) and the exceljs dependency (item 5, owed from phase 3)
+- [x] T1 [S1, S2] guests like her Excel + import — delegated writer (worktree) — `8976302`, `6f4e89a`, merged `69dbb2d`, layout fix `512cebf`
+- [x] T2 [S4] xlsx attachments for comparison tables — delegated writer (worktree) — `563c689`, merged `11082b5`, route header `b45ef86` — Risk item 2
+- [x] T3 [S3] timing durations + vendor timing — inline — `c7668ed`
+- [x] T4 merge, suite, build, smoke, independent verifier (items 2 and 5) — inline + verifier; zip-limit fix after the verifier
 
 Route evidence: T1 (model, parser, import action, forms, summary; several files, 300+ lines) and T2 (upload validation, store, attachment view, comparison action) are independent units running in parallel with the inline T3 (Writer trigger a). Shared files (`src/core/couple.ts`, `src/core/portal-service.ts`) are append-only per unit; the parent merges.
 
@@ -23,3 +23,5 @@ Route evidence: T1 (model, parser, import action, forms, summary; several files,
 
 - L1 (2026-11-11) User: "dale y segui con lo que falta" (after phase 3: merge, push, then continue with what is left: Invitados/Timing like her spreadsheets, keep the comparison .xlsx downloadable).
 - L2 Phase 3 merged and pushed: main `750035c`.
+- L3 Evidence: 225 tests, tsc, eslint, `next build` clean. Smoke on a copy of the demo data: couple imports a synthetic guest sheet (summary block above the header, "EDAD " with trailing space, "-" cells) with "Agregar" and "Reemplazar" ("Importamos 3 invitados."); summary shows Composición / Confirmaciones / Por mesa / Menú; timing durations "1 h 30 min", "6 h" across midnight; vendor timing visible to the couple; comparison .xlsx downloads as `attachment` with the xlsx MIME and the couple's page has no .xlsx link. Real guest list parses 266 guests (236 adultos, 80 Sí, 30 No), matching her sheet's own totals.
+- L4 Verifier (items 2 and 5): A PASS 6/6 (detection fuzzed 20k mutations without throws; other upload flows still reject xlsx; ids; headers; admin-only; no orphans). B FAIL (non-blocker, widened in phase 4 because couples can import guests): exceljs inflates the whole archive before row caps. Fixed: `xlsxLimitError` reads the zip directory and rejects workbooks whose XML parts declare > 20 MB or > 30 sheets before exceljs opens them; a 200k-row file (5 MB, 71 MB uncompressed) is rejected in 9 ms; the real files stay ≤ 1.1 MB of XML. Remaining advisories: a forged zip directory can understate sizes (deflate caps the blow-up per entry); the files route serves internal files to the couple if they know the id (pre-existing by design); uuid moderate advisory via exceljs not reachable.
