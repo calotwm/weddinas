@@ -36,6 +36,8 @@ export interface ComparisonTable {
   fileName: string;
   uploadedAt: string;
   sheets: ComparisonSheet[];
+  /** The original .xlsx, kept as a team-only attachment of the same proposal. */
+  attachmentId?: string;
 }
 
 export type CellValue = string | number | null;

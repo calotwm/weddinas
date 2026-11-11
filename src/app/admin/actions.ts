@@ -2,7 +2,7 @@
 
 import { timingSafeEqual } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { COMPARISON_LIMITS, ComparisonTableError, parseComparisonFile } from "@/core/comparison-table";
+import { COMPARISON_LIMITS, ComparisonTableError, parseComparisonFile, type ComparisonTable } from "@/core/comparison-table";
 import { importCouple, type CoupleImport } from "@/core/couple-import";
 import { redirect } from "next/navigation";
 import { safeHttpUrl } from "@/core/url";
@@ -127,20 +127,35 @@ export async function uploadComparison(_prev: ComparisonResult, formData: FormDa
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return { error: "Elegí el cuadro comparativo (.xlsx)." };
   if (file.size > COMPARISON_LIMITS.maxBytes) return { error: "El cuadro pesa más de 5 MB." };
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let table: ComparisonTable;
+  let fileId: string;
   try {
-    const table = await parseComparisonFile(file.name, new Uint8Array(await file.arrayBuffer()), new Date().toISOString());
-    await portal.setProposalComparison(coupleId, proposalId, table);
+    table = await parseComparisonFile(file.name, bytes, new Date().toISOString());
+    // The original stays downloadable for the team; the store checks it really is a workbook.
+    fileId = await files.saveSpreadsheet(coupleId, bytes);
   } catch (e) {
     if (e instanceof ComparisonTableError) return { error: e.message };
+    return { error: "El archivo no es un .xlsx válido." };
+  }
+  let previous: string | null;
+  try {
+    previous = await portal.setProposalComparison(coupleId, proposalId, table, { id: fileId, name: table.fileName, size: file.size });
+  } catch {
+    await files.delete(coupleId, fileId).catch(() => undefined);
     return { error: "No se encontró la propuesta. Recargá la página." };
   }
+  if (previous) await files.delete(coupleId, previous).catch(() => undefined);
   revalidatePath("/", "layout");
   return { ok: Date.now() };
 }
 
+/** Removes the table together with the original file that was attached for it. */
 export async function removeComparison(formData: FormData): Promise<void> {
   await requireAdmin();
-  await portal.setProposalComparison(text(formData, "coupleId", 100), text(formData, "proposalId", 100), null);
+  const coupleId = text(formData, "coupleId", 100);
+  const previous = await portal.setProposalComparison(coupleId, text(formData, "proposalId", 100), null);
+  if (previous) await files.delete(coupleId, previous).catch(() => undefined);
   revalidatePath("/", "layout");
 }
 
