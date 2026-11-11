@@ -17,11 +17,11 @@ Client quotes are verbatim from her answers (L1).
 
 ## Tasks
 
-- [ ] T1 [S1] comparison table import — delegated writer (worktree) — Risk item 5 (new xlsx dependency)
-- [ ] T2 [S5, S2 rename] wording — inline
-- [ ] T3 [S3] brief line states — inline
-- [ ] T4 [S6, S4, S2 send] WhatsApp number, buttons, reminder alert — inline
-- [ ] T5 merge, suite, build, smoke — inline
+- [x] T1 [S1] comparison table import — delegated writer (worktree) — `e93a6c8`, `e1f2467`, `3c5284a`, merged `70db87b` — Risk item 5 (exceljs 4.4.0, server-only)
+- [x] T2 [S5, S2 rename] wording — inline — `e10ff61`
+- [x] T3 [S3] brief line states — inline — `54ff0a4`
+- [x] T4 [S6, S4, S2 send] WhatsApp number, buttons, reminder alert — inline — see merge parent of `70db87b`
+- [x] T5 merge, suite, build, smoke — inline
 
 Route evidence: T1 is an independent unit (parser, dependency, upload action, table view; several files, 300+ lines) running in parallel with the inline T2–T4 (Writer trigger a). Shared files (`src/core/couple.ts`, `src/core/portal-service.ts`) are append-only per unit; the parent merges.
 
@@ -29,3 +29,6 @@ Route evidence: T1 is an independent unit (parser, dependency, upload action, ta
 
 - L1 (2026-11-11) User: "claude nos paso esto" + client answers: "1. Cuadro comparativo de propuestas: Cada "proveedor" tiene su cuadro comparativo. Les muestro como son: https://drive.google.com/drive/folders/1WyNMMLzHIN4aMlE6dmPDFOsF8l1f4sSj?usp=sharing. Las chicas lo que hacen es completar eso y compartirselos a los novios junto con cada propuesta y hace poco empezaron a hacer esos cuadros con claude como para optimizar tiempo entonces quizas ver la manera de que carguen ese cuadro a la app y de ahí ya se transforme en el formato comparativo de la app. Cualquier cosa les mando una fotito de como me lo imagino! 2. Checklist mes a mes: Nuestra idea es que el mensaje que le mandamos a los novios mes a mes sea directamente por ahí. Adjunto foto abajo de lo que sería. No es algo estandar que esta prearmado sino que lo armamos mes a mes para ver los pendientes activos. Capaz se le puede cambiar el nombre en vez de "checklist" por "temas del mes" o algo así 3. Estados por lineas en el brief: Violeta - Pendiente Weddinas, Amarillo - Pendiente novios, Naranja - Pendiente proveedor, Verde - Confirmado 4. Página web para invitados: Si, por ahora reemplazamos eso y dejamos de lado lo de la página web 5. Recordatorio a los novios: A los 2 días de enviada la propuesta y si se puede elegir horario que sea a las 19:00 hs 6. Títulos de proveedores: Perdón, me quedó mal anotado pero está perfecto como lo hicieron! 7. La palabra "pagado": Figura en la parte de presupuesto. Prefiero que diga "Pago al 100%" y "Pago" y el numero y no la palabra "pagado" 8. Prioridades: No entendí a que se refieren! Propuesta para avisos por WhatsApp: Sii, con el botón estaría perfecto!" — "aca esta lo que estaria en el link C:\Users\cseifar\Downloads\Modelos cuadros-20261111T124151Z-1-001\Modelos cuadros"
 - L2 The photos she mentions (her idea of the table, the monthly message) did not come with the answers; built from the Excel models and her text.
+- L3 S1 deviation: the original .xlsx is not kept as an attachment (file store only accepts JPG/PNG/WebP/PDF; widening it touches upload validation, risk item 2). The table keeps the file name. Pending a decision if they want the file downloadable.
+- L4 Evidence: 182 tests, tsc, eslint, `next build` clean. Smoke on a copy of the demo data: WhatsApp "11 2233-4455" stored as 5491122334455; "Avisar por WhatsApp" opens wa.me with the message; a synthetic DJ-shaped .xlsx (two-row header, merged vendor block, DOLAR HOY side cells) parsed and shown to team and couple; budget shows no "Pagado"; nav shows "Temas del mes". All 25 empty models are rejected with the "no vendors" message; the filled DJ example parses (3 + 1 vendors). exceljs is not in the client bundle.
+- L5 Dependency audit (`npm audit --omit=dev`): exceljs brings uuid <11.1.1 (moderate, GHSA-w5hq-g745-h8pq: v3/v5/v6 with a caller buffer); exceljs only generates v4 ids, so not reachable. Baseline main had 2 findings (postcss, next), branch has 4.
