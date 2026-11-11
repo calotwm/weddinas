@@ -28,7 +28,7 @@ const STATUS_TONE: Record<GuestStatus, string> = {
   declined: "bg-ink/8 text-ink/60",
 };
 
-const ROW = "grid gap-2 grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_8.5rem_5.5rem_1fr_auto] lg:items-center";
+const ROW = "grid gap-2 grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_10rem_7rem_1fr_auto] lg:items-center";
 
 function StatusSelect({ id, defaultValue }: { id?: string; defaultValue: GuestStatus }) {
   return (
