@@ -15,6 +15,7 @@ import type { ScheduleItem, SongStatus } from "@/core/couple";
 import { normalizeAlias, normalizeCbu } from "@/core/gift";
 import { MAX_IMAGE_BYTES } from "@/core/uploads";
 import { safeHttpUrl as safeUrl } from "@/core/url";
+import { readWebForm } from "@/core/web-options";
 import { requireCoupleId } from "@/server/auth";
 import { files, portal } from "@/server/container";
 
@@ -204,6 +205,23 @@ export async function removeCoverPhoto(): Promise<void> {
 export async function saveAesthetic(formData: FormData): Promise<void> {
   const coupleId = await requireCoupleId();
   await portal.saveAesthetic(coupleId, aestheticInput(formData));
+  revalidatePath("/", "layout");
+}
+
+export async function saveAestheticGeneral(formData: FormData): Promise<void> {
+  const coupleId = await requireCoupleId();
+  await portal.saveAestheticGeneral(coupleId, {
+    titleFont: text(formData, "titleFont", 1000),
+    bodyFont: text(formData, "bodyFont", 1000),
+    ideas: text(formData, "ideas", 4000),
+    palette: aestheticInput(formData).palette,
+  });
+  revalidatePath("/", "layout");
+}
+
+export async function saveAestheticWeb(formData: FormData): Promise<void> {
+  const coupleId = await requireCoupleId();
+  await portal.saveAestheticWeb(coupleId, readWebForm(formData));
   revalidatePath("/", "layout");
 }
 
