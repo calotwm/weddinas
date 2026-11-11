@@ -1,6 +1,7 @@
 import "server-only";
-import type { GuestStatus } from "@/core/couple";
-import { GUEST_STATUSES, parseGuestNames } from "@/core/guests";
+import type { GuestAge, GuestStatus } from "@/core/couple";
+import { GUEST_IMPORT_LIMITS, GuestImportError, parseGuestFile } from "@/core/guest-import";
+import { GUEST_AGES, GUEST_STATUSES, MAX_GUESTS, parseGuestNames } from "@/core/guests";
 import { MAX_AESTHETIC_PHOTOS, type AestheticInput, type GuestInput, type NewGuestInput, type TimingInput } from "@/core/portal-service";
 import { MAX_IMAGE_BYTES } from "@/core/uploads";
 import { files, portal } from "@/server/container";
@@ -66,13 +67,49 @@ export function timingInput(formData: FormData): TimingInput | null {
 
 export function guestInput(formData: FormData): GuestInput {
   const status = text(formData, "status", 10) as GuestStatus;
+  const age = text(formData, "age", 10) as GuestAge;
+  const travels = text(formData, "travels", 3);
   return {
     name: text(formData, "name", 120),
+    lastName: text(formData, "lastName", 80),
     group: text(formData, "group", 80),
     status: GUEST_STATUSES.includes(status) ? status : "pending",
     table: text(formData, "table", 40),
     restriction: text(formData, "restriction", 120),
+    side: text(formData, "side", 80),
+    transport: text(formData, "transport", 80),
+    phone: text(formData, "phone", 40),
+    ...(GUEST_AGES.includes(age) ? { age } : {}),
+    ...(travels === "yes" ? { travels: true } : travels === "no" ? { travels: false } : {}),
   };
+}
+
+export type GuestImportResult = { error?: string; ok?: number; message?: string } | null;
+
+/** The Excel import: adds the file's guests to the list, or replaces the list when the "mode" button says so. */
+export async function importGuestList(coupleId: string, formData: FormData): Promise<GuestImportResult> {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { error: "Elegí la lista de invitados (.xlsx)." };
+  if (file.size > GUEST_IMPORT_LIMITS.maxBytes) return { error: "La lista pesa más de 5 MB." };
+  let guests;
+  try {
+    guests = await parseGuestFile(file.name, new Uint8Array(await file.arrayBuffer()));
+  } catch (e) {
+    if (e instanceof GuestImportError) return { error: e.message };
+    return { error: "No pudimos leer la lista. Descargala de nuevo como .xlsx y volvé a subirla." };
+  }
+  const replace = text(formData, "mode", 10) === "replace";
+  try {
+    const saved = replace ? await portal.replaceGuests(coupleId, guests) : await portal.addGuests(coupleId, guests);
+    return { ok: Date.now(), message: `Importamos ${saved.length} invitado${saved.length === 1 ? "" : "s"}.` };
+  } catch {
+    const room = MAX_GUESTS - ((await portal.getCouple(coupleId))?.guests.length ?? 0);
+    return {
+      error: replace || room >= guests.length
+        ? "No se pudo guardar la lista. Recargá la página."
+        : `La lista quedaría con más de ${MAX_GUESTS} invitados: se pueden sumar ${Math.max(room, 0)} más, o reemplazar la lista.`,
+    };
+  }
 }
 
 /** The bulk paste box: one name per line, all in the same group. */

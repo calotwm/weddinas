@@ -1,4 +1,4 @@
-import type { GuestSummary, Tally } from "@/core/guests";
+import { GUEST_AGE_LABEL, GUEST_AGES, type GuestSummary, type Tally } from "@/core/guests";
 
 function TallyList({ title, items, empty }: { title: string; items: Tally[]; empty: string }) {
   return (
@@ -19,8 +19,22 @@ function TallyList({ title, items, empty }: { title: string; items: Tally[]; emp
   );
 }
 
-/** Confirmed share plus tables and dietary restrictions (declined guests are left out of every count but "No vienen"). */
+/**
+ * The blocks of the agency's sheet: confirmed share, composition by age, confirmations, guests per table and menu.
+ * Declined guests are left out of the percent, tables and menu; age and confirmations count the whole list.
+ */
 export function GuestSummaryView({ summary, compact = false }: { summary: GuestSummary; compact?: boolean }) {
+  const ages: Tally[] = [
+    ...GUEST_AGES.map((a) => ({ name: GUEST_AGE_LABEL[a], count: summary.ages[a] })),
+    { name: "Sin dato", count: summary.ages.unknown },
+  ].filter((t) => t.count > 0);
+  const confirmations: Tally[] = [
+    { name: "Sí", count: summary.confirmed },
+    { name: "No", count: summary.declined },
+    { name: "Enviado", count: summary.sent },
+    { name: "Sin enviar", count: summary.pending },
+  ];
+
   return (
     <div className="space-y-4">
       <div>
@@ -32,15 +46,21 @@ export function GuestSummaryView({ summary, compact = false }: { summary: GuestS
           <div className="h-full rounded-full bg-gradient-to-r from-mint to-teal" style={{ width: `${summary.confirmedPercent}%` }} />
         </div>
         <p className="mt-2 text-sm text-ink/60">
-          {summary.confirmed} de {summary.expected} invitados · {summary.pending} pendiente{summary.pending === 1 ? "" : "s"} · {summary.declined} no viene{summary.declined === 1 ? "" : "n"}
+          {summary.confirmed} de {summary.expected} invitados · {summary.sent} enviado{summary.sent === 1 ? "" : "s"} sin respuesta · {summary.pending} sin enviar · {summary.declined} no viene{summary.declined === 1 ? "" : "n"}
         </p>
       </div>
+      {!compact && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TallyList title={`Composición · ${summary.total} invitado${summary.total === 1 ? "" : "s"}`} items={ages} empty="Todavía no hay invitados." />
+          <TallyList title="Confirmaciones" items={confirmations} empty="" />
+        </div>
+      )}
       <TallyList
-        title={`Mesas${summary.unseated ? ` · ${summary.unseated} sin mesa` : ""}`}
+        title={`Invitados por mesa${summary.unseated ? ` · ${summary.unseated} sin mesa` : ""}`}
         items={compact ? summary.tables.slice(0, 8) : summary.tables}
         empty="Todavía no hay mesas asignadas."
       />
-      <TallyList title="Restricciones alimentarias" items={summary.restrictions} empty="Nadie cargó restricciones." />
+      <TallyList title="Menú" items={summary.restrictions} empty="Nadie cargó restricciones de menú." />
     </div>
   );
 }
