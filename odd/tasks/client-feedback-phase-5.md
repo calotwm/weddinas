@@ -56,8 +56,8 @@ Answered without code: PDFs of proposals go to the proposal's attachments (alrea
 - [x] T2 [S5-S10, S27] budget — delegated writer (worktree) — `d5161cd`, `5c5b683`, merged; dollar midpoint + printed Pago `a2bdab7` — Risk item 2 (couple uploads receipts)
 - [x] T3 [S14, S15] estética general + web — delegated writer (worktree) — `942e3af`, merged `e4fb311`
 - [x] T4 [S21-S26, S28] team admin — delegated writer (worktree) — `6cc18e4`, `2cc407f`, merged `5d4aa52`; couple-side custom rubro names `a2bdab7`
-- [x] T5 [S18] RSVP webhook — inline — `ce64fe4`, `9abae01` — Risk item 2 (public endpoint), independent verifier pending
-- [ ] T6 merge, suite, build, smoke
+- [x] T5 [S18] RSVP webhook — inline — `ce64fe4`, `9abae01` — Risk item 2 (public endpoint), verifier PASS
+- [x] T6 merge, suite, tsc, lint, build, verifier (A webhook, B receipts, C removed couple actions: PASS, no blockers)
 
 Route evidence: T1-T4 are independent units with mostly disjoint surfaces, each several files / 100+ lines, launched together (Writer trigger a). Shared files (`src/core/couple.ts`, `src/core/portal-service.ts`) are append-only per unit; the parent merges.
 
@@ -68,3 +68,5 @@ Route evidence: T1-T4 are independent units with mostly disjoint surfaces, each 
 - L3 Merges: T3, T4 (import conflict in portal-service.ts resolved keeping both), T2, T1 (import conflict in portal/actions.ts resolved keeping both). Integration: couple pages pass the brief to categoryName for custom rubros; printed vendors show the budget Pago; dollar rate is now the buy/sell midpoint from dolarapi.com (S27 asked DolarHoy's blue midpoint; dolarapi's blue source not verified).
 - L4 T5: POST /api/rsvp/<coupleId>/<token> (Elementor Webhook action, form-urlencoded or JSON); 48-hex token per couple, timing-safe compare, 404 on bad token, 32 KB cap, 120/h per couple, inbox capped at 1000; matched by name+apellido (unique match only), else "Sin asignar" with assign/dismiss for team and couple. Suite 278/278.
 - L5 Known gaps: budget items accept catalog rubros only (custom rubros not in budget); couple cannot edit budget items (freight flag team-only).
+- L6 (2026-11-11) User: "C:\Users\cseifar\Downloads lista de invitados aylu y kevin es el que le habia fallado a ella claudito". Reproduced "No pudimos leer la lista" on current code: Google Sheets export writes the logo drawing without the xdr: prefix; exceljs crashes in reconcile. Fix `daaa41b`: skip drawing entries and the sheets' drawing node. Her file now imports 117 guests (110 Sí, 3 No, 4 sin respuesta; 110 with table). Suite 279/279.
+- L7 Verifier advisories: wrong-token requests are not rate limited (192-bit token, 404); body cap counts chars and reads the body when content-length is absent (only after a valid token).
