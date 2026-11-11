@@ -53,7 +53,7 @@ export default async function ChecklistAdminPage({ params }: { params: Promise<{
   return (
     <div className="card space-y-2">
       <div>
-        <h2 className="font-display text-3xl text-forest">Checklist mes a mes</h2>
+        <h2 className="font-display text-3xl text-forest">Temas del mes</h2>
         <p className="hint">
           Cargá las tareas de cada mes. La pareja ve las pendientes de meses anteriores, las de este mes y las próximas.
         </p>

@@ -42,7 +42,7 @@ export default async function ChecklistPage() {
     <div className="card mx-auto max-w-2xl">
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
-          <h2 className="section-title">Nuestro checklist</h2>
+          <h2 className="section-title">Temas del mes</h2>
           <p className="text-sm text-ink/60">{done.length} de {tasks.length} tareas listas</p>
         </div>
         <p className="font-display text-4xl text-teal">{progress}%</p>

@@ -54,7 +54,7 @@ export default async function PortalHome() {
       <section className="card flex flex-col">
         <div className="flex items-center gap-3">
           <span className="icon-badge"><Icon name="checklist" /></span>
-          <h2 className="font-display text-2xl text-forest">Checklist</h2>
+          <h2 className="font-display text-2xl text-forest">Temas del mes</h2>
         </div>
         <div className="mt-5 flex items-baseline gap-2">
           <p className="font-display text-5xl text-forest">{progress}%</p>
@@ -92,7 +92,7 @@ export default async function PortalHome() {
             ))}
           </ul>
         )}
-        <Link href="/portal/checklist" className="btn-ghost mt-6 self-start">Ir al checklist</Link>
+        <Link href="/portal/checklist" className="btn-ghost mt-6 self-start">Ver temas del mes</Link>
       </section>
 
       <section className="card flex flex-col">

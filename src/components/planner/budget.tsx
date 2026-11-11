@@ -107,7 +107,7 @@ export function BudgetOverview({
   const perGuest = budget.guests && s.totalUsd !== null ? s.totalUsd / budget.guests : null;
   const stats = [
     { label: "Total estimado", ars: s.totalArs, usd: s.totalUsd, tone: "text-forest" },
-    { label: "Ya pagado", ars: s.paidArs, usd: s.paidUsd, tone: "text-teal" },
+    { label: "Pago", ars: s.paidArs, usd: s.paidUsd, tone: "text-teal" },
     { label: "Falta pagar", ars: s.pendingArs, usd: s.pendingUsd, tone: "text-rust" },
   ];
   const categories = s.categories.map((c, i) => ({
@@ -164,7 +164,7 @@ export function BudgetOverview({
                 <tr>
                   <th className="py-2 pr-3 font-semibold">Rubro</th>
                   <th className="hidden px-3 py-2 text-right font-semibold sm:table-cell">Total</th>
-                  <th className="px-3 py-2 text-right font-semibold">Pagado</th>
+                  <th className="px-3 py-2 text-right font-semibold">Pago</th>
                   <th className="py-2 pl-3 text-right font-semibold">Falta</th>
                 </tr>
               </thead>
@@ -179,7 +179,7 @@ export function BudgetOverview({
                           <span className="underline-offset-4 group-hover:underline">{categoryName(c.category)}</span>
                           <span className="text-xs font-normal text-ink/50">{share(c.total)}%</span>
                         </a>
-                        <div className="mt-1.5 h-1.5 w-full max-w-40 overflow-hidden rounded-full bg-sand" aria-label={`${pct}% pagado`}>
+                        <div className="mt-1.5 h-1.5 w-full max-w-40 overflow-hidden rounded-full bg-sand" aria-label={`${pct}% pago`}>
                           <div className="h-full rounded-full bg-teal" style={{ width: `${pct}%` }} />
                         </div>
                       </td>
@@ -222,7 +222,7 @@ export function BudgetItemCard({
         <div>
           <p className="flex flex-wrap items-center gap-2 text-xs tracking-[0.2em] text-rust uppercase">
             {categoryName(item.category)}
-            {s.pending <= 0 && <span className="chip bg-mint/25 py-0.5 tracking-normal text-forest normal-case">Pagado al 100%</span>}
+            {s.pending <= 0 && <span className="chip bg-mint/25 py-0.5 tracking-normal text-forest normal-case">Pago al 100%</span>}
           </p>
           <h3 className="font-display text-2xl text-forest">{item.vendor || "Sin proveedor"}</h3>
           {item.concept && <p className="text-sm text-ink/70">{item.concept}</p>}
@@ -237,7 +237,7 @@ export function BudgetItemCard({
 
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div className="rounded-2xl bg-mint/15 px-4 py-3">
-          <p className="label !mb-0.5">Pagado</p>
+          <p className="label !mb-0.5">Pago</p>
           <p className="font-semibold text-forest">{formatMoney(s.paid, item.currency)}</p>
         </div>
         <div className="rounded-2xl bg-peach-soft px-4 py-3">

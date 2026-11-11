@@ -12,7 +12,7 @@ const LINKS: Array<{ href: string; label: string; short: string; icon: IconName 
   { href: "/portal/proveedores", label: "Proveedores", short: "Proveedores", icon: "users" },
   { href: "/portal/presupuesto", label: "Presupuesto", short: "Presupuesto", icon: "dollar" },
   { href: "/portal/notificaciones", label: "Notificaciones", short: "Notificaciones", icon: "bell" },
-  { href: "/portal/checklist", label: "Checklist", short: "Checklist", icon: "checklist" },
+  { href: "/portal/checklist", label: "Temas del mes", short: "Temas del mes", icon: "checklist" },
   { href: "/portal/musica", label: "Música", short: "Música", icon: "music" },
   { href: "/portal/familia", label: "Fotos familiares", short: "Familia", icon: "heart" },
   { href: "/portal/estetica", label: "Estética", short: "Estética", icon: "edit" },
