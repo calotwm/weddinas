@@ -12,7 +12,8 @@ export interface IpcSeries {
 export interface UsdQuote {
   kind: string;
   label: string;
-  sell: number;
+  /** ARS per USD: the midpoint between buy and sell, as the agency quotes it. */
+  rate: number;
   updatedAt: string;
 }
 

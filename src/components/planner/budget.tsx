@@ -31,7 +31,7 @@ export function RatesNote({ ipc, quote }: { ipc: IpcSeries | null; quote: UsdQuo
       <span className="inline-flex items-center gap-1.5">
         <Icon name="sparkle" className="h-3.5 w-3.5" />
         {quote
-          ? `Dólar ${quote.label.toLowerCase()}: ${formatMoney(quote.sell, "ARS")} (precio de venta, según dolarapi.com)`
+          ? `Dólar ${quote.label.toLowerCase()}: ${formatMoney(quote.rate, "ARS")} (promedio entre compra y venta, según dolarapi.com)`
           : "Cotización del dólar no disponible"}
       </span>
       <span className="inline-flex items-center gap-1.5">
@@ -102,7 +102,7 @@ export function DueAlert({ items, ipc, today }: { items: BudgetItem[]; ipc: IpcS
 }
 
 export function BudgetOverview({ budget, ipc, quote }: { budget: Budget; ipc: IpcSeries | null; quote: UsdQuote | null }) {
-  const s = summarizeBudget(budget.items, ipc, quote?.sell ?? null);
+  const s = summarizeBudget(budget.items, ipc, quote?.rate ?? null);
   const perGuest = budget.guests && s.totalUsd !== null ? s.totalUsd / budget.guests : null;
   const stats = [
     { label: "Total estimado", usd: s.totalUsd, tone: "text-forest" },

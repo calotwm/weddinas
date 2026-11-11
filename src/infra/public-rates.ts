@@ -54,10 +54,16 @@ export class PublicRatesProvider implements RatesProvider {
   });
 
   private readonly loadUsd = cached(HOUR / 2, async (): Promise<UsdQuote[]> => {
-    const body = (await getJson(USD_URL)) as Array<{ casa: string; nombre: string; venta: number; fechaActualizacion: string }>;
+    const body = (await getJson(USD_URL)) as Array<{ casa: string; nombre: string; compra?: number; venta: number; fechaActualizacion: string }>;
+    // The agency uses the midpoint between buy and sell; quotes without a buy price fall back to sell.
     return body
       .filter((q) => typeof q.venta === "number" && q.venta > 0)
-      .map((q) => ({ kind: q.casa, label: q.nombre, sell: q.venta, updatedAt: q.fechaActualizacion }));
+      .map((q) => ({
+        kind: q.casa,
+        label: q.nombre,
+        rate: typeof q.compra === "number" && q.compra > 0 ? Math.round(((q.compra + q.venta) / 2) * 100) / 100 : q.venta,
+        updatedAt: q.fechaActualizacion,
+      }));
   });
 
   ipc(): Promise<IpcSeries | null> {

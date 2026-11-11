@@ -89,7 +89,7 @@ export default async function BudgetAdminPage({ params }: { params: Promise<{ id
                   <ReceiptForm action={uploadPaymentReceipt} coupleId={couple.id} itemId={item.id} paymentId={p.id} replace={Boolean(p.receiptId)} />
                 )}
               >
-                <PaymentForm coupleId={couple.id} item={item} today={today()} arsPerUsd={quote?.sell ?? null} />
+                <PaymentForm coupleId={couple.id} item={item} today={today()} arsPerUsd={quote?.rate ?? null} />
                 <div className="flex items-start justify-between gap-2">
                   <details className="group min-w-0 flex-1">
                     <summary className="btn-ghost btn-sm w-fit list-none">

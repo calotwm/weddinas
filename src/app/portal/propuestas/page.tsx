@@ -31,11 +31,11 @@ function uploadedAgo(iso: string) {
 const ORDER: Record<VisibleStatus, number> = { pending: 0, approved: 1, rejected: 2 };
 
 /** Choosing one ("Elegir") closes its rubro: tell the couple when that will discard other open options. */
-function approveConfirm(p: Proposal, all: Proposal[]) {
+function approveConfirm(p: Proposal, all: Proposal[], brief: Parameters<typeof categoryName>[1]) {
   if (!p.category) return undefined;
   const others = all.filter((o) => o.id !== p.id && o.category === p.category && o.status === "pending").length;
   if (others === 0) return undefined;
-  return `Al elegir "${p.title}" queda confirmado ${categoryName(p.category)} y las otras ${others === 1 ? "propuesta" : `${others} propuestas`} de ese rubro se descartan. ¿Seguimos?`;
+  return `Al elegir "${p.title}" queda confirmado ${categoryName(p.category, brief)} y las otras ${others === 1 ? "propuesta" : `${others} propuestas`} de ese rubro se descartan. ¿Seguimos?`;
 }
 
 export default async function ProposalsPage() {
@@ -66,7 +66,7 @@ export default async function ProposalsPage() {
             <div>
               <p className="text-sm font-medium text-teal">
                 {formatShortDate(presentedAt(p))}
-                {p.category && <span className="text-ink/50"> · {categoryName(p.category)}</span>}
+                {p.category && <span className="text-ink/50"> · {categoryName(p.category, couple.brief)}</span>}
               </p>
               <h2 className="mt-1 font-display text-2xl leading-snug text-forest sm:text-3xl">{p.title}</h2>
             </div>
@@ -125,7 +125,7 @@ export default async function ProposalsPage() {
               <label className="label" htmlFor={`comment-${p.id}`}>Comentarios (opcional)</label>
               <textarea id={`comment-${p.id}`} name="comment" rows={2} maxLength={1000} className="field" placeholder="¿Algo que quieran cambiar o preguntar?" />
               <div className="flex flex-wrap gap-3">
-                <SubmitButton name="status" value="approved" pendingText="Enviando…" confirm={approveConfirm(p, proposals)}>
+                <SubmitButton name="status" value="approved" pendingText="Enviando…" confirm={approveConfirm(p, proposals, couple.brief)}>
                   <Icon name="check" className="h-4 w-4" />
                   Elegir
                 </SubmitButton>
