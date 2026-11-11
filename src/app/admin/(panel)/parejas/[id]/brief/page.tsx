@@ -8,7 +8,7 @@ import { requireAdmin } from "@/server/auth";
 import { portal } from "@/server/container";
 import { AdminAttachments } from "@/app/admin/admin-attachments";
 import { addBriefBlock, removeBriefBlock } from "@/app/admin/planner-actions";
-import { BriefBlockForm, IdeasForm } from "./forms";
+import { BriefBlockForm, CustomBlockForm, IdeasForm } from "./forms";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +59,7 @@ export default async function BriefAdminPage({ params }: { params: Promise<{ id:
                 </SubmitButton>
               </form>
             )}
+            {group.kind === "vendor" && <CustomBlockForm coupleId={couple.id} />}
           </div>
           {group.blocks.map((block) => (
             <details key={block.key} className="card group !p-0">

@@ -10,7 +10,7 @@ import { WhatsappButton } from "@/components/whatsapp-button";
 import { proposalMessage } from "@/core/whatsapp";
 import { portal, welcomeTemplate } from "@/server/container";
 import { siteOrigin } from "@/server/site-url";
-import { addProposal, deleteProposal, deleteReport, presentProposal, replyToProposal, updateCouple } from "../../../actions";
+import { addProposal, deleteProposal, deleteReport, presentProposal, replyToProposal, updateCouple, updateProposal } from "../../../actions";
 import { AdminAttachments } from "../../../admin-attachments";
 import { AdminComparison } from "../../../comparison-form";
 import { RegenerateCodeForm } from "../../../forms";
@@ -34,6 +34,8 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
   const names = coupleNames(couple);
   const origin = await siteOrigin();
   const hidden = <input type="hidden" name="coupleId" value={couple.id} />;
+  // The couple's custom rubros ("Otra opción" in the brief) can be picked too.
+  const rubros = [...VENDOR_RUBROS, ...couple.brief.filter((b) => b.kind === "vendor" && !VENDOR_RUBROS.some((r) => r.key === b.key))];
 
   return (
     <div className="space-y-8">
@@ -54,7 +56,7 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
               <label htmlFor="p-category" className="label">Rubro</label>
               <select id="p-category" name="category" defaultValue="" className="field">
                 <option value="">Sin rubro</option>
-                {VENDOR_RUBROS.map((b) => (
+                {rubros.map((b) => (
                   <option key={b.key} value={b.key}>{b.name}</option>
                 ))}
               </select>
@@ -62,7 +64,7 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label htmlFor="p-amount" className="label">Presupuesto</label>
+                <label htmlFor="p-amount" className="label">Presupuesto destinado</label>
                 <input id="p-amount" name="amount" maxLength={100} placeholder="$ 1.500.000 (opcional)" className="field" />
               </div>
               <div>
@@ -97,7 +99,7 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
                     {isPresented(p) ? "Presentada" : "Creada"} {formatShortDate(p.presentedAt ?? p.createdAt)}
                     {p.respondedAt && ` · respondida ${formatShortDate(p.respondedAt)}`}
                     {p.amount && ` · ${p.amount}`}
-                    {p.category && ` · ${categoryName(p.category)}`}
+                    {p.category && ` · ${categoryName(p.category, couple.brief)}`}
                   </p>
                   {isPresented(p) && (
                     <p className={`mt-1 text-xs ${p.viewedAt ? "text-teal" : "text-ink/50"}`}>
@@ -132,6 +134,7 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
                     </div>
                   </details>
                   <AdminComparison coupleId={couple.id} proposalId={p.id} comparison={p.comparison} />
+                  <ProposalEditForm coupleId={couple.id} proposal={p} rubros={rubros} />
                   {!isPresented(p) && (
                     <form action={presentProposal} className="mt-3">
                       {hidden}
@@ -229,5 +232,47 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
         </section>
       </div>
     </div>
+  );
+}
+
+/** The team's edit of a proposal's content, on any status. */
+function ProposalEditForm({ coupleId, proposal: p, rubros }: { coupleId: string; proposal: Proposal; rubros: Array<{ key: string; name: string }> }) {
+  return (
+    <details className="mt-3">
+      <summary className="cursor-pointer text-xs font-semibold text-teal">Editar</summary>
+      <form action={updateProposal} className="mt-3 space-y-3">
+        <input type="hidden" name="coupleId" value={coupleId} />
+        <input type="hidden" name="proposalId" value={p.id} />
+        <div>
+          <label htmlFor={`e-title-${p.id}`} className="label">Título</label>
+          <input id={`e-title-${p.id}`} name="title" required maxLength={200} defaultValue={p.title} className="field" />
+        </div>
+        <div>
+          <label htmlFor={`e-description-${p.id}`} className="label">Descripción</label>
+          <textarea id={`e-description-${p.id}`} name="description" rows={4} defaultValue={p.description} className="field" />
+        </div>
+        <div>
+          <label htmlFor={`e-category-${p.id}`} className="label">Rubro</label>
+          <select id={`e-category-${p.id}`} name="category" defaultValue={p.category ?? ""} className="field">
+            <option value="">Sin rubro</option>
+            {rubros.map((b) => (
+              <option key={b.key} value={b.key}>{b.name}</option>
+            ))}
+            {p.category && !rubros.some((b) => b.key === p.category) && <option value={p.category}>{categoryName(p.category)}</option>}
+          </select>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label htmlFor={`e-amount-${p.id}`} className="label">Presupuesto destinado</label>
+            <input id={`e-amount-${p.id}`} name="amount" maxLength={100} defaultValue={p.amount} className="field" />
+          </div>
+          <div>
+            <label htmlFor={`e-link-${p.id}`} className="label">Link a material</label>
+            <input id={`e-link-${p.id}`} name="link" type="url" maxLength={500} defaultValue={p.link} className="field" />
+          </div>
+        </div>
+        <SubmitButton className="btn-ghost btn-sm" pendingText="Guardando…" doneText="¡Guardado!">Guardar cambios</SubmitButton>
+      </form>
+    </details>
   );
 }
