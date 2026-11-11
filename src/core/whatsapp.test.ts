@@ -40,21 +40,36 @@ describe("messages", () => {
     );
   });
 
-  it("lists this month's topics with the ones still open from past months", () => {
-    expect(monthTopicsMessage("Delfi & Juancho", "noviembre 2026", ["Elegir fotógrafo", "Prueba de vestido"], ["Mandar lista de invitados"], link)).toBe(
+  it("lists past months' pending items and this month's topics, without a year", () => {
+    expect(monthTopicsMessage("Delfi", "Juancho", ["Elegir fotógrafo", "Prueba de vestido"], ["Mandar lista de invitados"], link)).toBe(
       [
-        "¡Hola Delfi & Juancho! Estos son los temas de noviembre 2026:",
-        "• Elegir fotógrafo",
-        "• Prueba de vestido",
+        "Hola Delfi y Juancho! Cómo están?",
+        "Les enviamos los temas de este mes:",
+        "*Pendientes:*",
+        "* Mandar lista de invitados",
+        "*Temas para ver:*",
+        "* Elegir fotógrafo",
+        "* Prueba de vestido",
         "",
-        "Pendientes de meses anteriores:",
-        "• Mandar lista de invitados",
-        "",
-        `Los ven en el portal: ${link}`,
+        `Lo pueden ver en el portal: ${link}`,
+        "Cualquier otra cosa nos avisan!",
       ].join("\n"),
     );
-    expect(monthTopicsMessage("Ana & Beto", "enero 2027", ["Degustación"], [], link)).toBe(
-      ["¡Hola Ana & Beto! Estos son los temas de enero 2027:", "• Degustación", "", `Los ven en el portal: ${link}`].join("\n"),
+  });
+
+  it("keeps an empty bullet under each empty header so the team can type there", () => {
+    expect(monthTopicsMessage("Ana", "Beto", [], [], link)).toBe(
+      [
+        "Hola Ana y Beto! Cómo están?",
+        "Les enviamos los temas de este mes:",
+        "*Pendientes:*",
+        "* ",
+        "*Temas para ver:*",
+        "* ",
+        "",
+        `Lo pueden ver en el portal: ${link}`,
+        "Cualquier otra cosa nos avisan!",
+      ].join("\n"),
     );
   });
 });

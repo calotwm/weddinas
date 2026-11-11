@@ -2,6 +2,7 @@
 
 import { timingSafeEqual } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { CUSTOM_BLOCK_NAME_MAX } from "@/core/brief-catalog";
 import { COMPARISON_LIMITS, ComparisonTableError, parseComparisonFile, type ComparisonTable } from "@/core/comparison-table";
 import { importCouple, type CoupleImport } from "@/core/couple-import";
 import { redirect } from "next/navigation";
@@ -94,6 +95,34 @@ export async function addProposal(formData: FormData): Promise<void> {
     category: text(formData, "category", 60),
   }, { present: formData.get("intent") !== "draft" });
   revalidatePath("/", "layout");
+}
+
+/** The team's edit of a proposal's content, on any status. */
+export async function updateProposal(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.updateProposal(text(formData, "coupleId", 100), text(formData, "proposalId", 100), {
+    title: text(formData, "title", 200),
+    description: text(formData, "description"),
+    amount: text(formData, "amount", 100),
+    link: safeHttpUrl(text(formData, "link", 500)),
+    category: text(formData, "category", 60),
+  });
+  revalidatePath("/", "layout");
+}
+
+/** Adds a rubro outside the catalog to the couple's brief ("Otra opción"). */
+export async function addCustomBriefBlock(_prev: FormResult, formData: FormData): Promise<FormResult> {
+  await requireAdmin();
+  const name = text(formData, "name", 200);
+  if (!name) return { error: "Escribí el nombre del rubro." };
+  if (name.length > CUSTOM_BLOCK_NAME_MAX) return { error: `El nombre puede tener hasta ${CUSTOM_BLOCK_NAME_MAX} caracteres.` };
+  try {
+    await portal.addCustomBriefBlock(text(formData, "coupleId", 100), name);
+  } catch {
+    return { error: `"${name}" ya está en el brief o en la lista de rubros.` };
+  }
+  revalidatePath("/", "layout");
+  return {};
 }
 
 export async function replyToProposal(formData: FormData): Promise<void> {

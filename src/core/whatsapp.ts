@@ -35,14 +35,19 @@ export const proposalMessage = (names: string, title: string, link: string) =>
 export const reminderMessage = (names: string, title: string, link: string) =>
   `¡Hola ${names}! Les recordamos que tienen para ver la propuesta "${title}". Cuando puedan, nos cuentan qué les pareció: ${link}`;
 
-export function monthTopicsMessage(names: string, monthLabel: string, topics: string[], overdue: string[], link: string): string {
-  const bullets = (items: string[]) => items.map((t) => `• ${t}`);
+/** `overdue`: open items of past months; `topics`: this month's open ones. An empty list keeps a bare "* " for the team to type in. */
+export function monthTopicsMessage(partnerA: string, partnerB: string, topics: string[], overdue: string[], link: string): string {
+  const bullets = (items: string[]) => (items.length ? items.map((t) => `* ${t}`) : ["* "]);
   return [
-    `¡Hola ${names}! Estos son los temas de ${monthLabel}:`,
+    `Hola ${partnerA} y ${partnerB}! Cómo están?`,
+    "Les enviamos los temas de este mes:",
+    "*Pendientes:*",
+    ...bullets(overdue),
+    "*Temas para ver:*",
     ...bullets(topics),
-    ...(overdue.length ? ["", "Pendientes de meses anteriores:", ...bullets(overdue)] : []),
     "",
-    `Los ven en el portal: ${link}`,
+    `Lo pueden ver en el portal: ${link}`,
+    "Cualquier otra cosa nos avisan!",
   ].join("\n");
 }
 

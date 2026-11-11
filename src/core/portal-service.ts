@@ -5,7 +5,7 @@ import { byDayTime } from "./timing";
 import { normalizeWhatsapp } from "./whatsapp";
 import { cleanWebSelection, webDressCode } from "./web-options";
 import type { AestheticWeb } from "./couple";
-import { BRIEF_CATALOG, catalogBlock, defaultBrief, defaultMusic, musicMomentKeys, newBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
+import { BRIEF_CATALOG, catalogBlock, categoryName, CUSTOM_BLOCK_NAME_MAX, CUSTOM_BLOCK_PREFIX, defaultBrief, defaultMusic, musicMomentKeys, newBriefBlock, newCustomBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
 import {
   emptyPublicInfo,
   isLineState,
@@ -157,14 +157,21 @@ const COMMENT_AUTHORS: CommentAuthor[] = ["couple", "team"];
 /** Adds the catalog block when the couple does not have it yet, keeping catalog order; returns the couple's block. */
 function ensureBriefBlock(couple: Couple, key: string): BriefBlock {
   const entry = catalogBlock(key);
-  if (!entry) throw new Error("Unknown brief block");
   let block = couple.brief.find((b) => b.key === key);
+  if (!entry && !block && !key.startsWith(CUSTOM_BLOCK_PREFIX)) throw new Error("Unknown brief block");
   if (!block) {
-    block = newBriefBlock(entry);
+    // A custom rubro removed after a proposal used it comes back under the name its key reads as.
+    block = entry ? newBriefBlock(entry) : { ...newCustomBriefBlock(categoryName(key)), key };
     couple.brief.push(block);
-    couple.brief.sort((a, b) => BRIEF_ORDER.indexOf(a.key) - BRIEF_ORDER.indexOf(b.key));
+    sortBrief(couple.brief);
   }
   return block;
+}
+
+/** Catalog order; custom rubros (outside the catalog) go last, in the order they were added. */
+function sortBrief(brief: BriefBlock[]) {
+  const rank = (key: string) => (BRIEF_ORDER.includes(key) ? BRIEF_ORDER.indexOf(key) : BRIEF_ORDER.length);
+  brief.sort((a, b) => rank(a.key) - rank(b.key));
 }
 
 /** Stamps the moment a block becomes confirmed (the couple's vendor notification) and clears it when it leaves that status. */
@@ -174,11 +181,12 @@ function setBlockStatus(block: BriefBlock, status: BlockStatus) {
   block.status = status;
 }
 
-/** An optional vendor rubro of the brief catalog; empty means "Sin rubro". */
-function proposalCategory(category: string | undefined): string | undefined {
+/** An optional vendor rubro of the brief catalog or one of the couple's custom rubros; empty means "Sin rubro". */
+function proposalCategory(category: string | undefined, brief: BriefBlock[]): string | undefined {
   const key = category?.trim();
   if (!key) return undefined;
-  if (catalogBlock(key)?.kind !== "vendor") throw new Error("Unknown proposal category");
+  const kind = catalogBlock(key)?.kind ?? brief.find((b) => b.key === key)?.kind;
+  if (kind !== "vendor") throw new Error("Unknown proposal category");
   return key;
 }
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -329,7 +337,6 @@ export class PortalService {
     input: { title: string; description: string; link?: string; amount?: string; category?: string },
     { present = true }: { present?: boolean } = {},
   ): Promise<Proposal> {
-    const category = proposalCategory(input.category);
     const createdAt = new Date().toISOString();
     const proposal: Proposal = {
       id: randomUUID(),
@@ -342,12 +349,35 @@ export class PortalService {
       createdAt,
       respondedAt: null,
       presentedAt: present ? createdAt : null,
-      ...(category ? { category } : {}),
     };
     await this.mutate(coupleId, (c) => {
+      const category = proposalCategory(input.category, c.brief);
+      if (category) proposal.category = category;
       c.proposals.unshift(proposal);
     });
     return proposal;
+  }
+
+  /** The team's edit of a proposal's content, on any status; validated like adding one. */
+  async updateProposal(
+    coupleId: string,
+    proposalId: string,
+    input: { title: string; description: string; link: string; amount: string; category: string },
+  ): Promise<void> {
+    const title = input.title.trim();
+    if (!title) throw new Error("Title is required");
+    await this.mutate(coupleId, (c) => {
+      const proposal = c.proposals.find((p) => p.id === proposalId);
+      if (!proposal) throw new Error("Proposal not found");
+      // An unchanged rubro stays even if its custom brief block was removed since.
+      const category = input.category.trim() === proposal.category ? proposal.category : proposalCategory(input.category, c.brief);
+      proposal.title = title;
+      proposal.description = input.description.trim();
+      proposal.link = input.link.trim();
+      proposal.amount = input.amount.trim();
+      if (category) proposal.category = category;
+      else delete proposal.category;
+    });
   }
 
   async respondToProposal(coupleId: string, proposalId: string, status: ProposalStatus, comment: string): Promise<void> {
@@ -611,6 +641,22 @@ export class PortalService {
     await this.mutate(coupleId, (c) => {
       ensureBriefBlock(c, key);
     });
+  }
+
+  /** Adds a vendor rubro outside the catalog by its name; returns its key. */
+  async addCustomBriefBlock(coupleId: string, name: string): Promise<string> {
+    const clean = name.trim().replace(/\s+/g, " ");
+    const slug = slugify(clean);
+    if (!slug) throw new Error("Brief block name is required");
+    if (clean.length > CUSTOM_BLOCK_NAME_MAX) throw new Error("Brief block name is too long");
+    if (BRIEF_CATALOG.some((b) => b.key === slug || slugify(b.name) === slug)) throw new Error("Brief block is in the catalog");
+    const block = newCustomBriefBlock(clean);
+    await this.mutate(coupleId, (c) => {
+      if (c.brief.some((b) => b.key === block.key || slugify(b.name) === slug)) throw new Error("Brief block already exists");
+      c.brief.push(block);
+      sortBrief(c.brief);
+    });
+    return block.key;
   }
 
   async updateBriefBlock(coupleId: string, key: string, update: BriefBlockUpdate): Promise<void> {
