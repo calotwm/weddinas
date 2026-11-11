@@ -133,6 +133,11 @@ export default async function PortalHome() {
           )}
         </div>
         {couple.timing.length > 4 && <p className="mt-2 text-sm text-ink/50">y {couple.timing.length - 4} momento{couple.timing.length - 4 === 1 ? "" : "s"} más</p>}
+        {couple.vendorTiming.length > 0 && (
+          <p className="mt-2 text-sm text-ink/60">
+            {couple.vendorTiming.length === 1 ? "1 proveedor con horario" : `${couple.vendorTiming.length} proveedores con horario`}
+          </p>
+        )}
         <Link href="/portal/timing" className="btn-ghost mt-6 self-start">{couple.timing.length ? "Ver timing" : "Armar timing"}</Link>
       </section>
 

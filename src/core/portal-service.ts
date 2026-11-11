@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { accessCodeFor, hashAccessCode } from "./access-code";
 import type { ComparisonTable } from "./comparison-table";
+import { byDayTime } from "./timing";
 import { normalizeWhatsapp } from "./whatsapp";
 import { BRIEF_CATALOG, catalogBlock, defaultBrief, defaultMusic, musicMomentKeys, newBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
 import {
@@ -33,6 +34,7 @@ import {
   type Report,
   type SongStatus,
   type TimingItem,
+  type VendorTimingItem,
 } from "./couple";
 import { GUEST_STATUSES, MAX_GUESTS } from "./guests";
 import type { CoupleRepository } from "./ports";
@@ -62,6 +64,7 @@ export interface AestheticInput {
 }
 
 export type TimingInput = Omit<TimingItem, "id">;
+export type VendorTimingInput = Omit<VendorTimingItem, "id">;
 export type GuestInput = Omit<Guest, "id">;
 export type NewGuestInput = Pick<Guest, "name"> & Partial<Omit<Guest, "id" | "name">>;
 
@@ -78,6 +81,13 @@ function cleanTiming(input: TimingInput): TimingInput {
   return { time: input.time, title, note: input.note.trim() };
 }
 
+function cleanVendorTiming(input: VendorTimingInput): VendorTimingInput {
+  if (!HHMM.test(input.time)) throw new Error("Time must be HH:MM");
+  const category = input.category.trim();
+  if (!category) throw new Error("Rubro is required");
+  return { time: input.time, category, company: input.company.trim(), contact: input.contact.trim() };
+}
+
 function cleanGuest(input: NewGuestInput): GuestInput {
   const status: GuestStatus = input.status ?? "pending";
   if (!GUEST_STATUSES.includes(status)) throw new Error("Unknown guest status");
@@ -90,7 +100,6 @@ function cleanGuest(input: NewGuestInput): GuestInput {
   };
 }
 
-const byTime = (a: TimingItem, b: TimingItem) => a.time.localeCompare(b.time);
 
 export type AttachmentTarget = { kind: "brief"; key: string } | { kind: "proposal"; id: string } | { kind: "report"; id: string };
 
@@ -160,6 +169,7 @@ function withPlannerDefaults(couple: Couple): LoadedCouple {
   couple.family ??= [];
   couple.aesthetic ??= { fonts: "", palette: [], photoIds: [] };
   couple.timing ??= [];
+  couple.vendorTiming ??= [];
   couple.guests ??= [];
   couple.brief.forEach(withCatalogFields);
   return couple as LoadedCouple;
@@ -242,6 +252,7 @@ export class PortalService {
       family: [],
       aesthetic: { fonts: "", palette: [], photoIds: [] },
       timing: [],
+      vendorTiming: [],
       guests: [],
       createdAt: new Date().toISOString(),
     };
@@ -689,7 +700,7 @@ export class PortalService {
     await this.mutate(coupleId, (c) => {
       if (c.timing.length >= MAX_TIMING) throw new Error("Too many timing moments");
       c.timing.push(item);
-      c.timing.sort(byTime);
+      c.timing.sort(byDayTime);
     });
     return item;
   }
@@ -700,13 +711,39 @@ export class PortalService {
       const item = c.timing.find((t) => t.id === itemId);
       if (!item) throw new Error("Timing moment not found");
       Object.assign(item, clean);
-      c.timing.sort(byTime);
+      c.timing.sort(byDayTime);
     });
   }
 
   async deleteTimingItem(coupleId: string, itemId: string): Promise<void> {
     await this.mutate(coupleId, (c) => {
       c.timing = c.timing.filter((t) => t.id !== itemId);
+    });
+  }
+
+  async addVendorTimingItem(coupleId: string, input: VendorTimingInput): Promise<VendorTimingItem> {
+    const item: VendorTimingItem = { id: randomUUID(), ...cleanVendorTiming(input) };
+    await this.mutate(coupleId, (c) => {
+      if (c.vendorTiming.length >= MAX_TIMING) throw new Error("Too many vendor timing lines");
+      c.vendorTiming.push(item);
+      c.vendorTiming.sort(byDayTime);
+    });
+    return item;
+  }
+
+  async updateVendorTimingItem(coupleId: string, itemId: string, input: VendorTimingInput): Promise<void> {
+    const clean = cleanVendorTiming(input);
+    await this.mutate(coupleId, (c) => {
+      const item = c.vendorTiming.find((t) => t.id === itemId);
+      if (!item) throw new Error("Vendor timing line not found");
+      Object.assign(item, clean);
+      c.vendorTiming.sort(byDayTime);
+    });
+  }
+
+  async deleteVendorTimingItem(coupleId: string, itemId: string): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      c.vendorTiming = c.vendorTiming.filter((t) => t.id !== itemId);
     });
   }
 

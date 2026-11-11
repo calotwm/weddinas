@@ -87,6 +87,39 @@ describe("estética, timing and guests", () => {
       expect((await load()).timing.map((t) => t.title)).toEqual(["Ceremonia"]);
     });
 
+    it("keeps after-midnight moments at the end of the night", async () => {
+      await service.addTimingItem(coupleId, { time: "00:30", title: "Tiradas", note: "" });
+      await service.addTimingItem(coupleId, { time: "21:30", title: "Fiesta", note: "" });
+      expect((await load()).timing.map((t) => t.time)).toEqual(["21:30", "00:30"]);
+    });
+
+    it("keeps the vendors' schedule apart, sorted the same way, and reads it empty on older couples", async () => {
+      const stored = JSON.parse(readFileSync(file, "utf8"));
+      delete stored[0].vendorTiming;
+      writeFileSync(file, JSON.stringify(stored));
+      expect((await load()).vendorTiming).toEqual([]);
+
+      const dj = await service.addVendorTimingItem(coupleId, { time: "16:00", category: " Dj ", company: "Kevin", contact: "" });
+      await service.addVendorTimingItem(coupleId, { time: "08:00", category: "Ambientación", company: "CDS", contact: " Cande 11 2233 4455 " });
+      await service.addVendorTimingItem(coupleId, { time: "03:00", category: "Ambientación", company: "CDS", contact: "Desarme" });
+      expect((await load()).vendorTiming.map((v) => [v.time, v.category, v.company, v.contact])).toEqual([
+        ["08:00", "Ambientación", "CDS", "Cande 11 2233 4455"],
+        ["16:00", "Dj", "Kevin", ""],
+        ["03:00", "Ambientación", "CDS", "Desarme"],
+      ]);
+
+      await service.updateVendorTimingItem(coupleId, dj.id, { time: "15:30", category: "Dj y técnica", company: "TM", contact: "Kevin" });
+      expect((await load()).vendorTiming[1]).toMatchObject({ time: "15:30", category: "Dj y técnica", company: "TM", contact: "Kevin" });
+
+      await expect(service.addVendorTimingItem(coupleId, { time: "8:00", category: "X", company: "", contact: "" })).rejects.toThrow("HH:MM");
+      await expect(service.addVendorTimingItem(coupleId, { time: "08:00", category: " ", company: "", contact: "" })).rejects.toThrow("Rubro");
+      await expect(service.updateVendorTimingItem(coupleId, "nope", { time: "08:00", category: "X", company: "", contact: "" })).rejects.toThrow("not found");
+
+      await service.deleteVendorTimingItem(coupleId, dj.id);
+      expect((await load()).vendorTiming).toHaveLength(2);
+      expect((await load()).timing).toEqual([]);
+    });
+
     it("requires a HH:MM time and a title", async () => {
       await expect(service.addTimingItem(coupleId, { time: "25:00", title: "X", note: "" })).rejects.toThrow("HH:MM");
       await expect(service.addTimingItem(coupleId, { time: "9:00", title: "X", note: "" })).rejects.toThrow("HH:MM");

@@ -223,6 +223,17 @@ export interface TimingItem {
   note: string;
 }
 
+/** One line of "Timing proveedores": when each vendor arrives (or sets up / leaves). */
+export interface VendorTimingItem {
+  id: string;
+  /** "HH:MM" (24 h). */
+  time: string;
+  /** Rubro ("Dj", "Ambientación"…). */
+  category: string;
+  company: string;
+  contact: string;
+}
+
 export type GuestStatus = "confirmed" | "pending" | "declined";
 
 export interface Guest {
@@ -262,13 +273,15 @@ export interface Couple {
   createdAt: string;
   /** WhatsApp number in international digits ("5491122334455"); the team's buttons open this chat. */
   whatsapp?: string;
+  /** Vendors' schedule for the day, edited by the team. */
+  vendorTiming?: VendorTimingItem[];
 }
 
 /** Couple data safe to expose outside the server boundary. */
 export type CoupleView = Omit<Couple, "accessCodeHash"> & Required<Pick<Couple, CoupleSection>>;
 
 /** Optional in storage, always present once loaded through the service. */
-export type CoupleSection = "aesthetic" | "timing" | "guests";
+export type CoupleSection = "aesthetic" | "timing" | "guests" | "vendorTiming";
 
 export type PublicPage = Pick<Couple, "slug" | "partnerA" | "partnerB" | "weddingDate" | "publicInfo">;
 
