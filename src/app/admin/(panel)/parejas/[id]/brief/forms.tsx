@@ -11,7 +11,8 @@ import { saveBriefBlock, saveIdeas } from "@/app/admin/planner-actions";
 import { BLOCK_STATUS } from "@/components/planner/brief";
 import { NoteField } from "@/components/planner/note-field";
 
-export function BriefBlockForm({ coupleId, block }: { coupleId: string; block: BriefBlock }) {
+/** `budgetPayment` is what the budget says about the rubro; it replaces typing the "Pago" detail by hand. */
+export function BriefBlockForm({ coupleId, block, budgetPayment }: { coupleId: string; block: BriefBlock; budgetPayment?: string | null }) {
   const [state, action] = useActionState(saveBriefBlock, null);
   const id = block.key;
 
@@ -58,7 +59,16 @@ export function BriefBlockForm({ coupleId, block }: { coupleId: string; block: B
             <div key={`${f.label}-${i}`} className="grid gap-2 px-4 py-3 sm:grid-cols-[minmax(8rem,1fr)_2fr_2fr_10rem] sm:items-center sm:gap-3">
               <input type="hidden" name="label" value={f.label} />
               <span className="text-sm font-semibold text-forest">{f.label}</span>
-              <NoteField name="detail" defaultValue={f.detail} aria-label={`${f.label}: detalle`} placeholder="Detalle" className="field !py-2" />
+              {budgetPayment && f.label === "Pago" ? (
+                <div>
+                  {/* The stored manual detail is kept untouched; the couple sees the budget's figure instead. */}
+                  <input type="hidden" name="detail" value={f.detail} />
+                  <p className="text-sm font-semibold text-forest">{budgetPayment}</p>
+                  <p className="text-xs text-ink/55">Sale del presupuesto</p>
+                </div>
+              ) : (
+                <NoteField name="detail" defaultValue={f.detail} aria-label={`${f.label}: detalle`} placeholder="Detalle" className="field !py-2" />
+              )}
               <input name="fieldNote" defaultValue={f.note} aria-label={`${f.label}: aclaraciones`} placeholder="Aclaraciones" className="field !py-2" />
               <LineStateSelect label={f.label} defaultValue={f.state} />
             </div>

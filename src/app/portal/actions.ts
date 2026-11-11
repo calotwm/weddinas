@@ -18,6 +18,7 @@ import { safeHttpUrl as safeUrl } from "@/core/url";
 import { readWebForm } from "@/core/web-options";
 import { requireCoupleId } from "@/server/auth";
 import { files, portal } from "@/server/container";
+import { attachReceipt, type ReceiptResult } from "@/server/receipts";
 
 // Every action takes the couple id from the signed session, never from the form.
 
@@ -287,5 +288,12 @@ export async function importGuests(_prev: GuestImportResult, formData: FormData)
   const coupleId = await requireCoupleId();
   const result = await importGuestList(coupleId, formData);
   revalidatePath("/", "layout");
+  return result;
+}
+
+export async function uploadPaymentReceipt(_prev: ReceiptResult, formData: FormData): Promise<ReceiptResult> {
+  const coupleId = await requireCoupleId();
+  const result = await attachReceipt(coupleId, formData);
+  if (result?.ok) revalidatePath("/", "layout");
   return result;
 }

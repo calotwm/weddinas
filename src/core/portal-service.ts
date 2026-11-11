@@ -41,6 +41,7 @@ import {
 import { GUEST_AGES, GUEST_STATUSES, MAX_GUESTS } from "./guests";
 import type { CoupleRepository } from "./ports";
 import { slugify } from "./slug";
+import { isFileId } from "./uploads";
 
 export interface NewCoupleInput {
   partnerA: string;
@@ -150,7 +151,7 @@ function attachmentsOf(couple: Couple, target: AttachmentTarget): Attachment[] {
 
 const BLOCK_STATUSES: BlockStatus[] = ["searching", "deciding", "confirmed", "na"];
 const SONG_STATUSES: SongStatus[] = ["chosen", "pending", "na"];
-const PAYMENT_KINDS: PaymentKind[] = ["sena", "saldo", "adicional", "iva"];
+const PAYMENT_KINDS: PaymentKind[] = ["sena", "saldo", "adicional", "iva", "intermedio"];
 const BRIEF_ORDER = BRIEF_CATALOG.map((b) => b.key);
 const COMMENT_AUTHORS: CommentAuthor[] = ["couple", "team"];
 
@@ -223,6 +224,7 @@ function cleanBudgetItem(input: BudgetItemInput): BudgetItemInput {
   if (!MONTH.test(input.baseMonth)) throw new Error("Base month must be YYYY-MM");
   const dueDate = input.dueDate?.trim() ?? "";
   if (dueDate && !DAY.test(dueDate)) throw new Error("Due date must be YYYY-MM-DD");
+  if (input.freight !== undefined && input.freight !== "yes" && input.freight !== "no") throw new Error("Unknown freight value");
   return {
     category: input.category,
     vendor: input.vendor.trim(),
@@ -233,7 +235,13 @@ function cleanBudgetItem(input: BudgetItemInput): BudgetItemInput {
     baseMonth: input.baseMonth,
     note: input.note.trim(),
     dueDate,
+    freight: input.freight,
   };
+}
+
+/** A receipt must be one of the couple's uploaded images or PDFs (never a spreadsheet or a path). */
+function checkReceiptId(receiptId: string | undefined) {
+  if (receiptId !== undefined && (!isFileId(receiptId) || receiptId.endsWith(".xlsx"))) throw new Error("Invalid receipt file");
 }
 
 function toView(couple: Couple): CoupleView {
@@ -605,16 +613,22 @@ export class PortalService {
     });
   }
 
-  async deleteBudgetItem(coupleId: string, itemId: string): Promise<void> {
+  /** Returns the receipt files of the removed payments so the caller can delete them. */
+  async deleteBudgetItem(coupleId: string, itemId: string): Promise<string[]> {
+    let receipts: string[] = [];
     await this.mutate(coupleId, (c) => {
+      const item = c.budget.items.find((i) => i.id === itemId);
+      receipts = (item?.payments ?? []).flatMap((p) => (p.receiptId ? [p.receiptId] : []));
       c.budget.items = c.budget.items.filter((i) => i.id !== itemId);
     });
+    return receipts;
   }
 
   async addPayment(coupleId: string, itemId: string, input: PaymentInput): Promise<Payment> {
     if (!(input.amount > 0) || !Number.isFinite(input.amount)) throw new Error("Amount must be positive");
     if (!DAY.test(input.date)) throw new Error("Date must be YYYY-MM-DD");
     if (!PAYMENT_KINDS.includes(input.kind)) throw new Error("Unknown payment kind");
+    checkReceiptId(input.receiptId);
     const payment: Payment = { id: randomUUID(), ...input, note: input.note.trim() };
     await this.mutate(coupleId, (c) => {
       const item = c.budget.items.find((i) => i.id === itemId);
@@ -629,11 +643,29 @@ export class PortalService {
     return payment;
   }
 
-  async deletePayment(coupleId: string, itemId: string, paymentId: string): Promise<void> {
+  /** Returns the removed payment's receipt file, if any, so the caller can delete it. */
+  async deletePayment(coupleId: string, itemId: string, paymentId: string): Promise<string | null> {
+    let receipt: string | null = null;
     await this.mutate(coupleId, (c) => {
       const item = c.budget.items.find((i) => i.id === itemId);
-      if (item) item.payments = item.payments.filter((p) => p.id !== paymentId);
+      if (!item) return;
+      receipt = item.payments.find((p) => p.id === paymentId)?.receiptId ?? null;
+      item.payments = item.payments.filter((p) => p.id !== paymentId);
     });
+    return receipt;
+  }
+
+  /** Attaches (or replaces) a payment's receipt; returns the previous receipt file so the caller can delete it. */
+  async setPaymentReceipt(coupleId: string, itemId: string, paymentId: string, receiptId: string): Promise<string | null> {
+    checkReceiptId(receiptId);
+    let previous: string | null = null;
+    await this.mutate(coupleId, (c) => {
+      const payment = c.budget.items.find((i) => i.id === itemId)?.payments.find((p) => p.id === paymentId);
+      if (!payment) throw new Error("Payment not found");
+      previous = payment.receiptId ?? null;
+      payment.receiptId = receiptId;
+    });
+    return previous;
   }
 
   async addBriefBlock(coupleId: string, key: string): Promise<void> {

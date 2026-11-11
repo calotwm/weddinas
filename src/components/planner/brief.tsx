@@ -54,12 +54,20 @@ export function StatusChip({ status }: { status: BlockStatus }) {
   return <span className={`chip ${s.className}`}>{s.label}</span>;
 }
 
+/** The block's fields with the "Pago" detail taken from the budget, when the budget has that rubro. */
+export function withBudgetPayment(fields: BriefBlock["fields"], payment: string | null | undefined): BriefBlock["fields"] {
+  if (!payment) return fields;
+  const has = fields.some((f) => f.label === "Pago");
+  return has ? fields.map((f) => (f.label === "Pago" ? { ...f, detail: payment } : f)) : [{ label: "Pago", detail: payment, note: "" }, ...fields];
+}
+
 /**
  * Couple-facing view of one brief block: only filled details; the Aclaraciones column stays internal.
  * `expanded` shows long details whole (printable pages); `download` links to the block's printable page.
+ * `payment` is what the budget says about the rubro and replaces the manual "Pago" detail.
  */
-export function BriefBlockSummary({ coupleId, block, expanded = false, download }: { coupleId: string; block: BriefBlock; expanded?: boolean; download?: string }) {
-  const filled = block.fields.filter((f) => f.detail || f.state);
+export function BriefBlockSummary({ coupleId, block, expanded = false, download, payment }: { coupleId: string; block: BriefBlock; expanded?: boolean; download?: string; payment?: string | null }) {
+  const filled = withBudgetPayment(block.fields, payment).filter((f) => f.detail || f.state);
   const shared = (block.attachments ?? []).filter((a) => !a.internal);
   return (
     <article className="card space-y-4">

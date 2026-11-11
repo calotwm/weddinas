@@ -1,11 +1,13 @@
+import { Fragment } from "react";
 import { Icon } from "@/components/icons";
-import { budgetCurrency, BudgetItemCard, BudgetOverview, DueAlert, orderedBudgetItems, RatesNote } from "@/components/planner/budget";
+import { BudgetItemCard, BudgetOverview, DueAlert, orderedBudgetItems, PaidDivider, RatesNote } from "@/components/planner/budget";
 import { today } from "@/lib/format";
 import { loadRates } from "@/server/rates";
+import { uploadPaymentReceipt } from "../actions";
 import { getCurrentCouple } from "../data";
+import { ReceiptForm } from "./receipt-form";
 
-export default async function BudgetPage({ searchParams }: { searchParams: Promise<{ moneda?: string }> }) {
-  const currency = budgetCurrency((await searchParams).moneda);
+export default async function BudgetPage() {
   const couple = await getCurrentCouple();
   const { budget } = couple;
   const { ipc, quote } = await loadRates(budget.usdQuote);
@@ -30,10 +32,21 @@ export default async function BudgetPage({ searchParams }: { searchParams: Promi
       ) : (
         <>
           <DueAlert items={budget.items} ipc={ipc} today={today()} />
-          <BudgetOverview budget={budget} ipc={ipc} quote={quote} currency={currency} />
+          <BudgetOverview budget={budget} ipc={ipc} quote={quote} />
           <div className="grid gap-5 lg:grid-cols-2">
-            {orderedBudgetItems(budget.items, ipc).map(({ item, anchor }) => (
-              <BudgetItemCard key={item.id} item={item} ipc={ipc} anchor={anchor} />
+            {orderedBudgetItems(budget.items, ipc).map(({ item, anchor, firstPaid }) => (
+              <Fragment key={item.id}>
+                {firstPaid && <PaidDivider />}
+                <BudgetItemCard
+                  coupleId={couple.id}
+                  item={item}
+                  ipc={ipc}
+                  anchor={anchor}
+                  receiptAction={(p) => (
+                    <ReceiptForm action={uploadPaymentReceipt} itemId={item.id} paymentId={p.id} replace={Boolean(p.receiptId)} />
+                  )}
+                />
+              </Fragment>
             ))}
           </div>
         </>
