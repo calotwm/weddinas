@@ -3,6 +3,8 @@ import { accessCodeFor, hashAccessCode } from "./access-code";
 import type { ComparisonTable } from "./comparison-table";
 import { byDayTime } from "./timing";
 import { normalizeWhatsapp } from "./whatsapp";
+import { cleanWebSelection, webDressCode } from "./web-options";
+import type { AestheticWeb } from "./couple";
 import { BRIEF_CATALOG, catalogBlock, defaultBrief, defaultMusic, musicMomentKeys, newBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
 import {
   emptyPublicInfo,
@@ -63,6 +65,13 @@ export interface AestheticInput {
   palette: PaletteColor[];
 }
 
+export interface AestheticGeneralInput {
+  titleFont: string;
+  bodyFont: string;
+  ideas: string;
+  palette: PaletteColor[];
+}
+
 export type TimingInput = Omit<TimingItem, "id">;
 export type VendorTimingInput = Omit<VendorTimingItem, "id">;
 export type GuestInput = Omit<Guest, "id">;
@@ -72,6 +81,8 @@ export const MAX_AESTHETIC_PHOTOS = 12;
 const MAX_PALETTE = 24;
 const MAX_TIMING = 100;
 const HEX = /^#[0-9a-f]{6}$/i;
+const MAX_FONT_TEXT = 1000;
+const MAX_IDEAS_TEXT = 4000;
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 function cleanTiming(input: TimingInput): TimingInput {
@@ -185,6 +196,10 @@ function withPlannerDefaults(couple: Couple): LoadedCouple {
   couple.music.hiddenMoments ??= [];
   couple.family ??= [];
   couple.aesthetic ??= { fonts: "", palette: [], photoIds: [] };
+  couple.aesthetic.titleFont ??= "";
+  couple.aesthetic.bodyFont ??= "";
+  couple.aesthetic.ideas ??= "";
+  couple.aesthetic.web ??= { option: null, choices: {} };
   couple.timing ??= [];
   couple.vendorTiming ??= [];
   couple.guests ??= [];
@@ -717,6 +732,31 @@ export class PortalService {
       c.aesthetic.fonts = input.fonts.trim();
       c.aesthetic.palette = palette;
       c.publicInfo.dressCode = input.dressCode.trim();
+    });
+  }
+
+  /** Estética General; clears the legacy `fonts` text, which the form shows as the title font until saved. */
+  async saveAestheticGeneral(coupleId: string, input: AestheticGeneralInput): Promise<void> {
+    const palette = input.palette.slice(0, MAX_PALETTE).map((color) => {
+      if (!HEX.test(color.hex)) throw new Error("Each color must be #rrggbb");
+      return { name: color.name.trim().slice(0, 60), hex: color.hex.toLowerCase() };
+    });
+    await this.mutate(coupleId, (c) => {
+      c.aesthetic.fonts = "";
+      c.aesthetic.titleFont = input.titleFont.trim().slice(0, MAX_FONT_TEXT);
+      c.aesthetic.bodyFont = input.bodyFont.trim().slice(0, MAX_FONT_TEXT);
+      c.aesthetic.ideas = input.ideas.trim().slice(0, MAX_IDEAS_TEXT);
+      c.aesthetic.palette = palette;
+    });
+  }
+
+  /** Estética Web; the dress code choice also becomes the guest page's dress code. */
+  async saveAestheticWeb(coupleId: string, input: AestheticWeb): Promise<void> {
+    const web = cleanWebSelection(input);
+    const dressCode = webDressCode(web);
+    await this.mutate(coupleId, (c) => {
+      c.aesthetic.web = web;
+      if (dressCode !== null) c.publicInfo.dressCode = dressCode;
     });
   }
 

@@ -70,15 +70,13 @@ function PaletteEditor({ initial }: { initial: Aesthetic["palette"] }) {
   );
 }
 
-/** Fonts, dress code and palette, saved together. */
+/** Estética General: fonts, palette and ideas, saved together (photos upload on their own). */
 export function AestheticForm({
   aesthetic,
-  dressCode,
   save,
   coupleId,
 }: {
   aesthetic: Aesthetic;
-  dressCode: string;
   save: AestheticActions["save"];
   coupleId?: string;
 }) {
@@ -87,18 +85,24 @@ export function AestheticForm({
       <CoupleField coupleId={coupleId} />
       <section className="card space-y-5">
         <div>
-          <label htmlFor="ae-fonts" className="label">Tipografías que les gustan</label>
-          <textarea id="ae-fonts" name="fonts" rows={3} maxLength={1000} defaultValue={aesthetic.fonts} placeholder="Ej: Playfair Display para títulos, algo manuscrito para los nombres…" className="field" />
+          <label htmlFor="ae-title-font" className="label">Tipografía títulos</label>
+          {/* Older couples wrote all their fonts in one text; it shows here until the next save moves it. */}
+          <textarea id="ae-title-font" name="titleFont" rows={2} maxLength={1000} defaultValue={aesthetic.titleFont || aesthetic.fonts} placeholder="Ej: Playfair Display" className="field" />
+        </div>
+        <div>
+          <label htmlFor="ae-body-font" className="label">Tipografía textos</label>
+          <textarea id="ae-body-font" name="bodyFont" rows={2} maxLength={1000} defaultValue={aesthetic.bodyFont ?? ""} placeholder="Ej: Lora" className="field" />
           <p className="hint">Nombres de tipografías o links a ejemplos que les gusten.</p>
         </div>
         <div>
-          <label htmlFor="ae-dress" className="label">Código de vestimenta para los invitados</label>
-          <textarea id="ae-dress" name="dressCode" rows={3} maxLength={500} defaultValue={dressCode} placeholder="Ej: Elegante sport, evitar el blanco" className="field" />
+          <label htmlFor="ae-ideas" className="label">Ideas</label>
+          <textarea id="ae-ideas" name="ideas" rows={4} maxLength={4000} defaultValue={aesthetic.ideas ?? ""} placeholder="Ej: mucho verde, flores blancas, mesas largas…" className="field" />
+          <p className="hint">Abajo pueden sumar fotos de inspiración.</p>
         </div>
       </section>
       <section className="card space-y-4">
         <div>
-          <h3 className="section-title">Paleta de colores</h3>
+          <h3 className="section-title">Colores</h3>
           <p className="text-sm text-ink/60">Cada color con su nombre (opcional), como referencia para deco y papelería.</p>
         </div>
         <PaletteEditor initial={aesthetic.palette} />
@@ -148,8 +152,8 @@ export function AestheticPhotos({
     <section className="card space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="section-title">Fotos de los novios</h3>
-          <p className="text-sm text-ink/60">Solo las ven la pareja y el equipo Weddinas ·{photoIds.length} de {max}.</p>
+          <h3 className="section-title">Ideas: fotos de inspiración</h3>
+          <p className="text-sm text-ink/60">Fotos de los novios o de ideas que les gusten. Solo las ven la pareja y el equipo Weddinas · {photoIds.length} de {max}.</p>
         </div>
         {photoIds.length < max && (
           <form action={action} className="flex flex-col items-end gap-1">
@@ -175,7 +179,7 @@ export function AestheticPhotos({
           {photoIds.map((id, i) => (
             <li key={id} className="group relative">
               <a href={photoUrl(coupleId, id)} target="_blank" rel="noreferrer">
-                <img src={photoUrl(coupleId, id)} alt={`Foto ${i + 1} de los novios`} className="aspect-square w-full rounded-2xl object-cover ring-1 ring-forest/10" />
+                <img src={photoUrl(coupleId, id)} alt={`Foto de inspiración ${i + 1}`} className="aspect-square w-full rounded-2xl object-cover ring-1 ring-forest/10" />
               </a>
               <form action={remove} className="absolute top-2 right-2">
                 <CoupleField coupleId={formCouple} />

@@ -14,6 +14,7 @@ import {
 import type { BlockStatus, BriefField, LineState, PaymentKind } from "@/core/couple";
 import type { Adjustment, Currency } from "@/core/money";
 import type { BudgetItemInput } from "@/core/portal-service";
+import { readWebForm } from "@/core/web-options";
 import { requireAdmin } from "@/server/auth";
 import { files, portal } from "@/server/container";
 
@@ -213,6 +214,23 @@ const refresh = () => revalidatePath("/", "layout");
 export async function saveAesthetic(formData: FormData): Promise<void> {
   await requireAdmin();
   await portal.saveAesthetic(coupleOf(formData), aestheticInput(formData));
+  refresh();
+}
+
+export async function saveAestheticGeneral(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.saveAestheticGeneral(coupleOf(formData), {
+    titleFont: text(formData, "titleFont", 1000),
+    bodyFont: text(formData, "bodyFont", 1000),
+    ideas: text(formData, "ideas", 4000),
+    palette: aestheticInput(formData).palette,
+  });
+  refresh();
+}
+
+export async function saveAestheticWeb(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.saveAestheticWeb(coupleOf(formData), readWebForm(formData));
   refresh();
 }
 

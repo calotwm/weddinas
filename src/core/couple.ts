@@ -212,6 +212,25 @@ export interface Aesthetic {
   palette: PaletteColor[];
   /** Uploaded photos of the couple, served by /archivos to the couple and the team only. */
   photoIds: string[];
+  /** Estética General. Missing on couples saved before it existed; `fonts` is the older free text, moved to titleFont on save. */
+  titleFont?: string;
+  bodyFont?: string;
+  ideas?: string;
+  /** Estética Web: the sample web and one choice per item of the catalog in web-options.ts. */
+  web?: AestheticWeb;
+}
+
+/** One answer of Estética Web: a choice id of the item, plus the couple's text for "write your own" choices. */
+export interface WebItemChoice {
+  choice: string;
+  custom: string;
+}
+
+export interface AestheticWeb {
+  /** Picked sample web (1-4), or null. */
+  option: number | null;
+  /** By item id. */
+  choices: Record<string, WebItemChoice>;
 }
 
 /** One moment of the wedding day schedule. */
