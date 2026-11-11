@@ -90,6 +90,46 @@ describe("planner workspace", () => {
       await expect(service.addBudgetItem(coupleId, { ...base, dueDate: "20/11" })).rejects.toThrow();
     });
 
+    it("accepts intermediate payments and rejects unknown kinds", async () => {
+      const item = await service.addBudgetItem(coupleId, base);
+      await service.addPayment(coupleId, item.id, { date: "2026-10-30", amount: 100, currency: "ARS", arsPerUsd: null, kind: "intermedio", note: "" });
+      expect((await load()).budget.items[0].payments.map((p) => p.kind)).toEqual(["intermedio"]);
+      await expect(
+        service.addPayment(coupleId, item.id, { date: "2026-10-30", amount: 100, currency: "ARS", arsPerUsd: null, kind: "otro" as never, note: "" }),
+      ).rejects.toThrow("kind");
+    });
+
+    it("stores whether freight and travel expenses are included, unknown when missing", async () => {
+      const item = await service.addBudgetItem(coupleId, { ...base, freight: "yes" });
+      expect((await load()).budget.items[0].freight).toBe("yes");
+      await service.updateBudgetItem(coupleId, item.id, { ...base, freight: "no" });
+      expect((await load()).budget.items[0].freight).toBe("no");
+      await service.updateBudgetItem(coupleId, item.id, base);
+      expect((await load()).budget.items[0].freight).toBeUndefined();
+      await expect(service.addBudgetItem(coupleId, { ...base, freight: "maybe" as never })).rejects.toThrow("freight");
+    });
+
+    it("attaches a receipt file to a payment and returns the files to delete", async () => {
+      const item = await service.addBudgetItem(coupleId, base);
+      const payment = await service.addPayment(coupleId, item.id, { date: "2026-10-30", amount: 100, currency: "ARS", arsPerUsd: null, kind: "sena", note: "", receiptId: "a1b2c3d4-0000-4000-8000-000000000001.pdf" });
+      expect((await load()).budget.items[0].payments[0].receiptId).toBe("a1b2c3d4-0000-4000-8000-000000000001.pdf");
+      await expect(
+        service.addPayment(coupleId, item.id, { date: "2026-10-30", amount: 100, currency: "ARS", arsPerUsd: null, kind: "sena", note: "", receiptId: "../db.json" }),
+      ).rejects.toThrow("receipt");
+
+      const previous = await service.setPaymentReceipt(coupleId, item.id, payment.id, "a1b2c3d4-0000-4000-8000-000000000002.jpg");
+      expect(previous).toBe("a1b2c3d4-0000-4000-8000-000000000001.pdf");
+      expect((await load()).budget.items[0].payments[0].receiptId).toBe("a1b2c3d4-0000-4000-8000-000000000002.jpg");
+      await expect(service.setPaymentReceipt(coupleId, item.id, "nope", "a1b2c3d4-0000-4000-8000-000000000003.jpg")).rejects.toThrow("Payment");
+
+      expect(await service.deletePayment(coupleId, item.id, payment.id)).toBe("a1b2c3d4-0000-4000-8000-000000000002.jpg");
+      expect((await load()).budget.items[0].payments).toEqual([]);
+
+      await service.addPayment(coupleId, item.id, { date: "2026-10-30", amount: 100, currency: "ARS", arsPerUsd: null, kind: "sena", note: "", receiptId: "a1b2c3d4-0000-4000-8000-000000000004.png" });
+      await service.addPayment(coupleId, item.id, { date: "2026-10-31", amount: 100, currency: "ARS", arsPerUsd: null, kind: "saldo", note: "" });
+      expect(await service.deleteBudgetItem(coupleId, item.id)).toEqual(["a1b2c3d4-0000-4000-8000-000000000004.png"]);
+    });
+
     it("stores the dollar quote and guest count settings", async () => {
       await service.updateBudgetSettings(coupleId, { usdQuote: "oficial", guests: 180 });
       expect((await load()).budget).toMatchObject({ usdQuote: "oficial", guests: 180 });

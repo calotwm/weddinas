@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dueItems, isFullyPaid, paidLast, summarizeBudget, summarizeItem } from "./budget";
+import { briefPaymentLabel, dueItems, isFullyPaid, paidLast, paidVsPending, splitPaid, summarizeBudget, summarizeItem } from "./budget";
 import type { BudgetItem } from "./couple";
 import type { IpcSeries } from "./money";
 
@@ -108,5 +108,50 @@ describe("paidLast", () => {
   it("moves fully paid items to the end keeping the rest in order", () => {
     const paid = item({ id: "paid", payments: [{ id: "p", date: "2026-06-10", amount: 1000, currency: "ARS", arsPerUsd: null, kind: "saldo", note: "" }] });
     expect(paidLast([paid, item({ id: "a" }), item({ id: "b" })], null).map((i) => i.id)).toEqual(["a", "b", "paid"]);
+  });
+});
+
+const pay = (amount: number, currency: "ARS" | "USD" = "ARS") => ({ id: `p${amount}`, date: "2026-06-10", amount, currency, arsPerUsd: null, kind: "sena" as const, note: "" });
+
+describe("paidVsPending", () => {
+  it("splits the budget total in USD into what was paid and what is left", () => {
+    const items = [item({ currency: "USD", amount: 1000, payments: [pay(250, "USD")] }), item({ id: "b", currency: "USD", amount: 1000 })];
+    expect(paidVsPending(summarizeBudget(items, null, null))).toEqual({ paid: 250, pending: 1750, paidPercent: 13 });
+  });
+
+  it("is null without a total or when USD totals need a missing quote", () => {
+    expect(paidVsPending(summarizeBudget([], null, null))).toBeNull();
+    expect(paidVsPending(summarizeBudget([item({})], null, null))).toBeNull();
+  });
+});
+
+describe("splitPaid", () => {
+  it("separates items with a balance from fully paid ones, keeping order", () => {
+    const paid = item({ id: "paid", payments: [pay(1000)] });
+    const split = splitPaid([paid, item({ id: "a" }), item({ id: "b" })], null);
+    expect(split.owing.map((i) => i.id)).toEqual(["a", "b"]);
+    expect(split.paid.map((i) => i.id)).toEqual(["paid"]);
+  });
+});
+
+describe("briefPaymentLabel", () => {
+  const fmt = (n: number, c: "ARS" | "USD") => `${c} ${n}`;
+
+  it("is null when the budget has no item for the rubro", () => {
+    expect(briefPaymentLabel([item({ category: "dj" })], "catering", null, fmt)).toBeNull();
+  });
+
+  it("says fully paid when every item of the rubro is paid", () => {
+    expect(briefPaymentLabel([item({ payments: [pay(1000)] })], "catering", null, fmt)).toBe("Pago al 100%");
+  });
+
+  it("shows paid of total per currency, adding up the rubro's items", () => {
+    const items = [
+      item({ currency: "USD", amount: 1000, payments: [pay(300, "USD")] }),
+      item({ id: "b", currency: "USD", amount: 500 }),
+      item({ id: "c", amount: 2000, payments: [pay(500)] }),
+      item({ id: "d", category: "dj", currency: "USD", amount: 9000 }),
+    ];
+    expect(briefPaymentLabel(items, "catering", null, fmt)).toBe("Pagado USD 300 de USD 1500 · Pagado ARS 500 de ARS 2000");
   });
 });

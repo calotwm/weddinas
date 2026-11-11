@@ -85,7 +85,7 @@ export interface ChecklistTask {
   month?: string;
 }
 
-export type PaymentKind = "sena" | "saldo" | "adicional" | "iva";
+export type PaymentKind = "sena" | "saldo" | "adicional" | "iva" | "intermedio";
 
 export interface Payment {
   id: string;
@@ -97,7 +97,12 @@ export interface Payment {
   arsPerUsd: number | null;
   kind: PaymentKind;
   note: string;
+  /** Uploaded receipt (image or PDF) in the couple's files. Optional. */
+  receiptId?: string;
 }
+
+/** Whether a vendor's price includes freight and travel expenses; missing means unknown. */
+export type FreightIncluded = "yes" | "no";
 
 export interface BudgetItem {
   id: string;
@@ -113,6 +118,8 @@ export interface BudgetItem {
   note: string;
   /** "YYYY-MM-DD": next payment due date, used for the pending payments card and alerts. Optional. */
   dueDate?: string;
+  /** Freight/travel expenses included in the amount. Optional: missing means "sin dato". */
+  freight?: FreightIncluded;
   payments: Payment[];
 }
 

@@ -1,5 +1,5 @@
 import type { BudgetItem } from "./couple";
-import { adjustedAmount, convert, ipcFactor, type IpcSeries } from "./money";
+import { adjustedAmount, convert, ipcFactor, type Currency, type IpcSeries } from "./money";
 
 export interface ItemSummary {
   /** All amounts in the item's currency. */
@@ -111,6 +111,43 @@ export const isFullyPaid = (item: BudgetItem, ipc: IpcSeries | null) => summariz
 /** Items still being paid first, fully paid ones last; each group keeps its order. */
 export const paidLast = (items: BudgetItem[], ipc: IpcSeries | null) =>
   [...items].sort((a, b) => Number(isFullyPaid(a, ipc)) - Number(isFullyPaid(b, ipc)));
+
+/** Items still being paid and fully paid ones, each group in its original order. */
+export function splitPaid(items: BudgetItem[], ipc: IpcSeries | null): { owing: BudgetItem[]; paid: BudgetItem[] } {
+  const owing: BudgetItem[] = [];
+  const paid: BudgetItem[] = [];
+  for (const item of items) (isFullyPaid(item, ipc) ? paid : owing).push(item);
+  return { owing, paid };
+}
+
+/** The whole budget in USD split into paid and pending, for the paid-vs-pending chart; null without a USD total. */
+export function paidVsPending(summary: BudgetSummary): { paid: number; pending: number; paidPercent: number } | null {
+  const { paidUsd: paid, pendingUsd: pending } = summary;
+  if (paid === null || pending === null || paid + pending <= 0) return null;
+  return { paid, pending, paidPercent: Math.round((paid / (paid + pending)) * 100) };
+}
+
+/**
+ * What the budget says about a rubro's payments, for the brief's "Pago" line: "Pago al 100%", or what was paid of the
+ * total per currency. Null when the budget has no item for that rubro (the brief keeps its manual detail).
+ */
+export function briefPaymentLabel(
+  items: BudgetItem[],
+  category: string,
+  ipc: IpcSeries | null,
+  format: (amount: number, currency: Currency) => string,
+): string | null {
+  const own = items.filter((i) => i.category === category);
+  if (own.length === 0) return null;
+  if (own.every((i) => isFullyPaid(i, ipc))) return "Pago al 100%";
+  const totals = new Map<Currency, { paid: number; total: number }>();
+  for (const item of own) {
+    const s = summarizeItem(item, ipc);
+    const t = totals.get(item.currency) ?? { paid: 0, total: 0 };
+    totals.set(item.currency, { paid: round2(t.paid + s.paid), total: round2(t.total + s.total) });
+  }
+  return [...totals].map(([currency, t]) => `Pagado ${format(t.paid, currency)} de ${format(t.total, currency)}`).join(" · ");
+}
 
 export interface DueItem {
   item: BudgetItem;
