@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import {
   aestheticInput,
   guestInput,
+  importGuestList,
   pastedGuests,
+  type GuestImportResult,
   removeAestheticPhoto as dropPhoto,
   timingInput,
   uploadAestheticPhotos as savePhotos,
@@ -261,4 +263,11 @@ export async function deleteGuest(formData: FormData): Promise<void> {
   const coupleId = await requireCoupleId();
   await portal.deleteGuest(coupleId, text(formData, "guestId", 100));
   revalidatePath("/", "layout");
+}
+
+export async function importGuests(_prev: GuestImportResult, formData: FormData): Promise<GuestImportResult> {
+  const coupleId = await requireCoupleId();
+  const result = await importGuestList(coupleId, formData);
+  revalidatePath("/", "layout");
+  return result;
 }

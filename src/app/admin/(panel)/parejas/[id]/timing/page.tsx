@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
-import { TimingEditor } from "@/components/planner/timing";
+import { TimingEditor, VendorTimingEditor } from "@/components/planner/timing";
 import { addTimingItem, deleteTimingItem, updateTimingItem } from "@/app/admin/planner-actions";
+import { addVendorTimingItem, deleteVendorTimingItem, updateVendorTimingItem } from "@/app/admin/timing-actions";
 import { requireAdmin } from "@/server/auth";
 import { portal } from "@/server/container";
 
@@ -21,6 +22,11 @@ export default async function TimingAdminPage({ params }: { params: Promise<{ id
         timing={couple.timing}
         coupleId={couple.id}
         actions={{ add: addTimingItem, update: updateTimingItem, remove: deleteTimingItem }}
+      />
+      <VendorTimingEditor
+        items={couple.vendorTiming}
+        coupleId={couple.id}
+        actions={{ add: addVendorTimingItem, update: updateVendorTimingItem, remove: deleteVendorTimingItem }}
       />
     </div>
   );

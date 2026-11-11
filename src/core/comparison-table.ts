@@ -1,3 +1,4 @@
+import { xlsxLimitError } from "./uploads";
 /**
  * Vendor comparison tables ("cuadro comparativo"): the agency's own Excel, one vendor per row block,
  * turned into plain text cells the couple sees inside a proposal.
@@ -36,6 +37,8 @@ export interface ComparisonTable {
   fileName: string;
   uploadedAt: string;
   sheets: ComparisonSheet[];
+  /** The original .xlsx, kept as a team-only attachment of the same proposal. */
+  attachmentId?: string;
 }
 
 export type CellValue = string | number | null;
@@ -206,8 +209,23 @@ function toCellValue(value: unknown, numFmt: string | undefined): CellValue {
   return null;
 }
 
+/** The workbook is too large (or not a workbook) to open safely; thrown before exceljs inflates anything. */
+export class WorkbookLimitError extends Error {
+  constructor(readonly reason: "unreadable" | "too-big" | "too-many-sheets") {
+    super(`Workbook rejected: ${reason}`);
+  }
+}
+
+/** Message for a workbook over the limits; unreadable files keep each importer's own "could not read" message. */
+export const workbookLimitMessage = (reason: "too-big" | "too-many-sheets", what: string) =>
+  reason === "too-big"
+    ? `${what} es demasiado grande para leerlo. Dejá solo la hoja que hace falta y volvé a subirlo.`
+    : `${what} tiene demasiadas hojas. Dejá solo las que hacen falta y volvé a subirlo.`;
+
 /** Reads the visible sheets of an xlsx file into plain grids. */
 export async function readComparisonWorkbook(bytes: Uint8Array): Promise<GridSheet[]> {
+  const limit = xlsxLimitError(bytes);
+  if (limit) throw new WorkbookLimitError(limit);
   const { default: ExcelJS } = await import("exceljs");
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(Buffer.from(bytes) as unknown as Parameters<typeof workbook.xlsx.load>[0]);
@@ -239,7 +257,8 @@ export async function parseComparisonFile(fileName: string, bytes: Uint8Array, u
   let sheets: GridSheet[];
   try {
     sheets = await readComparisonWorkbook(bytes);
-  } catch {
+  } catch (e) {
+    if (e instanceof WorkbookLimitError && e.reason !== "unreadable") throw new ComparisonTableError(workbookLimitMessage(e.reason, "El cuadro"));
     throw new ComparisonTableError("No pudimos leer el cuadro. Descargalo de nuevo como .xlsx y volvé a subirlo.");
   }
   const name = (fileName.split(/[\\/]/).pop() ?? "").replace(/[<>:"|?*\u0000-\u001f]/g, "").trim().slice(0, 120) || "cuadro.xlsx";

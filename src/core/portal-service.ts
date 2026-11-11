@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { accessCodeFor, hashAccessCode } from "./access-code";
 import type { ComparisonTable } from "./comparison-table";
+import { byDayTime } from "./timing";
 import { normalizeWhatsapp } from "./whatsapp";
 import { BRIEF_CATALOG, catalogBlock, defaultBrief, defaultMusic, musicMomentKeys, newBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
 import {
@@ -33,8 +34,9 @@ import {
   type Report,
   type SongStatus,
   type TimingItem,
+  type VendorTimingItem,
 } from "./couple";
-import { GUEST_STATUSES, MAX_GUESTS } from "./guests";
+import { GUEST_AGES, GUEST_STATUSES, MAX_GUESTS } from "./guests";
 import type { CoupleRepository } from "./ports";
 import { slugify } from "./slug";
 
@@ -62,6 +64,7 @@ export interface AestheticInput {
 }
 
 export type TimingInput = Omit<TimingItem, "id">;
+export type VendorTimingInput = Omit<VendorTimingItem, "id">;
 export type GuestInput = Omit<Guest, "id">;
 export type NewGuestInput = Pick<Guest, "name"> & Partial<Omit<Guest, "id" | "name">>;
 
@@ -78,19 +81,42 @@ function cleanTiming(input: TimingInput): TimingInput {
   return { time: input.time, title, note: input.note.trim() };
 }
 
+function cleanVendorTiming(input: VendorTimingInput): VendorTimingInput {
+  if (!HHMM.test(input.time)) throw new Error("Time must be HH:MM");
+  const category = input.category.trim();
+  if (!category) throw new Error("Rubro is required");
+  return { time: input.time, category, company: input.company.trim(), contact: input.contact.trim() };
+}
+
 function cleanGuest(input: NewGuestInput): GuestInput {
   const status: GuestStatus = input.status ?? "pending";
   if (!GUEST_STATUSES.includes(status)) throw new Error("Unknown guest status");
-  return {
+  if (input.age !== undefined && !GUEST_AGES.includes(input.age)) throw new Error("Unknown guest age");
+  const guest: GuestInput = {
     name: input.name.trim(),
     group: (input.group ?? "").trim(),
     status,
     table: (input.table ?? "").trim(),
     restriction: (input.restriction ?? "").trim(),
   };
+  // Optional fields are stored only when set, so older guests and blank answers stay as they were.
+  for (const key of ["lastName", "side", "transport", "phone"] as const) {
+    const value = (input[key] ?? "").trim();
+    if (value) guest[key] = value;
+  }
+  if (input.age) guest.age = input.age;
+  if (typeof input.travels === "boolean") guest.travels = input.travels;
+  return guest;
 }
 
-const byTime = (a: TimingItem, b: TimingItem) => a.time.localeCompare(b.time);
+/** Cleans new guests and gives them ids; blank names are skipped. */
+function newGuests(inputs: NewGuestInput[]): Guest[] {
+  return inputs
+    .map(cleanGuest)
+    .filter((g) => g.name)
+    .map((g) => ({ id: randomUUID(), ...g }));
+}
+
 
 export type AttachmentTarget = { kind: "brief"; key: string } | { kind: "proposal"; id: string } | { kind: "report"; id: string };
 
@@ -160,6 +186,7 @@ function withPlannerDefaults(couple: Couple): LoadedCouple {
   couple.family ??= [];
   couple.aesthetic ??= { fonts: "", palette: [], photoIds: [] };
   couple.timing ??= [];
+  couple.vendorTiming ??= [];
   couple.guests ??= [];
   couple.brief.forEach(withCatalogFields);
   return couple as LoadedCouple;
@@ -242,6 +269,7 @@ export class PortalService {
       family: [],
       aesthetic: { fonts: "", palette: [], photoIds: [] },
       timing: [],
+      vendorTiming: [],
       guests: [],
       createdAt: new Date().toISOString(),
     };
@@ -358,14 +386,36 @@ export class PortalService {
     });
   }
 
-  /** Sets or (with null) removes the comparison table shown inside a proposal. */
-  async setProposalComparison(coupleId: string, proposalId: string, table: ComparisonTable | null): Promise<void> {
+  /**
+   * Sets or (with null) removes the comparison table shown inside a proposal. `file` is the stored original,
+   * attached to the proposal for the team only. Returns the previous original's file id to delete, if still attached.
+   */
+  async setProposalComparison(
+    coupleId: string,
+    proposalId: string,
+    table: ComparisonTable | null,
+    file?: { id: string; name: string; size: number },
+  ): Promise<string | null> {
+    let removed: string | null = null;
     await this.mutate(coupleId, (c) => {
       const proposal = c.proposals.find((p) => p.id === proposalId);
       if (!proposal) throw new Error("Proposal not found");
-      if (table) proposal.comparison = table;
-      else delete proposal.comparison;
+      const attachments = (proposal.attachments ??= []);
+      const previous = attachments.findIndex((a) => a.id === proposal.comparison?.attachmentId);
+      if (previous >= 0) removed = attachments.splice(previous, 1)[0].id;
+      if (!table) {
+        delete proposal.comparison;
+        return;
+      }
+      proposal.comparison = { ...table };
+      delete proposal.comparison.attachmentId;
+      if (file) {
+        // Unlike the files the team attaches for the couple, the spreadsheet stays internal.
+        attachments.push({ id: file.id, name: safeFileName(file.name), size: file.size, uploadedAt: new Date().toISOString(), internal: true });
+        proposal.comparison.attachmentId = file.id;
+      }
     });
+    return removed;
   }
 
   async markNotificationsSeen(coupleId: string): Promise<void> {
@@ -424,6 +474,10 @@ export class PortalService {
       const list = attachmentsOf(c, target);
       const index = list.findIndex((a) => a.id === fileId);
       if (index >= 0) removed = list.splice(index, 1)[0].id;
+      if (target.kind === "proposal") {
+        const comparison = c.proposals.find((p) => p.id === target.id)?.comparison;
+        if (comparison?.attachmentId === fileId) delete comparison.attachmentId;
+      }
     });
     return removed;
   }
@@ -689,7 +743,7 @@ export class PortalService {
     await this.mutate(coupleId, (c) => {
       if (c.timing.length >= MAX_TIMING) throw new Error("Too many timing moments");
       c.timing.push(item);
-      c.timing.sort(byTime);
+      c.timing.sort(byDayTime);
     });
     return item;
   }
@@ -700,7 +754,7 @@ export class PortalService {
       const item = c.timing.find((t) => t.id === itemId);
       if (!item) throw new Error("Timing moment not found");
       Object.assign(item, clean);
-      c.timing.sort(byTime);
+      c.timing.sort(byDayTime);
     });
   }
 
@@ -710,12 +764,35 @@ export class PortalService {
     });
   }
 
+  async addVendorTimingItem(coupleId: string, input: VendorTimingInput): Promise<VendorTimingItem> {
+    const item: VendorTimingItem = { id: randomUUID(), ...cleanVendorTiming(input) };
+    await this.mutate(coupleId, (c) => {
+      if (c.vendorTiming.length >= MAX_TIMING) throw new Error("Too many vendor timing lines");
+      c.vendorTiming.push(item);
+      c.vendorTiming.sort(byDayTime);
+    });
+    return item;
+  }
+
+  async updateVendorTimingItem(coupleId: string, itemId: string, input: VendorTimingInput): Promise<void> {
+    const clean = cleanVendorTiming(input);
+    await this.mutate(coupleId, (c) => {
+      const item = c.vendorTiming.find((t) => t.id === itemId);
+      if (!item) throw new Error("Vendor timing line not found");
+      Object.assign(item, clean);
+      c.vendorTiming.sort(byDayTime);
+    });
+  }
+
+  async deleteVendorTimingItem(coupleId: string, itemId: string): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      c.vendorTiming = c.vendorTiming.filter((t) => t.id !== itemId);
+    });
+  }
+
   /** Adds one or many guests (pasted lists); blank names are skipped. */
   async addGuests(coupleId: string, inputs: NewGuestInput[]): Promise<Guest[]> {
-    const added: Guest[] = inputs
-      .map(cleanGuest)
-      .filter((g) => g.name)
-      .map((g) => ({ id: randomUUID(), ...g }));
+    const added = newGuests(inputs);
     await this.mutate(coupleId, (c) => {
       if (c.guests.length + added.length > MAX_GUESTS) throw new Error(`A list holds up to ${MAX_GUESTS} guests`);
       c.guests.push(...added);
@@ -723,13 +800,24 @@ export class PortalService {
     return added;
   }
 
+  /** Replaces the whole list (an imported Excel); same cleaning and limit as addGuests. */
+  async replaceGuests(coupleId: string, inputs: NewGuestInput[]): Promise<Guest[]> {
+    const guests = newGuests(inputs);
+    if (guests.length > MAX_GUESTS) throw new Error(`A list holds up to ${MAX_GUESTS} guests`);
+    await this.mutate(coupleId, (c) => {
+      c.guests = guests;
+    });
+    return guests;
+  }
+
   async updateGuest(coupleId: string, guestId: string, input: GuestInput): Promise<void> {
     const clean = cleanGuest(input);
     if (!clean.name) throw new Error("Name is required");
     await this.mutate(coupleId, (c) => {
-      const guest = c.guests.find((g) => g.id === guestId);
-      if (!guest) throw new Error("Guest not found");
-      Object.assign(guest, clean);
+      const index = c.guests.findIndex((g) => g.id === guestId);
+      if (index === -1) throw new Error("Guest not found");
+      // Replaced rather than merged, so cleared optional fields go away.
+      c.guests[index] = { id: guestId, ...clean };
     });
   }
 

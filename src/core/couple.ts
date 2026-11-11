@@ -223,16 +223,40 @@ export interface TimingItem {
   note: string;
 }
 
-export type GuestStatus = "confirmed" | "pending" | "declined";
+/** One line of "Timing proveedores": when each vendor arrives (or sets up / leaves). */
+export interface VendorTimingItem {
+  id: string;
+  /** "HH:MM" (24 h). */
+  time: string;
+  /** Rubro ("Dj", "Ambientación"…). */
+  category: string;
+  company: string;
+  contact: string;
+}
+
+/** "pending": invitation not sent yet; "sent": sent, no answer yet. */
+export type GuestStatus = "confirmed" | "pending" | "sent" | "declined";
+
+export type GuestAge = "adult" | "teen" | "child" | "baby";
 
 export interface Guest {
   id: string;
+  /** First name (or the whole name when there is no last name). */
   name: string;
+  /** Shown as "Relación" (Familia, Amigos…). */
   group: string;
   status: GuestStatus;
   table: string;
-  /** Dietary restriction, free text (e.g. "Celíaco"). */
+  /** Menu or dietary restriction, free text (e.g. "Celíaco"); shown as "Menú". */
   restriction: string;
+  lastName?: string;
+  age?: GuestAge;
+  /** Which partner invited them. */
+  side?: string;
+  /** Shuttle ("combi") answer, free text. */
+  transport?: string;
+  travels?: boolean;
+  phone?: string;
 }
 
 export interface Couple {
@@ -262,13 +286,15 @@ export interface Couple {
   createdAt: string;
   /** WhatsApp number in international digits ("5491122334455"); the team's buttons open this chat. */
   whatsapp?: string;
+  /** Vendors' schedule for the day, edited by the team. */
+  vendorTiming?: VendorTimingItem[];
 }
 
 /** Couple data safe to expose outside the server boundary. */
 export type CoupleView = Omit<Couple, "accessCodeHash"> & Required<Pick<Couple, CoupleSection>>;
 
 /** Optional in storage, always present once loaded through the service. */
-export type CoupleSection = "aesthetic" | "timing" | "guests";
+export type CoupleSection = "aesthetic" | "timing" | "guests" | "vendorTiming";
 
 export type PublicPage = Pick<Couple, "slug" | "partnerA" | "partnerB" | "weddingDate" | "publicInfo">;
 

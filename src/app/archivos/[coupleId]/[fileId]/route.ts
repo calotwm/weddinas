@@ -1,4 +1,5 @@
 import { canAccessCouple } from "@/server/auth";
+import { contentDispositionForFileId } from "@/core/uploads";
 import { files } from "@/server/container";
 
 /** Serves a couple's uploaded file only to that couple or the team; anyone else gets a 404. */
@@ -10,7 +11,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ coupleI
   return new Response(new Uint8Array(file.bytes), {
     headers: {
       "Content-Type": file.mime,
-      "Content-Disposition": "inline",
+      "Content-Disposition": contentDispositionForFileId(fileId),
       "Cache-Control": "private, max-age=86400",
       "X-Content-Type-Options": "nosniff",
     },
