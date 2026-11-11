@@ -11,6 +11,14 @@ import {
   timingInput,
   uploadAestheticPhotos as savePhotos,
 } from "@/components/planner/section-forms";
+import { musicInput } from "@/components/planner/music";
+import {
+  addFamilyMemberFrom,
+  removeFamilyMemberFrom,
+  saveFamilyPhoto,
+  updateFamilyMemberFrom,
+  type FamilyPhotoResult,
+} from "@/app/portal/familia/family-forms";
 import type { BlockStatus, BriefField, LineState, PaymentKind } from "@/core/couple";
 import type { Adjustment, Currency } from "@/core/money";
 import type { BudgetItemInput } from "@/core/portal-service";
@@ -197,6 +205,39 @@ export async function removeMusicMoment(formData: FormData): Promise<void> {
   await requireAdmin();
   await portal.removeMusicMoment(text(formData, "coupleId", 100), text(formData, "moment", 60));
   revalidatePath("/", "layout");
+}
+
+// Música and Fotos familiares: the team edits the same data the couple does, through the same forms.
+
+export async function saveMusic(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.saveMusic(text(formData, "coupleId", 100), musicInput(formData));
+  revalidatePath("/", "layout");
+}
+
+export async function addFamilyMember(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await addFamilyMemberFrom(text(formData, "coupleId", 100), formData);
+  revalidatePath("/", "layout");
+}
+
+export async function updateFamilyMember(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await updateFamilyMemberFrom(text(formData, "coupleId", 100), formData);
+  revalidatePath("/", "layout");
+}
+
+export async function removeFamilyMember(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await removeFamilyMemberFrom(text(formData, "coupleId", 100), formData);
+  revalidatePath("/", "layout");
+}
+
+export async function uploadFamilyPhoto(_prev: FamilyPhotoResult, formData: FormData): Promise<FamilyPhotoResult> {
+  await requireAdmin();
+  const result = await saveFamilyPhoto(text(formData, "coupleId", 100), formData);
+  if (result?.ok) revalidatePath("/", "layout");
+  return result;
 }
 
 export async function saveIdeas(_prev: PlannerResult, formData: FormData): Promise<PlannerResult> {

@@ -92,6 +92,7 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
                     ) : (
                       <span className="chip bg-sand py-0.5 text-ink/70">Borrador</span>
                     )}
+                    {p.finalist && p.status !== "discarded" && <span className="chip bg-teal/15 py-0.5 text-forest">Finalista</span>}
                   </div>
                   <p className="text-xs text-ink/50">
                     {isPresented(p) ? "Presentada" : "Creada"} {formatShortDate(p.presentedAt ?? p.createdAt)}

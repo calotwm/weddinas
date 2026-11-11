@@ -67,6 +67,8 @@ export interface Proposal {
   viewedAt?: string | null;
   /** Vendor comparison table parsed from the agency's Excel; its original file is kept apart. */
   comparison?: ComparisonTable | null;
+  /** The couple shortlisted it ("Finalista"); independent of the status. Missing until first marked. */
+  finalist?: boolean;
 }
 
 export interface Report {
@@ -198,6 +200,8 @@ export interface FamilyMember {
   relation: string;
   /** Uploaded reference photo so the photographer can recognize them. */
   photoId: string | null;
+  /** "Aclaraciones" for the photographer (dress color, a distinctive trait). Missing on members saved before it existed. */
+  notes?: string;
 }
 
 export interface PaletteColor {

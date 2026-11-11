@@ -5,8 +5,9 @@ function SheetTable({ sheet }: { sheet: ComparisonSheet }) {
   let lastGroup: string | undefined;
 
   return (
-    // Scrolls sideways on phones instead of squeezing the columns.
-    <div className="-mx-1 overflow-x-auto px-1 pb-1">
+    // Scrolls both ways inside its own box, so the header row and the vendor column stay fixed while reading.
+    // `isolate` keeps the sticky cells' z-index inside the table, below the portal's sticky top bar.
+    <div className="isolate max-h-[75vh] overflow-auto overscroll-contain rounded-xl pb-1 ring-1 ring-forest/10">
       <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
         <thead>
           <tr>
@@ -14,7 +15,7 @@ function SheetTable({ sheet }: { sheet: ComparisonSheet }) {
               <th
                 key={i}
                 scope="col"
-                className={`border-b border-forest/15 bg-sand px-3 py-2 align-bottom text-xs font-semibold text-forest ${i === 0 ? "sticky left-0 z-10 rounded-tl-xl" : ""} ${i === span - 1 ? "rounded-tr-xl" : ""}`}
+                className={`sticky top-0 border-b border-forest/15 bg-sand px-3 py-2 align-bottom text-xs font-semibold text-forest ${i === 0 ? "left-0 z-30" : "z-20"}`}
               >
                 {column}
               </th>
@@ -41,7 +42,8 @@ function SheetTable({ sheet }: { sheet: ComparisonSheet }) {
                     <th
                       scope="rowgroup"
                       rowSpan={vendor.rows.length}
-                      className="sticky left-0 z-10 border-b border-forest/10 bg-inherit px-3 py-2 align-top font-semibold whitespace-pre-line text-forest"
+                      // Opaque, so the cells scrolling underneath do not show through.
+                      className={`sticky left-0 z-10 min-w-36 border-r border-b border-forest/10 px-3 py-2 align-top font-semibold whitespace-pre-line text-forest ${v % 2 === 1 ? "bg-cream" : "bg-white"}`}
                     >
                       {vendor.name}
                     </th>

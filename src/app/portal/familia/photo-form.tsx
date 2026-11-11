@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { Icon } from "@/components/icons";
-import { uploadFamilyPhoto } from "../actions";
+import type { FamilyPhotoResult } from "./family-forms";
 
 function PickButton({ inputId, hasPhoto }: { inputId: string; hasPhoto: boolean }) {
   const { pending } = useFormStatus();
@@ -15,13 +15,24 @@ function PickButton({ inputId, hasPhoto }: { inputId: string; hasPhoto: boolean 
   );
 }
 
-/** Uploads as soon as a photo is picked. */
-export function PhotoForm({ memberId, hasPhoto }: { memberId: string; hasPhoto: boolean }) {
-  const [state, action] = useActionState(uploadFamilyPhoto, null);
+/** Uploads as soon as a photo is picked. `coupleId` goes along for the team's action; the couple's reads the session. */
+export function PhotoForm({
+  memberId,
+  hasPhoto,
+  upload,
+  coupleId,
+}: {
+  memberId: string;
+  hasPhoto: boolean;
+  upload: (prev: FamilyPhotoResult, formData: FormData) => Promise<FamilyPhotoResult>;
+  coupleId?: string;
+}) {
+  const [state, action] = useActionState(upload, null);
   const inputId = `photo-${memberId}`;
 
   return (
     <form action={action} className="flex flex-col items-end gap-1">
+      {coupleId && <input type="hidden" name="coupleId" value={coupleId} />}
       <input type="hidden" name="memberId" value={memberId} />
       <PickButton inputId={inputId} hasPhoto={hasPhoto} />
       <input
