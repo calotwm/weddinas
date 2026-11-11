@@ -112,6 +112,19 @@ describe("planner workspace", () => {
       expect((await load()).brief.some((b) => b.key === "cotillon")).toBe(false);
     });
 
+    it("keeps each line's state and drops unknown ones", async () => {
+      await service.addBriefBlock(coupleId, "cotillon");
+      const [first, second, third] = (await load()).brief.find((b) => b.key === "cotillon")!.fields;
+      const fields = [
+        { ...first, state: "couple" as const },
+        { ...second, state: "bogus" as never },
+        { ...third, state: "" as never },
+      ];
+      await service.updateBriefBlock(coupleId, "cotillon", { vendor: "", contact: "", status: "searching", owner: "", fields });
+      const saved = (await load()).brief.find((b) => b.key === "cotillon")!.fields;
+      expect(saved.slice(0, 3).map((f) => f.state)).toEqual(["couple", undefined, undefined]);
+    });
+
     it("gives stored vendor blocks the common fields, renaming old labels without losing their detail", async () => {
       const stored = JSON.parse(readFileSync(file, "utf8"));
       const espacio = stored[0].brief.find((b: { key: string }) => b.key === "espacio");

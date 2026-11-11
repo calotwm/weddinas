@@ -3,6 +3,7 @@ import { accessCodeFor, hashAccessCode } from "./access-code";
 import { BRIEF_CATALOG, catalogBlock, defaultBrief, defaultMusic, musicMomentKeys, newBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
 import {
   emptyPublicInfo,
+  isLineState,
   isPresented,
   type Attachment,
   type BlockStatus,
@@ -535,7 +536,7 @@ export class PortalService {
       setBlockStatus(block, update.status);
       block.owner = update.owner.trim();
       block.fields = update.fields
-        .map((f) => ({ label: f.label.trim(), detail: f.detail.trim(), note: f.note.trim() }))
+        .map((f) => ({ label: f.label.trim(), detail: f.detail.trim(), note: f.note.trim(), ...(isLineState(f.state) && { state: f.state }) }))
         .filter((f) => f.label);
     });
   }
