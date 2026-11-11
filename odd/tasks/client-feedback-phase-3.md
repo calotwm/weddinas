@@ -1,0 +1,31 @@
+# Client feedback, phase 3 (client answers of 2026-11-11)
+
+Objective: build what the client's answers unlock: comparison tables from their Excel, "Temas del mes", brief line states, reminders, payment wording and the WhatsApp button.
+Branch: `feat/client-feedback-phase-3` · Delivery: ask-on-risk · Test runner: `npx vitest run` · UI copy in Spanish (rioplatense "ustedes" for the couple, "vos" for the team), code/comments in English.
+
+## Specs
+
+Client quotes are verbatim from her answers (L1).
+
+- S1. Comparison table: "Cada 'proveedor' tiene su cuadro comparativo ... Las chicas lo que hacen es completar eso y compartirselos a los novios junto con cada propuesta ... quizas ver la manera de que carguen ese cuadro a la app y de ahí ya se transforme en el formato comparativo de la app." The team uploads the rubro's .xlsx (models in `Downloads/Modelos cuadros`: header row, one vendor per row block, merged vendor cells spanning several rows, optional second header row like "Producto / Valor", side cells such as "DOLAR HOY" after an empty column, sometimes several sheets) to a proposal; the app parses it and the couple sees it as a table inside that proposal. Assumption: one table per proposal, replaceable; the original file stays downloadable as an attachment.
+- S2. Temas del mes: "Nuestra idea es que el mensaje que le mandamos a los novios mes a mes sea directamente por ahí ... No es algo estandar que esta prearmado sino que lo armamos mes a mes para ver los pendientes activos. Capaz se le puede cambiar el nombre en vez de 'checklist' por 'temas del mes' o algo así." Rename "Checklist" to "Temas del mes" in the couple portal and team panel (UI copy only; routes and data keep their names). The team can send this month's topics to the couple with the WhatsApp button (S6).
+- S3. Brief line states: "Violeta - Pendiente Weddinas / Amarillo - Pendiente novios / Naranja - Pendiente proveedor / Verde - Confirmado". Each brief line (field) gets an optional state the team sets; team and couple see it as a colored mark with its label.
+- S4. Reminder: "A los 2 días de enviada la propuesta y si se puede elegir horario que sea a las 19:00 hs". A presented proposal still pending at 19:00 (Argentina time) of the second day after it was presented shows a "Recordar a los novios" alert to the team, with the WhatsApp button (S6). Assumption: no automatic message channel exists yet, so the reminder is the team alert plus the one-tap WhatsApp message.
+- S5. Payments wording: "Figura en la parte de presupuesto. Prefiero que diga 'Pago al 100%' y 'Pago' y el numero y no la palabra 'pagado'". In Presupuesto (couple and team): "Pagado al 100%" → "Pago al 100%", "Pagado"/"Ya pagado" labels → "Pago".
+- S6. WhatsApp: "Sii, con el botón estaría perfecto!" (proposal: store the couple's WhatsApp number; when the team presents something, an "Avisar por WhatsApp" button opens the chat with the message already written and the link). Couple gets an optional WhatsApp number (team edits it in General); buttons open `https://wa.me/<digits>?text=<message>`: after presenting a proposal, on the reminder alert (S4) and on Temas del mes (S2). Without a number, the button opens WhatsApp to pick the contact.
+- S7. "Página web para invitados: Si, por ahora reemplazamos eso y dejamos de lado lo de la página web" — nothing to change (phase 2 already removed the links). "Títulos de proveedores ... está perfecto como lo hicieron" — nothing to change.
+
+## Tasks
+
+- [ ] T1 [S1] comparison table import — delegated writer (worktree) — Risk item 5 (new xlsx dependency)
+- [ ] T2 [S5, S2 rename] wording — inline
+- [ ] T3 [S3] brief line states — inline
+- [ ] T4 [S6, S4, S2 send] WhatsApp number, buttons, reminder alert — inline
+- [ ] T5 merge, suite, build, smoke — inline
+
+Route evidence: T1 is an independent unit (parser, dependency, upload action, table view; several files, 300+ lines) running in parallel with the inline T2–T4 (Writer trigger a). Shared files (`src/core/couple.ts`, `src/core/portal-service.ts`) are append-only per unit; the parent merges.
+
+## Log
+
+- L1 (2026-11-11) User: "claude nos paso esto" + client answers: "1. Cuadro comparativo de propuestas: Cada "proveedor" tiene su cuadro comparativo. Les muestro como son: https://drive.google.com/drive/folders/1WyNMMLzHIN4aMlE6dmPDFOsF8l1f4sSj?usp=sharing. Las chicas lo que hacen es completar eso y compartirselos a los novios junto con cada propuesta y hace poco empezaron a hacer esos cuadros con claude como para optimizar tiempo entonces quizas ver la manera de que carguen ese cuadro a la app y de ahí ya se transforme en el formato comparativo de la app. Cualquier cosa les mando una fotito de como me lo imagino! 2. Checklist mes a mes: Nuestra idea es que el mensaje que le mandamos a los novios mes a mes sea directamente por ahí. Adjunto foto abajo de lo que sería. No es algo estandar que esta prearmado sino que lo armamos mes a mes para ver los pendientes activos. Capaz se le puede cambiar el nombre en vez de "checklist" por "temas del mes" o algo así 3. Estados por lineas en el brief: Violeta - Pendiente Weddinas, Amarillo - Pendiente novios, Naranja - Pendiente proveedor, Verde - Confirmado 4. Página web para invitados: Si, por ahora reemplazamos eso y dejamos de lado lo de la página web 5. Recordatorio a los novios: A los 2 días de enviada la propuesta y si se puede elegir horario que sea a las 19:00 hs 6. Títulos de proveedores: Perdón, me quedó mal anotado pero está perfecto como lo hicieron! 7. La palabra "pagado": Figura en la parte de presupuesto. Prefiero que diga "Pago al 100%" y "Pago" y el numero y no la palabra "pagado" 8. Prioridades: No entendí a que se refieren! Propuesta para avisos por WhatsApp: Sii, con el botón estaría perfecto!" — "aca esta lo que estaria en el link C:\Users\cseifar\Downloads\Modelos cuadros-20261111T124151Z-1-001\Modelos cuadros"
+- L2 The photos she mentions (her idea of the table, the monthly message) did not come with the answers; built from the Excel models and her text.
