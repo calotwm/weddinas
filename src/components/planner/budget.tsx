@@ -35,7 +35,7 @@ export function RatesNote({ ipc, quote }: { ipc: IpcSeries | null; quote: UsdQuo
       <span className="inline-flex items-center gap-1.5">
         <Icon name="sparkle" className="h-3.5 w-3.5" />
         {quote
-          ? `Dólar ${quote.label.toLowerCase()}: ${formatMoney(quote.rate, "ARS")} (promedio entre compra y venta, según dolarapi.com)`
+          ? `Dólar ${quote.label.toLowerCase()}: ${formatMoney(quote.rate, "ARS")} (promedio entre compra y venta, según ${quote.kind === "blue" ? "DolarHoy" : "dolarapi.com"})`
           : "Cotización del dólar no disponible"}
       </span>
       <span className="inline-flex items-center gap-1.5">
