@@ -1,4 +1,5 @@
 import type { BriefBlock, Music, SongChoice } from "./couple";
+import { slugify } from "./slug";
 
 export interface CatalogBlock {
   key: string;
@@ -70,7 +71,27 @@ export const BRIEF_CATALOG: CatalogBlock[] = [
 
 export const catalogBlock = (key: string) => BRIEF_CATALOG.find((b) => b.key === key);
 
-export const categoryName = (key: string) => catalogBlock(key)?.name ?? key;
+/** Rubros the team adds by name ("Fuegos artificiales") get this key prefix plus the name's slug. */
+export const CUSTOM_BLOCK_PREFIX = "custom-";
+export const CUSTOM_BLOCK_NAME_MAX = 60;
+/** Forms send block keys capped at 60 characters. */
+const CUSTOM_BLOCK_KEY_MAX = 60;
+
+export const customBlockKey = (name: string) =>
+  `${CUSTOM_BLOCK_PREFIX}${slugify(name).slice(0, CUSTOM_BLOCK_KEY_MAX - CUSTOM_BLOCK_PREFIX.length).replace(/-+$/, "")}`;
+
+/** Catalog name, else the couple's stored block name (custom rubros), else a readable form of a custom key. */
+export function categoryName(key: string, brief?: ReadonlyArray<Pick<BriefBlock, "key" | "name">>): string {
+  const name = catalogBlock(key)?.name ?? brief?.find((b) => b.key === key)?.name;
+  if (name) return name;
+  if (!key.startsWith(CUSTOM_BLOCK_PREFIX)) return key;
+  const words = key.slice(CUSTOM_BLOCK_PREFIX.length).replace(/-/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** A vendor block for a rubro outside the catalog, with the fields every vendor shows. */
+export const newCustomBriefBlock = (name: string): BriefBlock =>
+  newBriefBlock({ key: customBlockKey(name), name, kind: "vendor", fields: [...VENDOR_COMMON_FIELDS] });
 
 export function newBriefBlock(entry: CatalogBlock): BriefBlock {
   return {

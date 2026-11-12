@@ -34,8 +34,13 @@ export default async function VendorsAdminPage({ searchParams }: { searchParams:
       (!query || [block.vendor, block.contact, block.name, coupleNames(couple)].some((text) => normalize(text).includes(query))),
   );
 
+  // Grouped by rubro key, so a custom rubro ("Fuegos artificiales") of any wedding gets its own group under one name.
+  const rubroName = new Map(categories);
   const groups = new Map<string, VendorRow[]>();
-  for (const row of visible) groups.set(row.block.name, [...(groups.get(row.block.name) ?? []), row]);
+  for (const row of visible) {
+    const name = rubroName.get(row.block.key) ?? row.block.name;
+    groups.set(name, [...(groups.get(name) ?? []), row]);
+  }
   const sortedGroups = [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0], "es"));
   const filtered = Boolean(query || filters.rubro);
 

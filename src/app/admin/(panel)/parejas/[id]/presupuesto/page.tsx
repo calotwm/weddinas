@@ -1,27 +1,22 @@
 import { notFound } from "next/navigation";
+import { Fragment } from "react";
 import { Icon } from "@/components/icons";
-import { budgetCurrency, BudgetItemCard, BudgetOverview, DueAlert, orderedBudgetItems, RatesNote } from "@/components/planner/budget";
+import { BudgetItemCard, BudgetOverview, DueAlert, orderedBudgetItems, PaidDivider, RatesNote } from "@/components/planner/budget";
 import { SubmitButton } from "@/components/submit-button";
 import { BRIEF_CATALOG } from "@/core/brief-catalog";
 import { currentMonth, today } from "@/lib/format";
 import { requireAdmin } from "@/server/auth";
 import { portal } from "@/server/container";
 import { loadRates } from "@/server/rates";
-import { deleteBudgetItem, deletePayment, saveBudgetSettings } from "@/app/admin/planner-actions";
+import { deleteBudgetItem, deletePayment, saveBudgetSettings, uploadPaymentReceipt } from "@/app/admin/planner-actions";
+import { ReceiptForm } from "@/app/portal/presupuesto/receipt-form";
 import { BudgetItemForm, PaymentForm } from "./forms";
 
 export const dynamic = "force-dynamic";
 
 const CATEGORIES = BRIEF_CATALOG.filter((b) => b.kind === "vendor").map(({ key, name }) => ({ key, name }));
 
-export default async function BudgetAdminPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ moneda?: string }>;
-}) {
-  const currency = budgetCurrency((await searchParams).moneda);
+export default async function BudgetAdminPage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
   const couple = await portal.getCouple((await params).id);
   if (!couple) notFound();
@@ -56,7 +51,7 @@ export default async function BudgetAdminPage({
       </div>
 
       <DueAlert items={budget.items} ipc={ipc} today={today()} />
-      <BudgetOverview budget={budget} ipc={ipc} quote={quote} currency={currency} />
+      <BudgetOverview budget={budget} ipc={ipc} quote={quote} />
 
       <div className="grid gap-6 lg:grid-cols-[2fr_3fr]">
         <section className="card h-fit space-y-5 lg:sticky lg:top-24">
@@ -71,45 +66,51 @@ export default async function BudgetAdminPage({
               Todavía no hay ítems. Cargá el primer proveedor contratado.
             </div>
           )}
-          {orderedBudgetItems(budget.items, ipc).map(({ item, anchor }) => (
-            <BudgetItemCard
-              key={item.id}
-              item={item}
-              ipc={ipc}
-              anchor={anchor}
-              paymentAction={(p) => (
-                <form action={deletePayment}>
-                  {hidden}
-                  <input type="hidden" name="itemId" value={item.id} />
-                  <input type="hidden" name="paymentId" value={p.id} />
-                  <SubmitButton className="btn-icon" pendingText="…" confirm="¿Borrar este pago?">
-                    <Icon name="trash" className="h-4 w-4" />
-                    <span className="sr-only">Borrar pago</span>
-                  </SubmitButton>
-                </form>
-              )}
-            >
-              <PaymentForm coupleId={couple.id} item={item} today={today()} arsPerUsd={quote?.sell ?? null} />
-              <div className="flex items-start justify-between gap-2">
-                <details className="group min-w-0 flex-1">
-                  <summary className="btn-ghost btn-sm w-fit list-none">
-                    <Icon name="edit" className="h-3.5 w-3.5" />
-                    Editar ítem
-                  </summary>
-                  <div className="mt-4">
-                    <BudgetItemForm coupleId={couple.id} categories={CATEGORIES} defaultMonth={currentMonth()} item={item} />
-                  </div>
-                </details>
-                <form action={deleteBudgetItem}>
-                  {hidden}
-                  <input type="hidden" name="itemId" value={item.id} />
-                  <SubmitButton className="btn-icon" pendingText="…" confirm={`¿Borrar "${item.vendor || item.concept}" y sus pagos?`}>
-                    <Icon name="trash" className="h-4 w-4" />
-                    <span className="sr-only">Borrar ítem</span>
-                  </SubmitButton>
-                </form>
-              </div>
-            </BudgetItemCard>
+          {orderedBudgetItems(budget.items, ipc).map(({ item, anchor, firstPaid }) => (
+            <Fragment key={item.id}>
+              {firstPaid && <PaidDivider />}
+              <BudgetItemCard
+                coupleId={couple.id}
+                item={item}
+                ipc={ipc}
+                anchor={anchor}
+                paymentAction={(p) => (
+                  <form action={deletePayment}>
+                    {hidden}
+                    <input type="hidden" name="itemId" value={item.id} />
+                    <input type="hidden" name="paymentId" value={p.id} />
+                    <SubmitButton className="btn-icon" pendingText="…" confirm="¿Borrar este pago?">
+                      <Icon name="trash" className="h-4 w-4" />
+                      <span className="sr-only">Borrar pago</span>
+                    </SubmitButton>
+                  </form>
+                )}
+                receiptAction={(p) => (
+                  <ReceiptForm action={uploadPaymentReceipt} coupleId={couple.id} itemId={item.id} paymentId={p.id} replace={Boolean(p.receiptId)} />
+                )}
+              >
+                <PaymentForm coupleId={couple.id} item={item} today={today()} arsPerUsd={quote?.rate ?? null} />
+                <div className="flex items-start justify-between gap-2">
+                  <details className="group min-w-0 flex-1">
+                    <summary className="btn-ghost btn-sm w-fit list-none">
+                      <Icon name="edit" className="h-3.5 w-3.5" />
+                      Editar ítem
+                    </summary>
+                    <div className="mt-4">
+                      <BudgetItemForm coupleId={couple.id} categories={CATEGORIES} defaultMonth={currentMonth()} item={item} />
+                    </div>
+                  </details>
+                  <form action={deleteBudgetItem}>
+                    {hidden}
+                    <input type="hidden" name="itemId" value={item.id} />
+                    <SubmitButton className="btn-icon" pendingText="…" confirm={`¿Borrar "${item.vendor || item.concept}" y sus pagos?`}>
+                      <Icon name="trash" className="h-4 w-4" />
+                      <span className="sr-only">Borrar ítem</span>
+                    </SubmitButton>
+                  </form>
+                </div>
+              </BudgetItemCard>
+            </Fragment>
           ))}
         </section>
       </div>

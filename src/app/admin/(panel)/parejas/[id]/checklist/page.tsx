@@ -3,9 +3,9 @@ import { Icon } from "@/components/icons";
 import { ChecklistBoard } from "@/components/planner/checklist";
 import { SubmitButton } from "@/components/submit-button";
 import { WhatsappButton } from "@/components/whatsapp-button";
-import { checklistSections, coupleNames, type ChecklistTask } from "@/core/couple";
+import { checklistSections, type ChecklistTask } from "@/core/couple";
 import { monthTopicsMessage } from "@/core/whatsapp";
-import { currentMonth, formatMonth } from "@/lib/format";
+import { currentMonth } from "@/lib/format";
 import { requireAdmin } from "@/server/auth";
 import { portal } from "@/server/container";
 import { siteOrigin } from "@/server/site-url";
@@ -55,7 +55,7 @@ export default async function ChecklistAdminPage({ params }: { params: Promise<{
   const sections = checklistSections(couple.tasks, month);
   const topics = sections.thisMonth.filter((t) => !t.done).map((t) => t.title);
   const overdue = sections.overdue.map((t) => t.title);
-  const message = monthTopicsMessage(coupleNames(couple), formatMonth(month), topics, overdue, `${await siteOrigin()}/portal/checklist`);
+  const message = monthTopicsMessage(couple.partnerA, couple.partnerB, topics, overdue, `${await siteOrigin()}/portal/checklist`);
 
   return (
     <div className="card space-y-2">
@@ -66,9 +66,7 @@ export default async function ChecklistAdminPage({ params }: { params: Promise<{
             Cargá las tareas de cada mes. La pareja ve las pendientes de meses anteriores, las de este mes y las próximas.
           </p>
         </div>
-        {topics.length + overdue.length > 0 && (
-          <WhatsappButton phone={couple.whatsapp} text={message}>Enviar temas por WhatsApp</WhatsappButton>
-        )}
+        <WhatsappButton phone={couple.whatsapp} text={message}>Enviar temas por WhatsApp</WhatsappButton>
       </div>
 
       <form action={addChecklistTask} className="flex flex-wrap gap-2 pt-2 sm:flex-nowrap">

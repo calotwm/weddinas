@@ -8,7 +8,7 @@ export const LINE_STATE_DOT: Record<LineState, string> = {
   confirmed: "bg-green-600",
 };
 
-const LINE_STATE_CHIP: Record<LineState, string> = {
+export const LINE_STATE_CHIP: Record<LineState, string> = {
   weddinas: "bg-violet-100 text-violet-800",
   couple: "bg-yellow-100 text-yellow-900",
   vendor: "bg-orange-100 text-orange-800",

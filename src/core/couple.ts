@@ -67,6 +67,8 @@ export interface Proposal {
   viewedAt?: string | null;
   /** Vendor comparison table parsed from the agency's Excel; its original file is kept apart. */
   comparison?: ComparisonTable | null;
+  /** The couple shortlisted it ("Finalista"); independent of the status. Missing until first marked. */
+  finalist?: boolean;
 }
 
 export interface Report {
@@ -85,7 +87,7 @@ export interface ChecklistTask {
   month?: string;
 }
 
-export type PaymentKind = "sena" | "saldo" | "adicional" | "iva";
+export type PaymentKind = "sena" | "saldo" | "adicional" | "iva" | "intermedio";
 
 export interface Payment {
   id: string;
@@ -97,7 +99,12 @@ export interface Payment {
   arsPerUsd: number | null;
   kind: PaymentKind;
   note: string;
+  /** Uploaded receipt (image or PDF) in the couple's files. Optional. */
+  receiptId?: string;
 }
+
+/** Whether a vendor's price includes freight and travel expenses; missing means unknown. */
+export type FreightIncluded = "yes" | "no";
 
 export interface BudgetItem {
   id: string;
@@ -113,6 +120,8 @@ export interface BudgetItem {
   note: string;
   /** "YYYY-MM-DD": next payment due date, used for the pending payments card and alerts. Optional. */
   dueDate?: string;
+  /** Freight/travel expenses included in the amount. Optional: missing means "sin dato". */
+  freight?: FreightIncluded;
   payments: Payment[];
 }
 
@@ -198,6 +207,8 @@ export interface FamilyMember {
   relation: string;
   /** Uploaded reference photo so the photographer can recognize them. */
   photoId: string | null;
+  /** "Aclaraciones" for the photographer (dress color, a distinctive trait). Missing on members saved before it existed. */
+  notes?: string;
 }
 
 export interface PaletteColor {
@@ -212,6 +223,25 @@ export interface Aesthetic {
   palette: PaletteColor[];
   /** Uploaded photos of the couple, served by /archivos to the couple and the team only. */
   photoIds: string[];
+  /** Estética General. Missing on couples saved before it existed; `fonts` is the older free text, moved to titleFont on save. */
+  titleFont?: string;
+  bodyFont?: string;
+  ideas?: string;
+  /** Estética Web: the sample web and one choice per item of the catalog in web-options.ts. */
+  web?: AestheticWeb;
+}
+
+/** One answer of Estética Web: a choice id of the item, plus the couple's text for "write your own" choices. */
+export interface WebItemChoice {
+  choice: string;
+  custom: string;
+}
+
+export interface AestheticWeb {
+  /** Picked sample web (1-4), or null. */
+  option: number | null;
+  /** By item id. */
+  choices: Record<string, WebItemChoice>;
 }
 
 /** One moment of the wedding day schedule. */
@@ -288,13 +318,29 @@ export interface Couple {
   whatsapp?: string;
   /** Vendors' schedule for the day, edited by the team. */
   vendorTiming?: VendorTimingItem[];
+  /** Secret in the invitation form's webhook URL; created by the team, never shown to the couple. */
+  rsvpToken?: string;
+  /** Answers received from the invitation web, oldest first. */
+  rsvpInbox?: RsvpEntry[];
+}
+
+/** One RSVP answer from the invitation web; guestId is null until it is matched to a guest. */
+export interface RsvpEntry {
+  id: string;
+  receivedAt: string;
+  name: string;
+  attending: boolean | null;
+  menu: string;
+  song: string;
+  message: string;
+  guestId: string | null;
 }
 
 /** Couple data safe to expose outside the server boundary. */
-export type CoupleView = Omit<Couple, "accessCodeHash"> & Required<Pick<Couple, CoupleSection>>;
+export type CoupleView = Omit<Couple, "accessCodeHash" | "rsvpToken"> & Required<Pick<Couple, CoupleSection>>;
 
 /** Optional in storage, always present once loaded through the service. */
-export type CoupleSection = "aesthetic" | "timing" | "guests" | "vendorTiming";
+export type CoupleSection = "aesthetic" | "timing" | "guests" | "vendorTiming" | "rsvpInbox";
 
 export type PublicPage = Pick<Couple, "slug" | "partnerA" | "partnerB" | "weddingDate" | "publicInfo">;
 

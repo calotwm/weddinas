@@ -48,7 +48,7 @@ export default async function PaymentsAdminPage({ searchParams }: { searchParams
       const items = couple.budget.items.filter(
         (item) => (!onlyPending || !isFullyPaid(item, ipc)) && (!thisMonth || dueThisMonth.has(item.id)),
       );
-      const summary = summarizeBudget(couple.budget.items, ipc, snapshots[i].quote?.sell ?? null);
+      const summary = summarizeBudget(couple.budget.items, ipc, snapshots[i].quote?.rate ?? null);
       return { couple, items, pendingArs: summary.pendingArs, pendingUsd: summary.pendingUsd };
     })
     .filter((g) => g.items.length > 0);

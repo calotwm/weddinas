@@ -80,7 +80,7 @@ export default async function AllGuestsPage() {
       </section>
       {past.length > 0 && (
         <details className="card p-0 sm:p-0">
-          <summary className="cursor-pointer px-5 py-4 text-forest">Bodas que ya fueron ({past.length})</summary>
+          <summary className="cursor-pointer px-5 py-4 text-forest">Bodas realizadas ({past.length})</summary>
           {table(past)}
         </details>
       )}

@@ -28,7 +28,7 @@ describe("estética, timing and guests", () => {
     writeFileSync(file, JSON.stringify(stored));
 
     const couple = await load();
-    expect(couple.aesthetic).toEqual({ fonts: "", palette: [], photoIds: [] });
+    expect(couple.aesthetic).toEqual({ fonts: "", palette: [], photoIds: [], titleFont: "", bodyFont: "", ideas: "", web: { option: null, choices: {} } });
     expect(couple.timing).toEqual([]);
     expect(couple.guests).toEqual([]);
   });
@@ -57,6 +57,45 @@ describe("estética, timing and guests", () => {
         await expect(service.saveAesthetic(coupleId, { fonts: "x", dressCode: "y", palette: [{ name: "A", hex }] })).rejects.toThrow("color");
       }
       expect((await load()).aesthetic.fonts).toBe("");
+    });
+
+    it("saves the general part (fonts, palette, ideas), moving legacy fonts out and keeping the dress code", async () => {
+      await service.saveAesthetic(coupleId, { fonts: "Playfair", dressCode: "Formal", palette: [] });
+      await service.saveAestheticGeneral(coupleId, {
+        titleFont: "  Playfair Display ",
+        bodyFont: " Lora ",
+        ideas: " Mucho verde ",
+        palette: [{ name: " Salvia ", hex: "#9CAF88" }],
+      });
+      const couple = await load();
+      expect(couple.aesthetic).toMatchObject({ fonts: "", titleFont: "Playfair Display", bodyFont: "Lora", ideas: "Mucho verde", palette: [{ name: "Salvia", hex: "#9caf88" }] });
+      expect(couple.publicInfo.dressCode).toBe("Formal");
+      await expect(service.saveAestheticGeneral(coupleId, { titleFont: "", bodyFont: "", ideas: "", palette: [{ name: "", hex: "red" }] })).rejects.toThrow("color");
+      expect((await load()).aesthetic.titleFont).toBe("Playfair Display");
+    });
+
+    it("saves the web choices and mirrors the dress code to the guest page", async () => {
+      await service.saveAestheticWeb(coupleId, {
+        option: 2,
+        choices: { dressCode: { choice: "other", custom: " Blanco solo la novia " }, date: { choice: "dots", custom: "" } },
+      });
+      let couple = await load();
+      expect(couple.aesthetic.web).toEqual({
+        option: 2,
+        choices: { dressCode: { choice: "other", custom: "Blanco solo la novia" }, date: { choice: "dots", custom: "" } },
+      });
+      expect(couple.publicInfo.dressCode).toBe("Blanco solo la novia");
+
+      await service.saveAestheticWeb(coupleId, { option: null, choices: {} });
+      couple = await load();
+      expect(couple.aesthetic.web).toEqual({ option: null, choices: {} });
+      expect(couple.publicInfo.dressCode).toBe("Blanco solo la novia");
+    });
+
+    it("rejects a web choice outside its item and leaves the stored choices untouched", async () => {
+      await service.saveAestheticWeb(coupleId, { option: 1, choices: { date: { choice: "dots", custom: "" } } });
+      await expect(service.saveAestheticWeb(coupleId, { option: 1, choices: { date: { choice: "formal", custom: "" } } })).rejects.toThrow("web choice");
+      expect((await load()).aesthetic.web?.choices).toEqual({ date: { choice: "dots", custom: "" } });
     });
 
     it("adds photos up to the limit and removes them returning the file to delete", async () => {

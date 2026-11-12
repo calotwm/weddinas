@@ -5,7 +5,7 @@
  * - A summary block may sit above the list; the header row is the first row, within the first
  *   `headerRows` rows, that has both APELLIDO and NOMBRE. The first sheet with such a row is used.
  * - Columns are found by label, ignoring accents, case and spaces: APELLIDO, NOMBRE, EDAD, RSVP, MESA,
- *   MENÚ, COMBI, RELACIÓN, INVITADO, VIAJA, TELEFONO. Anything else (N, MUSICA, MENSAJE…) is ignored.
+ *   MENÚ, COMBI, RELACIÓN, INVITADO, TELEFONO. Anything else (N, MUSICA, MENSAJE, VIAJA…) is ignored.
  * - Rows without APELLIDO and NOMBRE are skipped (numbered template rows).
  * - EDAD Adulto/Teen/Niño/Bebé and RSVP Si/No/Enviado are mapped; unknown values stay empty / pending.
  */
@@ -33,7 +33,7 @@ const key = (value: string) =>
     .replace(/\s+/g, "")
     .toUpperCase();
 
-type Column = "lastName" | "name" | "age" | "status" | "table" | "restriction" | "transport" | "group" | "side" | "travels" | "phone";
+type Column = "lastName" | "name" | "age" | "status" | "table" | "restriction" | "transport" | "group" | "side" | "phone";
 
 const COLUMNS: Record<string, Column> = {
   APELLIDO: "lastName",
@@ -45,12 +45,11 @@ const COLUMNS: Record<string, Column> = {
   COMBI: "transport",
   RELACION: "group",
   INVITADO: "side",
-  VIAJA: "travels",
   TELEFONO: "phone",
 };
 
 /** Same limits as the guest forms. */
-const MAX_CHARS: Record<Exclude<Column, "age" | "status" | "travels">, number> = {
+const MAX_CHARS: Record<Exclude<Column, "age" | "status">, number> = {
   lastName: 80,
   name: 120,
   table: 40,
@@ -63,7 +62,6 @@ const MAX_CHARS: Record<Exclude<Column, "age" | "status" | "travels">, number> =
 
 const AGES: Record<string, GuestAge> = { ADULTO: "adult", TEEN: "teen", NINO: "child", BEBE: "baby" };
 const STATUSES: Record<string, GuestStatus> = { SI: "confirmed", NO: "declined", ENVIADO: "sent" };
-const YES_NO: Record<string, boolean> = { SI: true, NO: false };
 
 /** Cell text, trimmed; numbers keep no trailing ".0"; a lone "-" counts as empty. */
 function cellText(value: CellValue | undefined): string {
@@ -104,8 +102,6 @@ function rowGuest(cells: CellValue[], columns: Map<number, Column>): ImportedGue
     const value = cap(column);
     if (value) guest[column] = value;
   }
-  const travels = YES_NO[key(text.travels ?? "")];
-  if (travels !== undefined) guest.travels = travels;
   return guest;
 }
 

@@ -11,11 +11,21 @@ import {
   timingInput,
   uploadAestheticPhotos as savePhotos,
 } from "@/components/planner/section-forms";
+import { musicInput } from "@/components/planner/music";
+import {
+  addFamilyMemberFrom,
+  removeFamilyMemberFrom,
+  saveFamilyPhoto,
+  updateFamilyMemberFrom,
+  type FamilyPhotoResult,
+} from "@/app/portal/familia/family-forms";
 import type { BlockStatus, BriefField, LineState, PaymentKind } from "@/core/couple";
 import type { Adjustment, Currency } from "@/core/money";
 import type { BudgetItemInput } from "@/core/portal-service";
+import { readWebForm } from "@/core/web-options";
 import { requireAdmin } from "@/server/auth";
 import { files, portal } from "@/server/container";
+import { attachReceipt, deleteReceipts, pickedReceipt, saveReceipt, type ReceiptResult } from "@/server/receipts";
 
 const text = (formData: FormData, key: string, max = 4000) => String(formData.get(key) ?? "").trim().slice(0, max);
 
@@ -47,6 +57,7 @@ function budgetItemInput(formData: FormData): BudgetItemInput {
     baseMonth: text(formData, "baseMonth", 7),
     note: text(formData, "note", 500),
     dueDate: text(formData, "dueDate", 10),
+    freight: ["yes", "no"].includes(text(formData, "freight", 3)) ? (text(formData, "freight", 3) as "yes" | "no") : undefined,
   };
 }
 
@@ -73,7 +84,8 @@ export async function saveBudgetItem(_prev: PlannerResult, formData: FormData): 
 
 export async function deleteBudgetItem(formData: FormData): Promise<void> {
   await requireAdmin();
-  await portal.deleteBudgetItem(text(formData, "coupleId", 100), text(formData, "itemId", 100));
+  const coupleId = text(formData, "coupleId", 100);
+  await deleteReceipts(coupleId, await portal.deleteBudgetItem(coupleId, text(formData, "itemId", 100)));
   revalidatePath("/", "layout");
 }
 
@@ -84,16 +96,22 @@ export async function addPayment(_prev: PlannerResult, formData: FormData): Prom
   const date = text(formData, "date", 10);
   if (!(value > 0)) return { error: "Ingresá el monto pagado." };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Elegí la fecha del pago." };
+  const coupleId = text(formData, "coupleId", 100);
+  const receipt = pickedReceipt(formData);
+  const saved = receipt ? await saveReceipt(coupleId, receipt) : null;
+  if (saved && "error" in saved) return saved;
   try {
-    await portal.addPayment(text(formData, "coupleId", 100), text(formData, "itemId", 100), {
+    await portal.addPayment(coupleId, text(formData, "itemId", 100), {
       date,
       amount: value,
       currency: currency(formData),
       arsPerUsd: rate > 0 ? rate : null,
       kind: text(formData, "kind", 10) as PaymentKind,
       note: text(formData, "note", 300),
+      receiptId: saved?.id,
     });
   } catch (e) {
+    if (saved) await deleteReceipts(coupleId, [saved.id]);
     const message = e instanceof Error ? e.message : "";
     return { error: message.includes("exchange rate") ? "Si pagaron en otra moneda, cargá el tipo de cambio de ese día." : "No se pudo registrar el pago." };
   }
@@ -102,8 +120,16 @@ export async function addPayment(_prev: PlannerResult, formData: FormData): Prom
 
 export async function deletePayment(formData: FormData): Promise<void> {
   await requireAdmin();
-  await portal.deletePayment(text(formData, "coupleId", 100), text(formData, "itemId", 100), text(formData, "paymentId", 100));
+  const coupleId = text(formData, "coupleId", 100);
+  await deleteReceipts(coupleId, [await portal.deletePayment(coupleId, text(formData, "itemId", 100), text(formData, "paymentId", 100))]);
   revalidatePath("/", "layout");
+}
+
+export async function uploadPaymentReceipt(_prev: ReceiptResult, formData: FormData): Promise<ReceiptResult> {
+  await requireAdmin();
+  const result = await attachReceipt(text(formData, "coupleId", 100), formData);
+  if (result?.ok) revalidatePath("/", "layout");
+  return result;
 }
 
 export async function saveBudgetSettings(formData: FormData): Promise<void> {
@@ -199,6 +225,39 @@ export async function removeMusicMoment(formData: FormData): Promise<void> {
   revalidatePath("/", "layout");
 }
 
+// Música and Fotos familiares: the team edits the same data the couple does, through the same forms.
+
+export async function saveMusic(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.saveMusic(text(formData, "coupleId", 100), musicInput(formData));
+  revalidatePath("/", "layout");
+}
+
+export async function addFamilyMember(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await addFamilyMemberFrom(text(formData, "coupleId", 100), formData);
+  revalidatePath("/", "layout");
+}
+
+export async function updateFamilyMember(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await updateFamilyMemberFrom(text(formData, "coupleId", 100), formData);
+  revalidatePath("/", "layout");
+}
+
+export async function removeFamilyMember(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await removeFamilyMemberFrom(text(formData, "coupleId", 100), formData);
+  revalidatePath("/", "layout");
+}
+
+export async function uploadFamilyPhoto(_prev: FamilyPhotoResult, formData: FormData): Promise<FamilyPhotoResult> {
+  await requireAdmin();
+  const result = await saveFamilyPhoto(text(formData, "coupleId", 100), formData);
+  if (result?.ok) revalidatePath("/", "layout");
+  return result;
+}
+
 export async function saveIdeas(_prev: PlannerResult, formData: FormData): Promise<PlannerResult> {
   await requireAdmin();
   await portal.updateIdeas(text(formData, "coupleId", 100), text(formData, "ideas", 6000));
@@ -213,6 +272,23 @@ const refresh = () => revalidatePath("/", "layout");
 export async function saveAesthetic(formData: FormData): Promise<void> {
   await requireAdmin();
   await portal.saveAesthetic(coupleOf(formData), aestheticInput(formData));
+  refresh();
+}
+
+export async function saveAestheticGeneral(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.saveAestheticGeneral(coupleOf(formData), {
+    titleFont: text(formData, "titleFont", 1000),
+    bodyFont: text(formData, "bodyFont", 1000),
+    ideas: text(formData, "ideas", 4000),
+    palette: aestheticInput(formData).palette,
+  });
+  refresh();
+}
+
+export async function saveAestheticWeb(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.saveAestheticWeb(coupleOf(formData), readWebForm(formData));
   refresh();
 }
 
@@ -278,4 +354,30 @@ export async function importGuests(_prev: GuestImportResult, formData: FormData)
   const result = await importGuestList(coupleOf(formData), formData);
   refresh();
   return result;
+}
+
+// "Respuestas de la web": the Elementor invitation form posts to /api/rsvp/<coupleId>/<token>.
+
+export async function createRsvpLink(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.rsvpToken(coupleOf(formData));
+  refresh();
+}
+
+export async function rotateRsvpLink(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.rotateRsvpToken(coupleOf(formData));
+  refresh();
+}
+
+export async function assignRsvp(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.assignRsvp(coupleOf(formData), text(formData, "entryId", 100), text(formData, "guestId", 100)).catch(() => undefined);
+  refresh();
+}
+
+export async function dismissRsvp(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.dismissRsvp(coupleOf(formData), text(formData, "entryId", 100));
+  refresh();
 }

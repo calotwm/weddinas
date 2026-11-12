@@ -8,17 +8,22 @@ import {
   pastedGuests,
   type GuestImportResult,
   removeAestheticPhoto as dropPhoto,
-  timingInput,
   uploadAestheticPhotos as savePhotos,
 } from "@/components/planner/section-forms";
-import type { ScheduleItem, SongStatus } from "@/core/couple";
+import { musicInput } from "@/components/planner/music";
+import type { ScheduleItem } from "@/core/couple";
 import { normalizeAlias, normalizeCbu } from "@/core/gift";
 import { MAX_IMAGE_BYTES } from "@/core/uploads";
 import { safeHttpUrl as safeUrl } from "@/core/url";
+import { readWebForm } from "@/core/web-options";
 import { requireCoupleId } from "@/server/auth";
 import { files, portal } from "@/server/container";
+import { attachReceipt, type ReceiptResult } from "@/server/receipts";
+import { addFamilyMemberFrom, removeFamilyMemberFrom, saveFamilyPhoto, updateFamilyMemberFrom } from "./familia/family-forms";
 
 // Every action takes the couple id from the signed session, never from the form.
+// The couple only reads "Temas del mes" (and ticks them) and the timing: the team owns adding, removing and editing them,
+// so there are deliberately no task-creation, task-deletion or timing-write actions here.
 
 const text = (formData: FormData, key: string, max = 2000) => String(formData.get(key) ?? "").trim().slice(0, max);
 
@@ -57,6 +62,14 @@ export async function respondToProposal(formData: FormData): Promise<void> {
   revalidatePath("/admin", "layout");
 }
 
+/** "Finalista": the couple's shortlist; the service refuses drafts and discarded proposals. */
+export async function setProposalFinalist(formData: FormData): Promise<void> {
+  const coupleId = await requireCoupleId();
+  await portal.setProposalFinalist(coupleId, text(formData, "proposalId", 100), formData.get("finalist") === "true");
+  revalidatePath("/portal", "layout");
+  revalidatePath("/admin", "layout");
+}
+
 export async function commentOnProposal(formData: FormData): Promise<void> {
   const coupleId = await requireCoupleId();
   const comment = text(formData, "comment", 1000);
@@ -65,45 +78,15 @@ export async function commentOnProposal(formData: FormData): Promise<void> {
   revalidatePath("/admin", "layout");
 }
 
-export async function addTask(formData: FormData): Promise<void> {
-  const coupleId = await requireCoupleId();
-  const title = text(formData, "title", 200);
-  const month = text(formData, "month", 7);
-  if (title) await portal.addTask(coupleId, title, /^\d{4}-(0[1-9]|1[0-2])$/.test(month) ? month : undefined);
-  revalidatePath("/portal", "layout");
-}
-
 export async function toggleTask(formData: FormData): Promise<void> {
   const coupleId = await requireCoupleId();
   await portal.toggleTask(coupleId, text(formData, "taskId", 100));
   revalidatePath("/portal", "layout");
 }
 
-export async function deleteTask(formData: FormData): Promise<void> {
-  const coupleId = await requireCoupleId();
-  await portal.deleteTask(coupleId, text(formData, "taskId", 100));
-  revalidatePath("/portal", "layout");
-}
-
 export async function saveMusic(formData: FormData): Promise<void> {
   const coupleId = await requireCoupleId();
-  const moments = formData.getAll("moment").map(String);
-  const songs = formData.getAll("song").map((v) => String(v).slice(0, 200));
-  const artists = formData.getAll("artist").map((v) => String(v).slice(0, 200));
-  const statuses = formData.getAll("songStatus").map(String);
-  const notes = formData.getAll("songNote").map((v) => String(v).slice(0, 500));
-  await portal.saveMusic(coupleId, {
-    songs: moments.map((moment, i) => ({
-      moment,
-      song: songs[i] ?? "",
-      artist: artists[i] ?? "",
-      status: (statuses[i] ?? "pending") as SongStatus,
-      note: notes[i] ?? "",
-    })),
-    playlistUrl: safeUrl(text(formData, "playlistUrl", 500)),
-    mustPlay: text(formData, "mustPlay"),
-    banned: text(formData, "banned"),
-  });
+  await portal.saveMusic(coupleId, musicInput(formData));
   revalidatePath("/", "layout");
 }
 
@@ -125,20 +108,19 @@ export async function removeMusicMoment(formData: FormData): Promise<void> {
 
 export async function addFamilyMember(formData: FormData): Promise<void> {
   const coupleId = await requireCoupleId();
-  const name = text(formData, "name", 120);
-  if (!name) return;
-  await portal.addFamilyMember(coupleId, {
-    side: formData.get("side") === "b" ? "b" : "a",
-    name,
-    relation: text(formData, "relation", 80),
-  });
+  await addFamilyMemberFrom(coupleId, formData);
+  revalidatePath("/", "layout");
+}
+
+export async function updateFamilyMember(formData: FormData): Promise<void> {
+  const coupleId = await requireCoupleId();
+  await updateFamilyMemberFrom(coupleId, formData);
   revalidatePath("/", "layout");
 }
 
 export async function removeFamilyMember(formData: FormData): Promise<void> {
   const coupleId = await requireCoupleId();
-  const photoId = await portal.removeFamilyMember(coupleId, text(formData, "memberId", 100));
-  if (photoId) await files.delete(coupleId, photoId);
+  await removeFamilyMemberFrom(coupleId, formData);
   revalidatePath("/", "layout");
 }
 
@@ -146,28 +128,9 @@ export type PhotoResult = { error?: string; ok?: number } | null;
 
 export async function uploadFamilyPhoto(_prev: PhotoResult, formData: FormData): Promise<PhotoResult> {
   const coupleId = await requireCoupleId();
-  const memberId = text(formData, "memberId", 100);
-  const file = formData.get("photo");
-  if (!(file instanceof File) || file.size === 0) return { error: "Elegí una foto." };
-  if (file.size > MAX_IMAGE_BYTES) return { error: "La foto pesa más de 5 MB." };
-
-  let photoId: string;
-  try {
-    photoId = await files.saveImage(coupleId, new Uint8Array(await file.arrayBuffer()));
-  } catch {
-    return { error: "Subí una foto en JPG, PNG o WebP." };
-  }
-  let previous: string | null;
-  try {
-    previous = await portal.setFamilyPhoto(coupleId, memberId, photoId);
-  } catch {
-    await files.delete(coupleId, photoId);
-    return { error: "No encontramos a esa persona. Recargá la página." };
-  }
-  // The new photo is already saved; failing to remove the old file must not undo it.
-  if (previous) await files.delete(coupleId, previous).catch(() => undefined);
-  revalidatePath("/", "layout");
-  return { ok: Date.now() };
+  const result = await saveFamilyPhoto(coupleId, formData);
+  if (result?.ok) revalidatePath("/", "layout");
+  return result;
 }
 
 export async function uploadCoverPhoto(_prev: PhotoResult, formData: FormData): Promise<PhotoResult> {
@@ -207,6 +170,23 @@ export async function saveAesthetic(formData: FormData): Promise<void> {
   revalidatePath("/", "layout");
 }
 
+export async function saveAestheticGeneral(formData: FormData): Promise<void> {
+  const coupleId = await requireCoupleId();
+  await portal.saveAestheticGeneral(coupleId, {
+    titleFont: text(formData, "titleFont", 1000),
+    bodyFont: text(formData, "bodyFont", 1000),
+    ideas: text(formData, "ideas", 4000),
+    palette: aestheticInput(formData).palette,
+  });
+  revalidatePath("/", "layout");
+}
+
+export async function saveAestheticWeb(formData: FormData): Promise<void> {
+  const coupleId = await requireCoupleId();
+  await portal.saveAestheticWeb(coupleId, readWebForm(formData));
+  revalidatePath("/", "layout");
+}
+
 export async function uploadAestheticPhotos(_prev: PhotoResult, formData: FormData): Promise<PhotoResult> {
   const coupleId = await requireCoupleId();
   const result = await savePhotos(coupleId, formData);
@@ -218,26 +198,6 @@ export async function uploadAestheticPhotos(_prev: PhotoResult, formData: FormDa
 export async function removeAestheticPhoto(formData: FormData): Promise<void> {
   const coupleId = await requireCoupleId();
   await dropPhoto(coupleId, text(formData, "photoId", 100));
-  revalidatePath("/", "layout");
-}
-
-export async function addTimingItem(formData: FormData): Promise<void> {
-  const coupleId = await requireCoupleId();
-  const input = timingInput(formData);
-  if (input) await portal.addTimingItem(coupleId, input).catch(() => undefined);
-  revalidatePath("/", "layout");
-}
-
-export async function updateTimingItem(formData: FormData): Promise<void> {
-  const coupleId = await requireCoupleId();
-  const input = timingInput(formData);
-  if (input) await portal.updateTimingItem(coupleId, text(formData, "itemId", 100), input).catch(() => undefined);
-  revalidatePath("/", "layout");
-}
-
-export async function deleteTimingItem(formData: FormData): Promise<void> {
-  const coupleId = await requireCoupleId();
-  await portal.deleteTimingItem(coupleId, text(formData, "itemId", 100));
   revalidatePath("/", "layout");
 }
 
@@ -270,4 +230,25 @@ export async function importGuests(_prev: GuestImportResult, formData: FormData)
   const result = await importGuestList(coupleId, formData);
   revalidatePath("/", "layout");
   return result;
+}
+
+export async function uploadPaymentReceipt(_prev: ReceiptResult, formData: FormData): Promise<ReceiptResult> {
+  const coupleId = await requireCoupleId();
+  const result = await attachReceipt(coupleId, formData);
+  if (result?.ok) revalidatePath("/", "layout");
+  return result;
+}
+
+// Answers from the invitation web that did not match a guest: the couple can assign or dismiss them too.
+
+export async function assignRsvp(formData: FormData): Promise<void> {
+  const coupleId = await requireCoupleId();
+  await portal.assignRsvp(coupleId, text(formData, "entryId", 100), text(formData, "guestId", 100)).catch(() => undefined);
+  revalidatePath("/portal", "layout");
+}
+
+export async function dismissRsvp(formData: FormData): Promise<void> {
+  const coupleId = await requireCoupleId();
+  await portal.dismissRsvp(coupleId, text(formData, "entryId", 100));
+  revalidatePath("/portal", "layout");
 }

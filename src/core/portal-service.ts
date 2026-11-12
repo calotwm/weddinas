@@ -1,9 +1,12 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { matchGuest, plain, type RsvpAnswer } from "./rsvp";
 import { accessCodeFor, hashAccessCode } from "./access-code";
 import type { ComparisonTable } from "./comparison-table";
 import { byDayTime } from "./timing";
 import { normalizeWhatsapp } from "./whatsapp";
-import { BRIEF_CATALOG, catalogBlock, defaultBrief, defaultMusic, musicMomentKeys, newBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
+import { cleanWebSelection, webDressCode } from "./web-options";
+import type { AestheticWeb } from "./couple";
+import { BRIEF_CATALOG, catalogBlock, categoryName, CUSTOM_BLOCK_NAME_MAX, CUSTOM_BLOCK_PREFIX, defaultBrief, defaultMusic, musicMomentKeys, newBriefBlock, newCustomBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
 import {
   emptyPublicInfo,
   isLineState,
@@ -39,6 +42,7 @@ import {
 import { GUEST_AGES, GUEST_STATUSES, MAX_GUESTS } from "./guests";
 import type { CoupleRepository } from "./ports";
 import { slugify } from "./slug";
+import { isFileId } from "./uploads";
 
 export interface NewCoupleInput {
   partnerA: string;
@@ -63,6 +67,13 @@ export interface AestheticInput {
   palette: PaletteColor[];
 }
 
+export interface AestheticGeneralInput {
+  titleFont: string;
+  bodyFont: string;
+  ideas: string;
+  palette: PaletteColor[];
+}
+
 export type TimingInput = Omit<TimingItem, "id">;
 export type VendorTimingInput = Omit<VendorTimingItem, "id">;
 export type GuestInput = Omit<Guest, "id">;
@@ -72,6 +83,8 @@ export const MAX_AESTHETIC_PHOTOS = 12;
 const MAX_PALETTE = 24;
 const MAX_TIMING = 100;
 const HEX = /^#[0-9a-f]{6}$/i;
+const MAX_FONT_TEXT = 1000;
+const MAX_IDEAS_TEXT = 4000;
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 function cleanTiming(input: TimingInput): TimingInput {
@@ -139,21 +152,28 @@ function attachmentsOf(couple: Couple, target: AttachmentTarget): Attachment[] {
 
 const BLOCK_STATUSES: BlockStatus[] = ["searching", "deciding", "confirmed", "na"];
 const SONG_STATUSES: SongStatus[] = ["chosen", "pending", "na"];
-const PAYMENT_KINDS: PaymentKind[] = ["sena", "saldo", "adicional", "iva"];
+const PAYMENT_KINDS: PaymentKind[] = ["sena", "saldo", "adicional", "iva", "intermedio"];
 const BRIEF_ORDER = BRIEF_CATALOG.map((b) => b.key);
 const COMMENT_AUTHORS: CommentAuthor[] = ["couple", "team"];
 
 /** Adds the catalog block when the couple does not have it yet, keeping catalog order; returns the couple's block. */
 function ensureBriefBlock(couple: Couple, key: string): BriefBlock {
   const entry = catalogBlock(key);
-  if (!entry) throw new Error("Unknown brief block");
   let block = couple.brief.find((b) => b.key === key);
+  if (!entry && !block && !key.startsWith(CUSTOM_BLOCK_PREFIX)) throw new Error("Unknown brief block");
   if (!block) {
-    block = newBriefBlock(entry);
+    // A custom rubro removed after a proposal used it comes back under the name its key reads as.
+    block = entry ? newBriefBlock(entry) : { ...newCustomBriefBlock(categoryName(key)), key };
     couple.brief.push(block);
-    couple.brief.sort((a, b) => BRIEF_ORDER.indexOf(a.key) - BRIEF_ORDER.indexOf(b.key));
+    sortBrief(couple.brief);
   }
   return block;
+}
+
+/** Catalog order; custom rubros (outside the catalog) go last, in the order they were added. */
+function sortBrief(brief: BriefBlock[]) {
+  const rank = (key: string) => (BRIEF_ORDER.includes(key) ? BRIEF_ORDER.indexOf(key) : BRIEF_ORDER.length);
+  brief.sort((a, b) => rank(a.key) - rank(b.key));
 }
 
 /** Stamps the moment a block becomes confirmed (the couple's vendor notification) and clears it when it leaves that status. */
@@ -163,11 +183,12 @@ function setBlockStatus(block: BriefBlock, status: BlockStatus) {
   block.status = status;
 }
 
-/** An optional vendor rubro of the brief catalog; empty means "Sin rubro". */
-function proposalCategory(category: string | undefined): string | undefined {
+/** An optional vendor rubro of the brief catalog or one of the couple's custom rubros; empty means "Sin rubro". */
+function proposalCategory(category: string | undefined, brief: BriefBlock[]): string | undefined {
   const key = category?.trim();
   if (!key) return undefined;
-  if (catalogBlock(key)?.kind !== "vendor") throw new Error("Unknown proposal category");
+  const kind = catalogBlock(key)?.kind ?? brief.find((b) => b.key === key)?.kind;
+  if (kind !== "vendor") throw new Error("Unknown proposal category");
   return key;
 }
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -184,10 +205,16 @@ function withPlannerDefaults(couple: Couple): LoadedCouple {
   couple.music.customMoments ??= [];
   couple.music.hiddenMoments ??= [];
   couple.family ??= [];
+  for (const member of couple.family) member.notes ??= "";
   couple.aesthetic ??= { fonts: "", palette: [], photoIds: [] };
+  couple.aesthetic.titleFont ??= "";
+  couple.aesthetic.bodyFont ??= "";
+  couple.aesthetic.ideas ??= "";
+  couple.aesthetic.web ??= { option: null, choices: {} };
   couple.timing ??= [];
   couple.vendorTiming ??= [];
   couple.guests ??= [];
+  couple.rsvpInbox ??= [];
   couple.brief.forEach(withCatalogFields);
   return couple as LoadedCouple;
 }
@@ -200,6 +227,7 @@ function cleanBudgetItem(input: BudgetItemInput): BudgetItemInput {
   if (!MONTH.test(input.baseMonth)) throw new Error("Base month must be YYYY-MM");
   const dueDate = input.dueDate?.trim() ?? "";
   if (dueDate && !DAY.test(dueDate)) throw new Error("Due date must be YYYY-MM-DD");
+  if (input.freight !== undefined && input.freight !== "yes" && input.freight !== "no") throw new Error("Unknown freight value");
   return {
     category: input.category,
     vendor: input.vendor.trim(),
@@ -210,12 +238,33 @@ function cleanBudgetItem(input: BudgetItemInput): BudgetItemInput {
     baseMonth: input.baseMonth,
     note: input.note.trim(),
     dueDate,
+    freight: input.freight,
   };
+}
+
+/** A receipt must be one of the couple's uploaded images or PDFs (never a spreadsheet or a path). */
+function checkReceiptId(receiptId: string | undefined) {
+  if (receiptId !== undefined && (!isFileId(receiptId) || receiptId.endsWith(".xlsx"))) throw new Error("Invalid receipt file");
+}
+
+const MAX_RSVP_INBOX = 1000;
+
+function sameSecret(given: string, stored: string): boolean {
+  const a = Buffer.from(given);
+  const b = Buffer.from(stored);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+/** "Sí" confirms, "No" declines, no answer keeps the status; the menu replaces the restriction ("Sin restricciones" clears it). */
+function applyRsvp(guest: Guest, answer: Pick<RsvpAnswer, "attending" | "menu">) {
+  if (answer.attending !== null) guest.status = answer.attending ? "confirmed" : "declined";
+  if (answer.menu) guest.restriction = plain(answer.menu).startsWith("sin restric") ? "" : answer.menu;
 }
 
 function toView(couple: Couple): CoupleView {
   const view: Partial<Couple> = { ...withPlannerDefaults(couple) };
   delete view.accessCodeHash;
+  delete view.rsvpToken;
   return view as CoupleView;
 }
 
@@ -314,7 +363,6 @@ export class PortalService {
     input: { title: string; description: string; link?: string; amount?: string; category?: string },
     { present = true }: { present?: boolean } = {},
   ): Promise<Proposal> {
-    const category = proposalCategory(input.category);
     const createdAt = new Date().toISOString();
     const proposal: Proposal = {
       id: randomUUID(),
@@ -327,12 +375,35 @@ export class PortalService {
       createdAt,
       respondedAt: null,
       presentedAt: present ? createdAt : null,
-      ...(category ? { category } : {}),
     };
     await this.mutate(coupleId, (c) => {
+      const category = proposalCategory(input.category, c.brief);
+      if (category) proposal.category = category;
       c.proposals.unshift(proposal);
     });
     return proposal;
+  }
+
+  /** The team's edit of a proposal's content, on any status; validated like adding one. */
+  async updateProposal(
+    coupleId: string,
+    proposalId: string,
+    input: { title: string; description: string; link: string; amount: string; category: string },
+  ): Promise<void> {
+    const title = input.title.trim();
+    if (!title) throw new Error("Title is required");
+    await this.mutate(coupleId, (c) => {
+      const proposal = c.proposals.find((p) => p.id === proposalId);
+      if (!proposal) throw new Error("Proposal not found");
+      // An unchanged rubro stays even if its custom brief block was removed since.
+      const category = input.category.trim() === proposal.category ? proposal.category : proposalCategory(input.category, c.brief);
+      proposal.title = title;
+      proposal.description = input.description.trim();
+      proposal.link = input.link.trim();
+      proposal.amount = input.amount.trim();
+      if (category) proposal.category = category;
+      else delete proposal.category;
+    });
   }
 
   async respondToProposal(coupleId: string, proposalId: string, status: ProposalStatus, comment: string): Promise<void> {
@@ -354,6 +425,15 @@ export class PortalService {
       // A vendor the team already wrote in the brief is more precise than the proposal title, so it is kept.
       if (!block.vendor) block.vendor = proposal.title;
       setBlockStatus(block, "confirmed");
+    });
+  }
+
+  /** The couple's shortlist ("Finalista"): reversible and independent of the answer; drafts and discarded ones refuse it. */
+  async setProposalFinalist(coupleId: string, proposalId: string, finalist: boolean): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      const proposal = c.proposals.find((p) => p.id === proposalId);
+      if (!proposal || !isPresented(proposal) || proposal.status === "discarded") throw new Error("Proposal not found");
+      proposal.finalist = finalist;
     });
   }
 
@@ -560,16 +640,22 @@ export class PortalService {
     });
   }
 
-  async deleteBudgetItem(coupleId: string, itemId: string): Promise<void> {
+  /** Returns the receipt files of the removed payments so the caller can delete them. */
+  async deleteBudgetItem(coupleId: string, itemId: string): Promise<string[]> {
+    let receipts: string[] = [];
     await this.mutate(coupleId, (c) => {
+      const item = c.budget.items.find((i) => i.id === itemId);
+      receipts = (item?.payments ?? []).flatMap((p) => (p.receiptId ? [p.receiptId] : []));
       c.budget.items = c.budget.items.filter((i) => i.id !== itemId);
     });
+    return receipts;
   }
 
   async addPayment(coupleId: string, itemId: string, input: PaymentInput): Promise<Payment> {
     if (!(input.amount > 0) || !Number.isFinite(input.amount)) throw new Error("Amount must be positive");
     if (!DAY.test(input.date)) throw new Error("Date must be YYYY-MM-DD");
     if (!PAYMENT_KINDS.includes(input.kind)) throw new Error("Unknown payment kind");
+    checkReceiptId(input.receiptId);
     const payment: Payment = { id: randomUUID(), ...input, note: input.note.trim() };
     await this.mutate(coupleId, (c) => {
       const item = c.budget.items.find((i) => i.id === itemId);
@@ -584,11 +670,29 @@ export class PortalService {
     return payment;
   }
 
-  async deletePayment(coupleId: string, itemId: string, paymentId: string): Promise<void> {
+  /** Returns the removed payment's receipt file, if any, so the caller can delete it. */
+  async deletePayment(coupleId: string, itemId: string, paymentId: string): Promise<string | null> {
+    let receipt: string | null = null;
     await this.mutate(coupleId, (c) => {
       const item = c.budget.items.find((i) => i.id === itemId);
-      if (item) item.payments = item.payments.filter((p) => p.id !== paymentId);
+      if (!item) return;
+      receipt = item.payments.find((p) => p.id === paymentId)?.receiptId ?? null;
+      item.payments = item.payments.filter((p) => p.id !== paymentId);
     });
+    return receipt;
+  }
+
+  /** Attaches (or replaces) a payment's receipt; returns the previous receipt file so the caller can delete it. */
+  async setPaymentReceipt(coupleId: string, itemId: string, paymentId: string, receiptId: string): Promise<string | null> {
+    checkReceiptId(receiptId);
+    let previous: string | null = null;
+    await this.mutate(coupleId, (c) => {
+      const payment = c.budget.items.find((i) => i.id === itemId)?.payments.find((p) => p.id === paymentId);
+      if (!payment) throw new Error("Payment not found");
+      previous = payment.receiptId ?? null;
+      payment.receiptId = receiptId;
+    });
+    return previous;
   }
 
   async addBriefBlock(coupleId: string, key: string): Promise<void> {
@@ -596,6 +700,22 @@ export class PortalService {
     await this.mutate(coupleId, (c) => {
       ensureBriefBlock(c, key);
     });
+  }
+
+  /** Adds a vendor rubro outside the catalog by its name; returns its key. */
+  async addCustomBriefBlock(coupleId: string, name: string): Promise<string> {
+    const clean = name.trim().replace(/\s+/g, " ");
+    const slug = slugify(clean);
+    if (!slug) throw new Error("Brief block name is required");
+    if (clean.length > CUSTOM_BLOCK_NAME_MAX) throw new Error("Brief block name is too long");
+    if (BRIEF_CATALOG.some((b) => b.key === slug || slugify(b.name) === slug)) throw new Error("Brief block is in the catalog");
+    const block = newCustomBriefBlock(clean);
+    await this.mutate(coupleId, (c) => {
+      if (c.brief.some((b) => b.key === block.key || slugify(b.name) === slug)) throw new Error("Brief block already exists");
+      c.brief.push(block);
+      sortBrief(c.brief);
+    });
+    return block.key;
   }
 
   async updateBriefBlock(coupleId: string, key: string, update: BriefBlockUpdate): Promise<void> {
@@ -676,14 +796,34 @@ export class PortalService {
     });
   }
 
-  async addFamilyMember(coupleId: string, input: { side: FamilySide; name: string; relation: string }): Promise<FamilyMember> {
+  async addFamilyMember(coupleId: string, input: { side: FamilySide; name: string; relation: string; notes?: string }): Promise<FamilyMember> {
     if (input.side !== "a" && input.side !== "b") throw new Error("Unknown side");
     if (!input.name.trim()) throw new Error("Name is required");
-    const member: FamilyMember = { id: randomUUID(), side: input.side, name: input.name.trim(), relation: input.relation.trim(), photoId: null };
+    const member: FamilyMember = {
+      id: randomUUID(),
+      side: input.side,
+      name: input.name.trim(),
+      relation: input.relation.trim(),
+      photoId: null,
+      notes: (input.notes ?? "").trim(),
+    };
     await this.mutate(coupleId, (c) => {
       c.family.push(member);
     });
     return member;
+  }
+
+  /** Edits a member's name, relation and "Aclaraciones"; the side and the photo stay. */
+  async updateFamilyMember(coupleId: string, memberId: string, input: { name: string; relation: string; notes: string }): Promise<void> {
+    const name = input.name.trim();
+    if (!name) throw new Error("Name is required");
+    await this.mutate(coupleId, (c) => {
+      const member = c.family.find((m) => m.id === memberId);
+      if (!member) throw new Error("Family member not found");
+      member.name = name;
+      member.relation = input.relation.trim();
+      member.notes = input.notes.trim();
+    });
   }
 
   /** Returns the member's previous photo id so the caller can delete that file. */
@@ -717,6 +857,31 @@ export class PortalService {
       c.aesthetic.fonts = input.fonts.trim();
       c.aesthetic.palette = palette;
       c.publicInfo.dressCode = input.dressCode.trim();
+    });
+  }
+
+  /** Estética General; clears the legacy `fonts` text, which the form shows as the title font until saved. */
+  async saveAestheticGeneral(coupleId: string, input: AestheticGeneralInput): Promise<void> {
+    const palette = input.palette.slice(0, MAX_PALETTE).map((color) => {
+      if (!HEX.test(color.hex)) throw new Error("Each color must be #rrggbb");
+      return { name: color.name.trim().slice(0, 60), hex: color.hex.toLowerCase() };
+    });
+    await this.mutate(coupleId, (c) => {
+      c.aesthetic.fonts = "";
+      c.aesthetic.titleFont = input.titleFont.trim().slice(0, MAX_FONT_TEXT);
+      c.aesthetic.bodyFont = input.bodyFont.trim().slice(0, MAX_FONT_TEXT);
+      c.aesthetic.ideas = input.ideas.trim().slice(0, MAX_IDEAS_TEXT);
+      c.aesthetic.palette = palette;
+    });
+  }
+
+  /** Estética Web; the dress code choice also becomes the guest page's dress code. */
+  async saveAestheticWeb(coupleId: string, input: AestheticWeb): Promise<void> {
+    const web = cleanWebSelection(input);
+    const dressCode = webDressCode(web);
+    await this.mutate(coupleId, (c) => {
+      c.aesthetic.web = web;
+      if (dressCode !== null) c.publicInfo.dressCode = dressCode;
     });
   }
 
@@ -824,6 +989,68 @@ export class PortalService {
   async deleteGuest(coupleId: string, guestId: string): Promise<void> {
     await this.mutate(coupleId, (c) => {
       c.guests = c.guests.filter((g) => g.id !== guestId);
+    });
+  }
+
+  /** The secret for the invitation form's webhook URL, created on first use. */
+  async rsvpToken(coupleId: string): Promise<string> {
+    let token = "";
+    await this.mutate(coupleId, (c) => {
+      c.rsvpToken ??= randomBytes(24).toString("hex");
+      token = c.rsvpToken;
+    });
+    return token;
+  }
+
+  /** The current webhook secret, or null before the team created one (read-only). */
+  async currentRsvpToken(coupleId: string): Promise<string | null> {
+    return (await this.repo.findById(coupleId))?.rsvpToken ?? null;
+  }
+
+  /** Whether the webhook URL's secret is this couple's current one (false for unknown couples). */
+  async isRsvpToken(coupleId: string, token: string): Promise<boolean> {
+    const stored = (await this.repo.findById(coupleId))?.rsvpToken;
+    return !!stored && sameSecret(token, stored);
+  }
+
+  /** A new secret: the old webhook URL stops working. */
+  async rotateRsvpToken(coupleId: string): Promise<string> {
+    const token = randomBytes(24).toString("hex");
+    await this.mutate(coupleId, (c) => {
+      c.rsvpToken = token;
+    });
+    return token;
+  }
+
+  /** Logs an answer from the invitation web and applies it to the guest it names, when exactly one matches. */
+  async receiveRsvp(coupleId: string, token: string, answer: RsvpAnswer): Promise<"matched" | "unmatched"> {
+    let result: "matched" | "unmatched" = "unmatched";
+    await this.mutate(coupleId, (c) => {
+      if (!c.rsvpToken || !sameSecret(token, c.rsvpToken)) throw new Error("Invalid RSVP token");
+      const guest = matchGuest(c.guests, answer.name);
+      if (guest) applyRsvp(guest, answer);
+      result = guest ? "matched" : "unmatched";
+      c.rsvpInbox.push({ id: randomUUID(), receivedAt: new Date().toISOString(), ...answer, guestId: guest?.id ?? null });
+      if (c.rsvpInbox.length > MAX_RSVP_INBOX) c.rsvpInbox.splice(0, c.rsvpInbox.length - MAX_RSVP_INBOX);
+    });
+    return result;
+  }
+
+  /** Applies a logged answer to the guest the team or the couple picked. */
+  async assignRsvp(coupleId: string, entryId: string, guestId: string): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      const entry = c.rsvpInbox.find((e) => e.id === entryId);
+      if (!entry) throw new Error("Answer not found");
+      const guest = c.guests.find((g) => g.id === guestId);
+      if (!guest) throw new Error("Guest not found");
+      applyRsvp(guest, entry);
+      entry.guestId = guest.id;
+    });
+  }
+
+  async dismissRsvp(coupleId: string, entryId: string): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      c.rsvpInbox = c.rsvpInbox.filter((e) => e.id !== entryId);
     });
   }
 

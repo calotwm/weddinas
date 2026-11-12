@@ -96,20 +96,30 @@ h3 {
   @page {
     margin: 14mm;
   }
+  /*
+   * Everything that neither holds nor sits inside the sheet is removed from the layout (not just hidden), and the
+   * sheet's ancestors lose their height and spacing: hidden chrome kept its height and printed trailing blank pages.
+   */
   body:has(.print-sheet) {
-    visibility: hidden;
     background: white;
   }
-  .print-sheet {
-    visibility: visible;
-    position: absolute;
-    inset: 0 auto auto 0;
-    width: 100%;
+  body:has(.print-sheet) *:not(.print-sheet, .print-sheet *, :has(.print-sheet)) {
+    display: none !important;
+  }
+  body:has(.print-sheet) :has(.print-sheet) {
+    min-height: 0 !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
   }
   .print-sheet .card,
-  .print-sheet article,
-  .print-sheet li {
+  .print-sheet article {
     box-shadow: none;
+  }
+  /* Rows and small items stay whole; long vendor cards may break across pages instead of leaving a page empty. */
+  .print-sheet li,
+  .print-sheet dl > div {
     break-inside: avoid;
   }
   .print-sheet a {

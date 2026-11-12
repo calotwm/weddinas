@@ -78,6 +78,32 @@ export function TimingEditor({ timing, actions, coupleId }: { timing: TimingItem
   );
 }
 
+/** The couple's read-only schedule: they see how the day is laid out; the team edits it. */
+export function TimingSchedule({ timing }: { timing: TimingItem[] }) {
+  const durations = timingDurations(timing);
+  return (
+    <section className="card space-y-3">
+      <h3 className="section-title">Cronograma del día</h3>
+      {timing.length === 0 ? (
+        <p className="text-sm text-ink/50">Todavía no hay momentos cargados. Lo vamos armando con ustedes.</p>
+      ) : (
+        <ol className="divide-y divide-forest/8">
+          {timing.map((t, i) => (
+            <li key={t.id} className="grid gap-1 py-3 sm:grid-cols-[5rem_1fr]">
+              <span className="font-semibold text-teal tabular-nums">{t.time}</span>
+              <span className="min-w-0">
+                <span className="block text-forest">{t.title}</span>
+                {t.note && <span className="block text-sm whitespace-pre-line text-ink/70">{t.note}</span>}
+                {durations[i] && <span className="block text-xs text-ink/50">Duración: {durations[i]}</span>}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
 /** Read-only timeline, for the home card and summaries. */
 export function TimingList({ timing, limit }: { timing: TimingItem[]; limit?: number }) {
   const durations = timingDurations(timing);
