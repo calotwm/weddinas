@@ -1,9 +1,10 @@
 import { Fragment } from "react";
 import { Icon } from "@/components/icons";
-import { BudgetItemCard, BudgetOverview, DueAlert, orderedBudgetItems, PaidDivider, RatesNote } from "@/components/planner/budget";
+import { BudgetItemCard, BudgetOverview, DueAlert, FREIGHT_LABEL, orderedBudgetItems, PaidDivider, RatesNote } from "@/components/planner/budget";
+import { SubmitButton } from "@/components/submit-button";
 import { today } from "@/lib/format";
 import { loadRates } from "@/server/rates";
-import { uploadPaymentReceipt } from "../actions";
+import { setBudgetItemFreight, uploadPaymentReceipt } from "../actions";
 import { getCurrentCouple } from "../data";
 import { ReceiptForm } from "./receipt-form";
 
@@ -41,6 +42,18 @@ export default async function BudgetPage() {
                   coupleId={couple.id}
                   item={item}
                   brief={couple.brief}
+                  freightAction={
+                    <form action={setBudgetItemFreight} className="flex flex-wrap items-center gap-2 text-sm">
+                      <input type="hidden" name="itemId" value={item.id} />
+                      <label htmlFor={`freight-${item.id}`} className="font-semibold text-forest">Flete/Viáticos:</label>
+                      <select id={`freight-${item.id}`} name="freight" defaultValue={item.freight ?? ""} className="field w-auto py-1.5">
+                        <option value="">{FREIGHT_LABEL.unknown}</option>
+                        <option value="yes">{FREIGHT_LABEL.yes}</option>
+                        <option value="no">{FREIGHT_LABEL.no}</option>
+                      </select>
+                      <SubmitButton className="btn-ghost btn-sm">Guardar</SubmitButton>
+                    </form>
+                  }
                   ipc={ipc}
                   anchor={anchor}
                   receiptAction={(p) => (

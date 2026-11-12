@@ -205,6 +205,7 @@ export function BudgetItemCard({
   anchor,
   paymentAction,
   receiptAction,
+  freightAction,
   brief,
   children,
 }: {
@@ -217,6 +218,8 @@ export function BudgetItemCard({
   paymentAction?: (payment: Payment) => React.ReactNode;
   /** Optional control to attach or replace a payment's receipt. */
   receiptAction?: (payment: Payment) => React.ReactNode;
+  /** Optional control replacing the read-only Flete/Viáticos line (the couple sets it there). */
+  freightAction?: React.ReactNode;
   brief?: RubroNames;
   children?: React.ReactNode;
 }) {
@@ -264,9 +267,11 @@ export function BudgetItemCard({
           Próximo vencimiento: {formatDay(item.dueDate)}
         </p>
       )}
-      <p className="text-sm text-ink/70">
-        <span className="font-semibold text-forest">Flete/Viáticos:</span> {FREIGHT_LABEL[item.freight ?? "unknown"]}
-      </p>
+      {freightAction ?? (
+        <p className="text-sm text-ink/70">
+          <span className="font-semibold text-forest">Flete/Viáticos:</span> {FREIGHT_LABEL[item.freight ?? "unknown"]}
+        </p>
+      )}
       {item.note && <p className="text-sm text-ink/70">{item.note}</p>}
 
       {item.payments.length > 0 && (

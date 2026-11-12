@@ -5,7 +5,7 @@ import type { ComparisonTable } from "./comparison-table";
 import { byDayTime } from "./timing";
 import { normalizeWhatsapp } from "./whatsapp";
 import { cleanWebSelection, webDressCode } from "./web-options";
-import type { AestheticWeb } from "./couple";
+import type { AestheticWeb, FreightIncluded } from "./couple";
 import { BRIEF_CATALOG, catalogBlock, categoryName, CUSTOM_BLOCK_NAME_MAX, CUSTOM_BLOCK_PREFIX, defaultBrief, defaultMusic, musicMomentKeys, newBriefBlock, newCustomBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
 import {
   emptyPublicInfo,
@@ -631,6 +631,17 @@ export class PortalService {
       c.budget.items.push(item);
     });
     return item;
+  }
+
+  /** Flete/Viáticos only: the couple may record it without editing the rest of the item; null clears it. */
+  async setBudgetItemFreight(coupleId: string, itemId: string, freight: FreightIncluded | null): Promise<void> {
+    if (freight !== null && freight !== "yes" && freight !== "no") throw new Error("Unknown freight value");
+    await this.mutate(coupleId, (c) => {
+      const item = c.budget.items.find((i) => i.id === itemId);
+      if (!item) throw new Error("Budget item not found");
+      if (freight) item.freight = freight;
+      else delete item.freight;
+    });
   }
 
   async updateBudgetItem(coupleId: string, itemId: string, input: BudgetItemInput): Promise<void> {
