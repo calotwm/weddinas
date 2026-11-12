@@ -31,8 +31,8 @@ export default async function BudgetPage() {
         </div>
       ) : (
         <>
-          <DueAlert items={budget.items} ipc={ipc} today={today()} />
-          <BudgetOverview budget={budget} ipc={ipc} quote={quote} />
+          <DueAlert items={budget.items} ipc={ipc} today={today()} brief={couple.brief} />
+          <BudgetOverview budget={budget} ipc={ipc} quote={quote} brief={couple.brief} />
           <div className="grid gap-5 lg:grid-cols-2">
             {orderedBudgetItems(budget.items, ipc).map(({ item, anchor, firstPaid }) => (
               <Fragment key={item.id}>
@@ -40,6 +40,7 @@ export default async function BudgetPage() {
                 <BudgetItemCard
                   coupleId={couple.id}
                   item={item}
+                  brief={couple.brief}
                   ipc={ipc}
                   anchor={anchor}
                   receiptAction={(p) => (

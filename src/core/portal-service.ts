@@ -219,8 +219,13 @@ function withPlannerDefaults(couple: Couple): LoadedCouple {
   return couple as LoadedCouple;
 }
 
+/** A budget rubro is a catalog rubro or one of the couple's custom vendor rubros; an item keeps its own rubro even after that rubro leaves the brief. */
+function checkBudgetCategory(category: string, brief: BriefBlock[], current?: string): void {
+  if (category === current || catalogBlock(category)) return;
+  if (brief.find((b) => b.key === category)?.kind !== "vendor") throw new Error("Unknown category");
+}
+
 function cleanBudgetItem(input: BudgetItemInput): BudgetItemInput {
-  if (!catalogBlock(input.category)) throw new Error("Unknown category");
   if (!(input.amount > 0) || !Number.isFinite(input.amount)) throw new Error("Amount must be positive");
   if (input.currency !== "ARS" && input.currency !== "USD") throw new Error("Unknown currency");
   if (input.adjustment !== "ipc" && input.adjustment !== "frozen") throw new Error("Unknown adjustment");
@@ -622,6 +627,7 @@ export class PortalService {
   async addBudgetItem(coupleId: string, input: BudgetItemInput): Promise<BudgetItem> {
     const item: BudgetItem = { id: randomUUID(), ...cleanBudgetItem(input), payments: [] };
     await this.mutate(coupleId, (c) => {
+      checkBudgetCategory(item.category, c.brief);
       c.budget.items.push(item);
     });
     return item;
@@ -632,6 +638,7 @@ export class PortalService {
     await this.mutate(coupleId, (c) => {
       const item = c.budget.items.find((i) => i.id === itemId);
       if (!item) throw new Error("Budget item not found");
+      checkBudgetCategory(clean.category, c.brief, item.category);
       // Payments are recorded against the item's currency; switching it would silently drop them from the totals.
       if (clean.currency !== item.currency && item.payments.length > 0) {
         throw new Error("Cannot change the currency of an item with payments");

@@ -82,6 +82,16 @@ describe("planner workspace", () => {
       expect((await load()).budget.items).toEqual([]);
     });
 
+    it("budgets the couple's custom brief rubros, but not unknown or removed ones", async () => {
+      const key = await service.addCustomBriefBlock(coupleId, "Fuegos artificiales");
+      const item = await service.addBudgetItem(coupleId, { ...base, category: key });
+      expect((await load()).budget.items[0].category).toBe(key);
+      await service.updateBudgetItem(coupleId, item.id, { ...base, category: key, amount: 900 });
+      expect((await load()).budget.items[0].amount).toBe(900);
+      await expect(service.addBudgetItem(coupleId, { ...base, category: "custom-cotillon" })).rejects.toThrow("Unknown category");
+      expect((await load()).budget.items).toHaveLength(1);
+    });
+
     it("stores an optional next due date and rejects malformed ones", async () => {
       const item = await service.addBudgetItem(coupleId, { ...base, dueDate: "2026-11-20" });
       expect((await load()).budget.items[0].dueDate).toBe("2026-11-20");
