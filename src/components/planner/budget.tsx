@@ -1,4 +1,8 @@
 import { categoryName } from "@/core/brief-catalog";
+import type { BriefBlock } from "@/core/couple";
+
+/** The couple's brief, so custom rubros show the name the team gave them. */
+type RubroNames = ReadonlyArray<Pick<BriefBlock, "key" | "name">>;
 import { dueItems, paidVsPending, splitPaid, summarizeBudget, summarizeItem } from "@/core/budget";
 import type { Budget, BudgetItem, FreightIncluded, Payment, PaymentKind } from "@/core/couple";
 import type { IpcSeries, UsdQuote } from "@/core/money";
@@ -31,7 +35,7 @@ export function RatesNote({ ipc, quote }: { ipc: IpcSeries | null; quote: UsdQuo
       <span className="inline-flex items-center gap-1.5">
         <Icon name="sparkle" className="h-3.5 w-3.5" />
         {quote
-          ? `Dólar ${quote.label.toLowerCase()}: ${formatMoney(quote.rate, "ARS")} (promedio entre compra y venta, según dolarapi.com)`
+          ? `Dólar ${quote.label.toLowerCase()}: ${formatMoney(quote.rate, "ARS")} (promedio entre compra y venta, según ${quote.kind === "blue" ? "DolarHoy" : "dolarapi.com"})`
           : "Cotización del dólar no disponible"}
       </span>
       <span className="inline-flex items-center gap-1.5">
@@ -78,7 +82,7 @@ export function PaidDivider() {
 }
 
 /** Payments due within a week, or already overdue. */
-export function DueAlert({ items, ipc, today }: { items: BudgetItem[]; ipc: IpcSeries | null; today: string }) {
+export function DueAlert({ items, ipc, today, brief }: { items: BudgetItem[]; ipc: IpcSeries | null; today: string; brief?: RubroNames }) {
   const due = dueItems(items, ipc, today, addDays(today, 7));
   if (due.length === 0) return null;
   return (
@@ -90,7 +94,7 @@ export function DueAlert({ items, ipc, today }: { items: BudgetItem[]; ipc: IpcS
           {due.map(({ item, pending, overdue }) => (
             <li key={item.id}>
               <a href={`#${categoryAnchor(item.category)}`} className="font-semibold text-forest underline-offset-4 hover:underline">
-                {item.vendor || categoryName(item.category)}
+                {item.vendor || categoryName(item.category, brief)}
               </a>
               : {formatMoney(pending, item.currency)} · {overdue ? "venció el" : "vence el"} {formatDay(item.dueDate!)}
             </li>
@@ -101,7 +105,7 @@ export function DueAlert({ items, ipc, today }: { items: BudgetItem[]; ipc: IpcS
   );
 }
 
-export function BudgetOverview({ budget, ipc, quote }: { budget: Budget; ipc: IpcSeries | null; quote: UsdQuote | null }) {
+export function BudgetOverview({ budget, ipc, quote, brief }: { budget: Budget; ipc: IpcSeries | null; quote: UsdQuote | null; brief?: RubroNames }) {
   const s = summarizeBudget(budget.items, ipc, quote?.rate ?? null);
   const perGuest = budget.guests && s.totalUsd !== null ? s.totalUsd / budget.guests : null;
   const stats = [
@@ -173,7 +177,7 @@ export function BudgetOverview({ budget, ipc, quote }: { budget: Budget; ipc: Ip
                     <tr key={c.category}>
                       <td className="py-2.5 pr-3">
                         <a href={`#${categoryAnchor(c.category)}`} className="font-semibold text-forest underline-offset-4 hover:underline">
-                          {categoryName(c.category)}
+                          {categoryName(c.category, brief)}
                         </a>
                         <div className="mt-1.5 h-1.5 w-full max-w-40 overflow-hidden rounded-full bg-sand" aria-label={`${pct}% pago`}>
                           <div className="h-full rounded-full bg-teal" style={{ width: `${pct}%` }} />
@@ -201,6 +205,8 @@ export function BudgetItemCard({
   anchor,
   paymentAction,
   receiptAction,
+  freightAction,
+  brief,
   children,
 }: {
   coupleId: string;
@@ -212,6 +218,9 @@ export function BudgetItemCard({
   paymentAction?: (payment: Payment) => React.ReactNode;
   /** Optional control to attach or replace a payment's receipt. */
   receiptAction?: (payment: Payment) => React.ReactNode;
+  /** Optional control replacing the read-only Flete/Viáticos line (the couple sets it there). */
+  freightAction?: React.ReactNode;
+  brief?: RubroNames;
   children?: React.ReactNode;
 }) {
   const s = summarizeItem(item, ipc);
@@ -222,7 +231,7 @@ export function BudgetItemCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="flex flex-wrap items-center gap-2 text-xs tracking-[0.2em] text-rust uppercase">
-            {categoryName(item.category)}
+            {categoryName(item.category, brief)}
             {s.pending <= 0 && <span className="chip bg-mint/25 py-0.5 tracking-normal text-forest normal-case">Pago al 100%</span>}
           </p>
           <h3 className="font-display text-2xl text-forest">{item.vendor || "Sin proveedor"}</h3>
@@ -258,9 +267,11 @@ export function BudgetItemCard({
           Próximo vencimiento: {formatDay(item.dueDate)}
         </p>
       )}
-      <p className="text-sm text-ink/70">
-        <span className="font-semibold text-forest">Flete/Viáticos:</span> {FREIGHT_LABEL[item.freight ?? "unknown"]}
-      </p>
+      {freightAction ?? (
+        <p className="text-sm text-ink/70">
+          <span className="font-semibold text-forest">Flete/Viáticos:</span> {FREIGHT_LABEL[item.freight ?? "unknown"]}
+        </p>
+      )}
       {item.note && <p className="text-sm text-ink/70">{item.note}</p>}
 
       {item.payments.length > 0 && (

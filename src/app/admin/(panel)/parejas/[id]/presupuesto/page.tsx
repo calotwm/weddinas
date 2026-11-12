@@ -3,7 +3,7 @@ import { Fragment } from "react";
 import { Icon } from "@/components/icons";
 import { BudgetItemCard, BudgetOverview, DueAlert, orderedBudgetItems, PaidDivider, RatesNote } from "@/components/planner/budget";
 import { SubmitButton } from "@/components/submit-button";
-import { BRIEF_CATALOG } from "@/core/brief-catalog";
+import { BRIEF_CATALOG, catalogBlock, categoryName } from "@/core/brief-catalog";
 import { currentMonth, today } from "@/lib/format";
 import { requireAdmin } from "@/server/auth";
 import { portal } from "@/server/container";
@@ -14,7 +14,10 @@ import { BudgetItemForm, PaymentForm } from "./forms";
 
 export const dynamic = "force-dynamic";
 
-const CATEGORIES = BRIEF_CATALOG.filter((b) => b.kind === "vendor").map(({ key, name }) => ({ key, name }));
+/** Keeps an item's own rubro selectable after it left the brief, so editing never switches it silently. */
+function withRubro(categories: { key: string; name: string }[], key: string, brief: Parameters<typeof categoryName>[1]) {
+  return categories.some((c) => c.key === key) ? categories : [...categories, { key, name: categoryName(key, brief) }];
+}
 
 export default async function BudgetAdminPage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
@@ -23,6 +26,10 @@ export default async function BudgetAdminPage({ params }: { params: Promise<{ id
 
   const { budget } = couple;
   const { ipc, quotes, quote } = await loadRates(budget.usdQuote);
+  // Catalog vendor rubros plus the custom ones the team added to this couple's brief.
+  const categories = [...BRIEF_CATALOG, ...couple.brief.filter((b) => !catalogBlock(b.key))]
+    .filter((b) => b.kind === "vendor")
+    .map(({ key, name }) => ({ key, name }));
   const hidden = <input type="hidden" name="coupleId" value={couple.id} />;
 
   return (
@@ -50,13 +57,13 @@ export default async function BudgetAdminPage({ params }: { params: Promise<{ id
         </form>
       </div>
 
-      <DueAlert items={budget.items} ipc={ipc} today={today()} />
-      <BudgetOverview budget={budget} ipc={ipc} quote={quote} />
+      <DueAlert items={budget.items} ipc={ipc} today={today()} brief={couple.brief} />
+      <BudgetOverview budget={budget} ipc={ipc} quote={quote} brief={couple.brief} />
 
       <div className="grid gap-6 lg:grid-cols-[2fr_3fr]">
         <section className="card h-fit space-y-5 lg:sticky lg:top-24">
           <h3 className="section-title">Nuevo ítem</h3>
-          <BudgetItemForm coupleId={couple.id} categories={CATEGORIES} defaultMonth={currentMonth()} />
+          <BudgetItemForm coupleId={couple.id} categories={categories} defaultMonth={currentMonth()} />
         </section>
 
         <section className="space-y-5">
@@ -72,6 +79,7 @@ export default async function BudgetAdminPage({ params }: { params: Promise<{ id
               <BudgetItemCard
                 coupleId={couple.id}
                 item={item}
+                brief={couple.brief}
                 ipc={ipc}
                 anchor={anchor}
                 paymentAction={(p) => (
@@ -97,7 +105,7 @@ export default async function BudgetAdminPage({ params }: { params: Promise<{ id
                       Editar ítem
                     </summary>
                     <div className="mt-4">
-                      <BudgetItemForm coupleId={couple.id} categories={CATEGORIES} defaultMonth={currentMonth()} item={item} />
+                      <BudgetItemForm coupleId={couple.id} categories={withRubro(categories, item.category, couple.brief)} defaultMonth={currentMonth()} item={item} />
                     </div>
                   </details>
                   <form action={deleteBudgetItem}>

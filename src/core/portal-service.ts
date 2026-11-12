@@ -5,7 +5,7 @@ import type { ComparisonTable } from "./comparison-table";
 import { byDayTime } from "./timing";
 import { normalizeWhatsapp } from "./whatsapp";
 import { cleanWebSelection, webDressCode } from "./web-options";
-import type { AestheticWeb } from "./couple";
+import type { AestheticWeb, FreightIncluded } from "./couple";
 import { BRIEF_CATALOG, catalogBlock, categoryName, CUSTOM_BLOCK_NAME_MAX, CUSTOM_BLOCK_PREFIX, defaultBrief, defaultMusic, musicMomentKeys, newBriefBlock, newCustomBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
 import {
   emptyPublicInfo,
@@ -219,8 +219,13 @@ function withPlannerDefaults(couple: Couple): LoadedCouple {
   return couple as LoadedCouple;
 }
 
+/** A budget rubro is a catalog rubro or one of the couple's custom vendor rubros; an item keeps its own rubro even after that rubro leaves the brief. */
+function checkBudgetCategory(category: string, brief: BriefBlock[], current?: string): void {
+  if (category === current || catalogBlock(category)) return;
+  if (brief.find((b) => b.key === category)?.kind !== "vendor") throw new Error("Unknown category");
+}
+
 function cleanBudgetItem(input: BudgetItemInput): BudgetItemInput {
-  if (!catalogBlock(input.category)) throw new Error("Unknown category");
   if (!(input.amount > 0) || !Number.isFinite(input.amount)) throw new Error("Amount must be positive");
   if (input.currency !== "ARS" && input.currency !== "USD") throw new Error("Unknown currency");
   if (input.adjustment !== "ipc" && input.adjustment !== "frozen") throw new Error("Unknown adjustment");
@@ -622,9 +627,21 @@ export class PortalService {
   async addBudgetItem(coupleId: string, input: BudgetItemInput): Promise<BudgetItem> {
     const item: BudgetItem = { id: randomUUID(), ...cleanBudgetItem(input), payments: [] };
     await this.mutate(coupleId, (c) => {
+      checkBudgetCategory(item.category, c.brief);
       c.budget.items.push(item);
     });
     return item;
+  }
+
+  /** Flete/Viáticos only: the couple may record it without editing the rest of the item; null clears it. */
+  async setBudgetItemFreight(coupleId: string, itemId: string, freight: FreightIncluded | null): Promise<void> {
+    if (freight !== null && freight !== "yes" && freight !== "no") throw new Error("Unknown freight value");
+    await this.mutate(coupleId, (c) => {
+      const item = c.budget.items.find((i) => i.id === itemId);
+      if (!item) throw new Error("Budget item not found");
+      if (freight) item.freight = freight;
+      else delete item.freight;
+    });
   }
 
   async updateBudgetItem(coupleId: string, itemId: string, input: BudgetItemInput): Promise<void> {
@@ -632,6 +649,7 @@ export class PortalService {
     await this.mutate(coupleId, (c) => {
       const item = c.budget.items.find((i) => i.id === itemId);
       if (!item) throw new Error("Budget item not found");
+      checkBudgetCategory(clean.category, c.brief, item.category);
       // Payments are recorded against the item's currency; switching it would silently drop them from the totals.
       if (clean.currency !== item.currency && item.payments.length > 0) {
         throw new Error("Cannot change the currency of an item with payments");

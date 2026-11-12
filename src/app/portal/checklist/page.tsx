@@ -1,9 +1,11 @@
+import Image from "next/image";
 import { Icon } from "@/components/icons";
 import { ChecklistBoard } from "@/components/planner/checklist";
 import type { ChecklistTask } from "@/core/couple";
 import { currentMonth, formatMonth } from "@/lib/format";
 import { toggleTask } from "../actions";
 import { getCurrentCouple } from "../data";
+import cover from "../../../../public/img/month-topics-cover.jpg";
 
 function TaskRow({ task, month }: { task: ChecklistTask; month: string }) {
   return (
@@ -33,6 +35,8 @@ export default async function ChecklistPage() {
 
   return (
     <div className="card mx-auto max-w-2xl">
+      {/* Agency cover; the title text sits in the middle third, so a 3:1 center crop keeps it. */}
+      <Image src={cover} alt="Casamiento, temas del mes" priority sizes="(min-width: 768px) 42rem, 100vw" className="mb-6 aspect-[3/1] w-full rounded-2xl object-cover" />
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
           <h2 className="section-title">Temas del mes</h2>
