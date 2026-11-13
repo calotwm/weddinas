@@ -10,9 +10,9 @@ import { WhatsappButton } from "@/components/whatsapp-button";
 import { proposalMessage } from "@/core/whatsapp";
 import { portal, welcomeTemplate } from "@/server/container";
 import { siteOrigin } from "@/server/site-url";
-import { addProposal, deleteProposal, deleteReport, presentProposal, replyToProposal, updateCouple, updateProposal } from "../../../actions";
+import { deleteProposal, deleteReport, presentProposal, replyToProposal, updateCouple, updateProposal } from "../../../actions";
 import { AdminAttachments } from "../../../admin-attachments";
-import { AdminComparison } from "../../../comparison-form";
+import { AdminComparison, NewProposalForm } from "../../../comparison-form";
 import { RegenerateCodeForm } from "../../../forms";
 
 export const dynamic = "force-dynamic";
@@ -42,8 +42,7 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="card space-y-5">
           <h2 className="section-title">Nueva propuesta</h2>
-          <form action={addProposal} className="space-y-4">
-            {hidden}
+          <NewProposalForm coupleId={couple.id}>
             <div>
               <label htmlFor="p-title" className="label">Título</label>
               <input id="p-title" name="title" required maxLength={200} placeholder="Ej: Ambientación estilo campo" className="field" />
@@ -72,12 +71,7 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
                 <input id="p-link" name="link" type="url" maxLength={500} placeholder="https://… (opcional)" className="field" />
               </div>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <SubmitButton name="intent" value="present" className="btn-accent" pendingText="Presentando…" doneText="¡Presentada!">Presentar a los novios</SubmitButton>
-              <SubmitButton name="intent" value="draft" className="btn-ghost" pendingText="Guardando…" doneText="¡Guardada!">Guardar borrador</SubmitButton>
-            </div>
-            <p className="hint">Los borradores no los ven los novios hasta que los presentes.</p>
-          </form>
+          </NewProposalForm>
         </section>
 
         <section className="card">
@@ -95,6 +89,7 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
                       <span className="chip bg-sand py-0.5 text-ink/70">Borrador</span>
                     )}
                     {p.finalist && p.status !== "discarded" && <span className="chip bg-teal/15 py-0.5 text-forest">Finalista</span>}
+                    {p.chosenVendor && <span className="chip bg-peach-soft py-0.5 text-rust">Eligieron: {p.chosenVendor}</span>}
                   </div>
                   <p className="text-xs text-ink/50">
                     {isPresented(p) ? "Presentada" : "Creada"} {formatShortDate(p.presentedAt ?? p.createdAt)}
@@ -134,7 +129,7 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
                       <AdminAttachments coupleId={couple.id} kind="proposal" targetId={p.id} attachments={p.attachments} />
                     </div>
                   </details>
-                  <AdminComparison coupleId={couple.id} proposalId={p.id} comparison={p.comparison} />
+                  <AdminComparison coupleId={couple.id} proposalId={p.id} comparison={p.comparison} chosen={p.chosenVendor} />
                   <ProposalEditForm coupleId={couple.id} proposal={p} rubros={rubros} />
                   {!isPresented(p) && (
                     <form action={presentProposal} className="mt-3">

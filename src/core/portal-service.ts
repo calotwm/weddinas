@@ -197,6 +197,41 @@ function setBlockStatus(block: BriefBlock, status: BlockStatus) {
   block.status = status;
 }
 
+/** A proposal the couple can answer: presented and not discarded by another one of its rubro. */
+function answerableProposal(couple: Couple, proposalId: string): Proposal {
+  const proposal = couple.proposals.find((p) => p.id === proposalId);
+  if (!proposal || !isPresented(proposal) || proposal.status === "discarded") throw new Error("Proposal not found");
+  return proposal;
+}
+
+function comparisonVendorNames(table: ComparisonTable): string[] {
+  return table.sheets.flatMap((sheet) => sheet.vendors.map((v) => v.name));
+}
+
+/**
+ * The couple's answer. Approving one with a rubro wins it: the other open ones of that rubro go away and the
+ * brief block gets confirmed. `chosenVendor` (from the comparison table) becomes the brief vendor.
+ */
+function answerProposal(couple: Couple, proposal: Proposal, status: ProposalStatus, comment: string, chosenVendor?: string) {
+  if (status !== "approved" && status !== "rejected") throw new Error("Unknown answer");
+  proposal.status = status;
+  proposal.coupleComment = comment;
+  proposal.respondedAt = new Date().toISOString();
+  if (chosenVendor) proposal.chosenVendor = chosenVendor;
+  else if (status !== "approved") delete proposal.chosenVendor;
+  if (status !== "approved" || !proposal.category) return;
+  for (const other of couple.proposals) {
+    if (other !== proposal && other.category === proposal.category && isPresented(other) && other.status === "pending") {
+      other.status = "discarded";
+    }
+  }
+  const block = ensureBriefBlock(couple, proposal.category);
+  // The vendor the couple picked wins; otherwise a vendor the team already wrote is more precise than the proposal title.
+  if (chosenVendor) block.vendor = chosenVendor;
+  else if (!block.vendor) block.vendor = proposal.title;
+  setBlockStatus(block, "confirmed");
+}
+
 /** An optional vendor rubro of the brief catalog or one of the couple's custom rubros; empty means "Sin rubro". */
 function proposalCategory(category: string | undefined, brief: BriefBlock[]): string | undefined {
   const key = category?.trim();
@@ -435,23 +470,21 @@ export class PortalService {
 
   async respondToProposal(coupleId: string, proposalId: string, status: ProposalStatus, comment: string): Promise<void> {
     await this.mutate(coupleId, (c) => {
-      const proposal = c.proposals.find((p) => p.id === proposalId);
-      if (!proposal || !isPresented(proposal) || proposal.status === "discarded") throw new Error("Proposal not found");
-      if (status !== "approved" && status !== "rejected") throw new Error("Unknown answer");
-      proposal.status = status;
-      proposal.coupleComment = comment;
-      proposal.respondedAt = new Date().toISOString();
-      if (status !== "approved" || !proposal.category) return;
-      // The chosen proposal wins its rubro: the other open ones go away and the brief block gets confirmed.
-      for (const other of c.proposals) {
-        if (other !== proposal && other.category === proposal.category && isPresented(other) && other.status === "pending") {
-          other.status = "discarded";
-        }
-      }
-      const block = ensureBriefBlock(c, proposal.category);
-      // A vendor the team already wrote in the brief is more precise than the proposal title, so it is kept.
-      if (!block.vendor) block.vendor = proposal.title;
-      setBlockStatus(block, "confirmed");
+      answerProposal(c, answerableProposal(c, proposalId), status, comment);
+    });
+  }
+
+  /**
+   * The couple's "Elegir" on one vendor of the proposal's comparison table: approves the proposal like
+   * respondToProposal and names that vendor in the brief. Choosing another vendor later switches it.
+   */
+  async chooseProposalVendor(coupleId: string, proposalId: string, vendorName: string): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      const proposal = answerableProposal(c, proposalId);
+      if (!proposal.comparison) throw new Error("Proposal has no comparison table");
+      const vendor = comparisonVendorNames(proposal.comparison).find((name) => name === vendorName.trim());
+      if (!vendor) throw new Error("Unknown vendor");
+      answerProposal(c, proposal, "approved", proposal.coupleComment, vendor);
     });
   }
 
@@ -510,6 +543,8 @@ export class PortalService {
       const attachments = (proposal.attachments ??= []);
       const previous = attachments.findIndex((a) => a.id === proposal.comparison?.attachmentId);
       if (previous >= 0) removed = attachments.splice(previous, 1)[0].id;
+      // A choice that is no longer in the table would point at nothing.
+      if (proposal.chosenVendor && !(table && comparisonVendorNames(table).includes(proposal.chosenVendor))) delete proposal.chosenVendor;
       if (!table) {
         delete proposal.comparison;
         return;
