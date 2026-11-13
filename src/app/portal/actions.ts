@@ -3,21 +3,22 @@
 import { revalidatePath } from "next/cache";
 import {
   aestheticInput,
+  clearCoverPhoto,
   guestInput,
   importGuestList,
   pastedGuests,
   type GuestImportResult,
   removeAestheticPhoto as dropPhoto,
+  replaceCoverPhoto,
   uploadAestheticPhotos as savePhotos,
 } from "@/components/planner/section-forms";
 import { musicInput } from "@/components/planner/music";
 import type { ScheduleItem } from "@/core/couple";
 import { normalizeAlias, normalizeCbu } from "@/core/gift";
-import { MAX_IMAGE_BYTES } from "@/core/uploads";
 import { safeHttpUrl as safeUrl } from "@/core/url";
 import { readWebForm } from "@/core/web-options";
 import { requireCoupleId } from "@/server/auth";
-import { files, portal } from "@/server/container";
+import { portal } from "@/server/container";
 import { attachReceipt, type ReceiptResult } from "@/server/receipts";
 import { addFamilyMemberFrom, removeFamilyMemberFrom, saveFamilyPhoto, updateFamilyMemberFrom } from "./familia/family-forms";
 
@@ -128,33 +129,13 @@ export async function uploadFamilyPhoto(_prev: PhotoResult, formData: FormData):
 }
 
 export async function uploadCoverPhoto(_prev: PhotoResult, formData: FormData): Promise<PhotoResult> {
-  const coupleId = await requireCoupleId();
-  const file = formData.get("photo");
-  if (!(file instanceof File) || file.size === 0) return { error: "Elegí una foto." };
-  if (file.size > MAX_IMAGE_BYTES) return { error: "La foto pesa más de 5 MB." };
-
-  let photoId: string;
-  try {
-    photoId = await files.saveImage(coupleId, new Uint8Array(await file.arrayBuffer()));
-  } catch {
-    return { error: "Subí una foto en JPG, PNG o WebP." };
-  }
-  let previous: string | null;
-  try {
-    previous = await portal.setCoverPhoto(coupleId, photoId);
-  } catch {
-    await files.delete(coupleId, photoId);
-    return { error: "No se pudo guardar la foto. Recargá la página." };
-  }
-  if (previous) await files.delete(coupleId, previous).catch(() => undefined);
-  revalidatePath("/", "layout");
-  return { ok: Date.now() };
+  const result = await replaceCoverPhoto(await requireCoupleId(), formData);
+  if (result?.ok) revalidatePath("/", "layout");
+  return result;
 }
 
 export async function removeCoverPhoto(): Promise<void> {
-  const coupleId = await requireCoupleId();
-  const previous = await portal.setCoverPhoto(coupleId, null);
-  if (previous) await files.delete(coupleId, previous).catch(() => undefined);
+  await clearCoverPhoto(await requireCoupleId());
   revalidatePath("/", "layout");
 }
 

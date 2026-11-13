@@ -301,6 +301,22 @@ export interface VendorTimingItem {
   contact: string;
 }
 
+/** "Planos": Plan A, Plan B and the ceremony location, one image or PDF each. */
+export const PLAN_SLOTS = ["planA", "planB", "ceremony"] as const;
+export type PlanSlot = (typeof PLAN_SLOTS)[number];
+export const PLAN_SLOT_LABELS: Record<PlanSlot, string> = { planA: "Plan A", planB: "Plan B", ceremony: "Ubicación ceremonia" };
+
+/** Files the team uploads for the couple to see; only the team writes them. */
+export interface TeamFiles {
+  /** "Papelería": the chosen stationery designs (images), oldest first. */
+  stationeryIds: string[];
+  /** Image of the team's timing spreadsheet, shown on the couple's timing page. */
+  timingImageId: string | null;
+  /** Link to the team's timing spreadsheet (http/https or ""); shown in the team portal only. */
+  timingSheetUrl: string;
+  plans: Record<PlanSlot, string | null>;
+}
+
 /** "pending": invitation not sent yet; "sent": sent, no answer yet. */
 export type GuestStatus = "confirmed" | "pending" | "sent" | "declined";
 
@@ -361,6 +377,8 @@ export interface Couple {
   rsvpToken?: string;
   /** Answers received from the invitation web, oldest first. */
   rsvpInbox?: RsvpEntry[];
+  /** Papelería, timing image and link, Planos. Missing on couples stored before they existed. */
+  teamFiles?: TeamFiles;
 }
 
 /** One RSVP answer from the invitation web; guestId is null until it is matched to a guest. */
@@ -379,7 +397,14 @@ export interface RsvpEntry {
 export type CoupleView = Omit<Couple, "accessCodeHash" | "rsvpToken"> & Required<Pick<Couple, CoupleSection>>;
 
 /** Optional in storage, always present once loaded through the service. */
-export type CoupleSection = "aesthetic" | "timing" | "guests" | "vendorTiming" | "rsvpInbox";
+export type CoupleSection = "aesthetic" | "timing" | "guests" | "vendorTiming" | "rsvpInbox" | "teamFiles";
+
+export const emptyTeamFiles = (): TeamFiles => ({
+  stationeryIds: [],
+  timingImageId: null,
+  timingSheetUrl: "",
+  plans: { planA: null, planB: null, ceremony: null },
+});
 
 export type PublicPage = Pick<Couple, "slug" | "partnerA" | "partnerB" | "weddingDate" | "publicInfo">;
 

@@ -1,6 +1,7 @@
 import { AestheticForm, AestheticPhotos } from "@/components/planner/aesthetic";
+import { TeamImageGallery } from "@/components/planner/team-files";
 import { WebOptionsForm } from "@/components/planner/web-options";
-import { MAX_AESTHETIC_PHOTOS } from "@/core/portal-service";
+import { MAX_AESTHETIC_PHOTOS, MAX_STATIONERY } from "@/core/portal-service";
 import { removeAestheticPhoto, saveAestheticGeneral, saveAestheticWeb, uploadAestheticPhotos } from "../actions";
 import { getCurrentCouple } from "../data";
 
@@ -27,6 +28,14 @@ export default async function AestheticPage() {
         upload={uploadAestheticPhotos}
         remove={removeAestheticPhoto}
         max={MAX_AESTHETIC_PHOTOS}
+      />
+      <TeamImageGallery
+        title="Papelería"
+        description="Los diseños de papelería que eligieron, cargados por el equipo Weddinas."
+        coupleId={couple.id}
+        fileIds={couple.teamFiles.stationeryIds}
+        max={MAX_STATIONERY}
+        emptyText="Una vez que se elijan los diseños van a figurar acá."
       />
 
       <h3 className="font-display text-2xl text-forest">Web</h3>

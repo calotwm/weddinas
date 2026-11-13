@@ -10,8 +10,10 @@ import { tracksConfirmedGuests } from "./budget";
 import { BRIEF_CATALOG, catalogBlock, categoryName, CUSTOM_BLOCK_NAME_MAX, CUSTOM_BLOCK_PREFIX, defaultBrief, defaultMusic, musicMomentKeys, newBriefBlock, newCustomBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
 import {
   emptyPublicInfo,
+  emptyTeamFiles,
   isLineState,
   isPresented,
+  PLAN_SLOTS,
   type Attachment,
   type BlockStatus,
   type BriefBlock,
@@ -30,6 +32,7 @@ import {
   type PaletteColor,
   type Payment,
   type PaymentKind,
+  type PlanSlot,
   type Proposal,
   type ProposalComment,
   type ProposalStatus,
@@ -44,6 +47,7 @@ import { GUEST_AGES, GUEST_STATUSES, MAX_GUESTS } from "./guests";
 import type { CoupleRepository } from "./ports";
 import { slugify } from "./slug";
 import { isFileId } from "./uploads";
+import { safeHttpUrl } from "./url";
 
 export interface NewCoupleInput {
   partnerA: string;
@@ -80,7 +84,16 @@ export type VendorTimingInput = Omit<VendorTimingItem, "id">;
 export type GuestInput = Omit<Guest, "id">;
 export type NewGuestInput = Pick<Guest, "name"> & Partial<Omit<Guest, "id" | "name">>;
 
-export const MAX_AESTHETIC_PHOTOS = 12;
+export const MAX_AESTHETIC_PHOTOS = 20;
+/** Papelería designs the team can upload for one couple. */
+export const MAX_STATIONERY = 20;
+
+/** The team's single-file slots: the timing image (image only) and the three Planos (image or PDF). */
+export type TeamFileSlot = "timingImage" | PlanSlot;
+export const TEAM_FILE_SLOTS: readonly TeamFileSlot[] = ["timingImage", ...PLAN_SLOTS];
+
+const isImageId = (id: string) => isFileId(id) && /\.(jpg|png|webp)$/.test(id);
+const isImageOrPdfId = (id: string) => isFileId(id) && !id.endsWith(".xlsx");
 const MAX_PALETTE = 24;
 const MAX_TIMING = 100;
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -216,6 +229,8 @@ function withPlannerDefaults(couple: Couple): LoadedCouple {
   couple.vendorTiming ??= [];
   couple.guests ??= [];
   couple.rsvpInbox ??= [];
+  couple.teamFiles ??= emptyTeamFiles();
+  couple.teamFiles.plans = { ...emptyTeamFiles().plans, ...couple.teamFiles.plans };
   couple.brief.forEach(withCatalogFields);
   return couple as LoadedCouple;
 }
@@ -916,6 +931,52 @@ export class PortalService {
     await this.mutate(coupleId, (c) => {
       if (c.aesthetic.photoIds.length >= MAX_AESTHETIC_PHOTOS) throw new Error("Too many photos");
       c.aesthetic.photoIds.push(photoId);
+    });
+  }
+
+  /** Papelería: a stationery design image uploaded by the team. */
+  async addStationery(coupleId: string, fileId: string): Promise<void> {
+    if (!isImageId(fileId)) throw new Error("Invalid stationery file");
+    await this.mutate(coupleId, (c) => {
+      if (c.teamFiles.stationeryIds.length >= MAX_STATIONERY) throw new Error("Too many stationery designs");
+      c.teamFiles.stationeryIds.push(fileId);
+    });
+  }
+
+  /** Returns the file id to delete, or null when it was not one of the couple's stationery designs. */
+  async removeStationery(coupleId: string, fileId: string): Promise<string | null> {
+    let removed: string | null = null;
+    await this.mutate(coupleId, (c) => {
+      if (!c.teamFiles.stationeryIds.includes(fileId)) return;
+      removed = fileId;
+      c.teamFiles.stationeryIds = c.teamFiles.stationeryIds.filter((id) => id !== fileId);
+    });
+    return removed;
+  }
+
+  /** Sets (or clears with null) one of the team's file slots; returns the previous file id to delete. */
+  async setTeamFile(coupleId: string, slot: TeamFileSlot, fileId: string | null): Promise<string | null> {
+    if (!TEAM_FILE_SLOTS.includes(slot)) throw new Error("Unknown file slot");
+    if (fileId !== null && !(slot === "timingImage" ? isImageId(fileId) : isImageOrPdfId(fileId))) throw new Error("Invalid file");
+    let previous: string | null = null;
+    await this.mutate(coupleId, (c) => {
+      if (slot === "timingImage") {
+        previous = c.teamFiles.timingImageId;
+        c.teamFiles.timingImageId = fileId;
+      } else {
+        previous = c.teamFiles.plans[slot];
+        c.teamFiles.plans[slot] = fileId;
+      }
+    });
+    return previous;
+  }
+
+  /** The team's timing spreadsheet link; an empty text clears it, anything but http(s) is rejected. */
+  async setTimingSheetUrl(coupleId: string, value: string): Promise<void> {
+    const url = value.trim() ? safeHttpUrl(value) : "";
+    if (value.trim() && !url) throw new Error("Invalid link");
+    await this.mutate(coupleId, (c) => {
+      c.teamFiles.timingSheetUrl = url;
     });
   }
 

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon, type IconName } from "@/components/icons";
 
-// `short` is the visible label (ten sections must fit one row on desktop); `label` is the full name shown on hover.
+// `short` is the visible label (eleven sections must fit one row on desktop); `label` is the full name shown on hover.
 // The guest web page (/portal/mi-pagina) is no longer linked: "Estética" replaced it.
 // Notificaciones lives in the header bell next to "Salir" (NotificationsBell), not here.
 const LINKS: Array<{ href: string; label: string; short: string; icon: IconName }> = [
@@ -18,6 +18,7 @@ const LINKS: Array<{ href: string; label: string; short: string; icon: IconName 
   { href: "/portal/estetica", label: "Estética", short: "Estética", icon: "edit" },
   { href: "/portal/timing", label: "Timing del día", short: "Timing", icon: "clock" },
   { href: "/portal/invitados", label: "Lista de invitados", short: "Invitados", icon: "list" },
+  { href: "/portal/planos", label: "Planos", short: "Planos", icon: "map" },
 ];
 
 function Badge({ count }: { count: number }) {
@@ -34,7 +35,7 @@ export function PortalNav({ pendingProposals }: { pendingProposals: number }) {
 
   return (
     <nav aria-label="Secciones del portal">
-      <ul className="grid grid-cols-4 gap-1 rounded-3xl bg-white p-1 shadow-soft ring-1 ring-forest/5 sm:grid-cols-5 lg:grid-cols-10">
+      <ul className="grid grid-cols-4 gap-1 rounded-3xl bg-white p-1 shadow-soft ring-1 ring-forest/5 sm:grid-cols-5 lg:grid-cols-11">
         {LINKS.map(({ href, label, short, icon }) => {
           const active = pathname === href;
           return (
