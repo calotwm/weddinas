@@ -4,7 +4,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
  * `key` binds the session to the credential used to log in (admin code or couple access code),
  * so rotating that credential revokes every session created with it.
  */
-export type Session = { role: "admin"; key: string } | { role: "couple"; coupleId: string; key: string };
+export type Session = { role: "admin"; key: string; user?: string } | { role: "couple"; coupleId: string; key: string };
 
 const sign = (body: string, secret: string) => createHmac("sha256", secret).update(body).digest("base64url");
 
@@ -24,7 +24,9 @@ export function verifySession(token: string, secret: string, now = Date.now()): 
   try {
     const parsed = JSON.parse(Buffer.from(body, "base64url").toString());
     if (typeof parsed?.exp !== "number" || parsed.exp <= now || typeof parsed.key !== "string") return null;
-    if (parsed.role === "admin") return { role: "admin", key: parsed.key };
+    if (parsed.role === "admin") {
+      return typeof parsed.user === "string" ? { role: "admin", key: parsed.key, user: parsed.user } : { role: "admin", key: parsed.key };
+    }
     if (parsed.role === "couple" && typeof parsed.coupleId === "string") {
       return { role: "couple", coupleId: parsed.coupleId, key: parsed.key };
     }

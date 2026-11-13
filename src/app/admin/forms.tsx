@@ -43,14 +43,28 @@ function CodeNotice({ result, origin, names, template }: { result: FormResult; o
   );
 }
 
-export function AdminLoginForm() {
+/** withEmail: each team member logs in with their own email and password (ADMIN_USERS is set). */
+export function AdminLoginForm({ withEmail = false }: { withEmail?: boolean }) {
   const [state, action] = useActionState(adminLogin, null);
   return (
     <form action={action} className="space-y-4">
-      <div>
-        <label htmlFor="code" className="label">Código de administración</label>
-        <input id="code" name="code" type="password" required autoComplete="current-password" className="field" />
-      </div>
+      {withEmail ? (
+        <>
+          <div>
+            <label htmlFor="email" className="label">Mail</label>
+            <input id="email" name="email" type="email" required autoComplete="username" className="field" />
+          </div>
+          <div>
+            <label htmlFor="password" className="label">Clave</label>
+            <input id="password" name="password" type="password" required autoComplete="current-password" className="field" />
+          </div>
+        </>
+      ) : (
+        <div>
+          <label htmlFor="code" className="label">Código de administración</label>
+          <input id="code" name="code" type="password" required autoComplete="current-password" className="field" />
+        </div>
+      )}
       <CodeNotice result={state} />
       <SubmitButton className="btn-primary w-full py-3" pendingText="Entrando…">Entrar al panel</SubmitButton>
     </form>

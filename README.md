@@ -38,12 +38,13 @@ The admin home has **Importar desde las planillas**: upload one JSON file per co
 
 ## Configuration
 
-Set these in `.env.local` (or the host's environment). In production `SESSION_SECRET` and `ADMIN_CODE` are required.
+Set these in `.env.local` (or the host's environment). In production `SESSION_SECRET` is required, plus `ADMIN_USERS` or `ADMIN_CODE`.
 
 | Variable | Purpose |
 | --- | --- |
 | `SESSION_SECRET` | HMAC key for the session cookie |
-| `ADMIN_CODE` | Code for the planner admin |
+| `ADMIN_USERS` | One login per team member: `email=hash` entries separated by commas or new lines. Build each entry with `node scripts/hash-team-password.mjs <email> <password>` (only the hash is stored). When set, the shared `ADMIN_CODE` stops working |
+| `ADMIN_CODE` | Shared code for the planner admin, used while `ADMIN_USERS` is empty |
 | `DATA_FILE` | Path of the JSON database (default `data/db.json`). Uploaded photos are stored in an `uploads` folder next to it |
 
 ## Architecture
@@ -59,7 +60,7 @@ Access codes are stored as SHA-256 hashes; the plain code is shown once to the p
 
 ## Security
 
-- Sessions expire (couples 30 days, admin 12 hours) and are bound to the credential used to log in: regenerating a couple's code or changing `ADMIN_CODE` logs out every existing session.
+- Sessions expire (couples 30 days, admin 12 hours) and are bound to the credential used to log in: regenerating a couple's code or changing `ADMIN_CODE` logs out every existing session; removing a member from `ADMIN_USERS` or changing their password logs out that member, and setting `ADMIN_USERS` logs out every shared-code session.
 - Logins are rate limited in memory (couples: 10 attempts per IP per 15 min; admin: 5 per IP and 30 in total per 15 min). Use a shared store if the app runs on more than one instance.
 - Every admin page and action checks the admin session itself; layouts are not re-run on client navigation.
 - `next.config.ts` sets CSP, HSTS, frame, referrer and permissions headers, and `noindex` for `/admin`, `/portal` and `/boda`.

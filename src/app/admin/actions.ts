@@ -8,7 +8,7 @@ import { importCouple, type CoupleImport } from "@/core/couple-import";
 import { redirect } from "next/navigation";
 import { safeHttpUrl } from "@/core/url";
 import { WELCOME_TEMPLATE_MAX } from "@/core/welcome-message";
-import { adminCode, allowLoginAttempt, requireAdmin, startAdminSession } from "@/server/auth";
+import { adminCode, allowLoginAttempt, checkTeamUser, requireAdmin, startAdminSession, teamLoginUsesEmail } from "@/server/auth";
 import { ensureDemoData, files, portal, settings } from "@/server/container";
 import { uploadAttachments } from "./attachment-actions";
 
@@ -21,6 +21,13 @@ export type FormResult = { error?: string; code?: string; names?: string } | nul
 export async function adminLogin(_prev: FormResult, formData: FormData): Promise<FormResult> {
   if (!(await allowLoginAttempt("admin"))) {
     return { error: "Demasiados intentos. Esperá unos minutos y volvé a probar." };
+  }
+  if (teamLoginUsesEmail()) {
+    const user = checkTeamUser(text(formData, "email", 200), String(formData.get("password") ?? "").slice(0, 200));
+    if (!user) return { error: "Mail o clave incorrectos." };
+    await ensureDemoData();
+    await startAdminSession(user);
+    redirect("/admin");
   }
   const given = Buffer.from(text(formData, "code", 200));
   const expected = Buffer.from(adminCode());
