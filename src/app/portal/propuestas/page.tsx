@@ -7,7 +7,7 @@ import { isPresented, type Proposal } from "@/core/couple";
 import { daysAgo, isNewProposal, presentedAt } from "@/core/notifications";
 import { formatShortDate } from "@/lib/format";
 import { portal } from "@/server/container";
-import { commentOnProposal, respondToProposal, setProposalFinalist } from "../actions";
+import { chooseProposalVendor, commentOnProposal, respondToProposal, setProposalFinalist } from "../actions";
 import { getCurrentCouple } from "../data";
 import { CommentThread } from "./comment-thread";
 
@@ -31,11 +31,17 @@ function uploadedAgo(iso: string) {
 const ORDER: Record<VisibleStatus, number> = { pending: 0, approved: 1, rejected: 2 };
 
 /** Choosing one ("Elegir") closes its rubro: tell the couple when that will discard other open options. */
-function approveConfirm(p: Proposal, all: Proposal[], brief: Parameters<typeof categoryName>[1]) {
+function approveConfirm(p: Proposal, all: Proposal[], brief: Parameters<typeof categoryName>[1], choice = `"${p.title}"`) {
   if (!p.category) return undefined;
   const others = all.filter((o) => o.id !== p.id && o.category === p.category && o.status === "pending").length;
   if (others === 0) return undefined;
-  return `Al elegir "${p.title}" queda confirmado ${categoryName(p.category, brief)} y las otras ${others === 1 ? "propuesta" : `${others} propuestas`} de ese rubro se descartan. ¿Seguimos?`;
+  return `Al elegir ${choice} queda confirmado ${categoryName(p.category, brief)} y las otras ${others === 1 ? "propuesta" : `${others} propuestas`} de ese rubro se descartan. ¿Seguimos?`;
+}
+
+/** Choosing a vendor of the table approves the proposal, so it closes the rubro the same way; switching vendors only asks to confirm. */
+function chooseConfirm(p: Proposal, vendor: string, all: Proposal[], brief: Parameters<typeof categoryName>[1]) {
+  if (p.status === "pending") return approveConfirm(p, all, brief, vendor);
+  return p.chosenVendor ? `¿Cambiamos ${p.chosenVendor} por ${vendor}?` : undefined;
 }
 
 export default async function ProposalsPage() {
@@ -88,8 +94,23 @@ export default async function ProposalsPage() {
           </div>
           {p.comparison && (
             <div className="mt-5 space-y-2">
-              <h3 className="text-sm font-semibold text-forest">Cuadro comparativo</h3>
-              <ComparisonTableView table={p.comparison} />
+              <h3 className="font-display text-xl text-forest">
+                Cuadro comparativo{p.category && ` · ${categoryName(p.category, couple.brief)}`}
+              </h3>
+              <ComparisonTableView
+                table={p.comparison}
+                chosen={p.chosenVendor}
+                renderChoose={(vendor) => (
+                  <form action={chooseProposalVendor}>
+                    <input type="hidden" name="proposalId" value={p.id} />
+                    <input type="hidden" name="vendor" value={vendor} />
+                    <SubmitButton className="btn-ghost btn-sm bg-white" pendingText="Eligiendo…" confirm={chooseConfirm(p, vendor, proposals, couple.brief)}>
+                      Elegir
+                    </SubmitButton>
+                  </form>
+                )}
+              />
+              {p.chosenVendor && <p className="hint">Eligieron {p.chosenVendor}. Si cambian de idea, elijan otro proveedor del cuadro.</p>}
             </div>
           )}
 

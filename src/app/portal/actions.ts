@@ -62,6 +62,14 @@ export async function respondToProposal(formData: FormData): Promise<void> {
   revalidatePath("/admin", "layout");
 }
 
+/** "Elegir" on one vendor of the comparison table: approves the proposal; the service refuses vendors outside the table. */
+export async function chooseProposalVendor(formData: FormData): Promise<void> {
+  const coupleId = await requireCoupleId();
+  await portal.chooseProposalVendor(coupleId, text(formData, "proposalId", 100), text(formData, "vendor"));
+  revalidatePath("/portal", "layout");
+  revalidatePath("/admin", "layout");
+}
+
 /** "Finalista": the couple's shortlist; the service refuses drafts and discarded proposals. */
 export async function setProposalFinalist(formData: FormData): Promise<void> {
   const coupleId = await requireCoupleId();
