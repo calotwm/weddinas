@@ -1,3 +1,4 @@
+import { TeamFileCard } from "@/components/planner/team-files";
 import { TimingSchedule, VendorTimingTable } from "@/components/planner/timing";
 import { getCurrentCouple } from "../data";
 
@@ -12,6 +13,9 @@ export default async function TimingPage() {
           El cronograma del día, momento a momento. Lo arma el equipo Weddinas con ustedes; si quieren cambiar algo, avísennos.
         </p>
       </div>
+      {couple.teamFiles.timingImageId && (
+        <TeamFileCard title="Timing del día" coupleId={couple.id} fileId={couple.teamFiles.timingImageId} emptyText="" />
+      )}
       <TimingSchedule timing={couple.timing} />
       <VendorTimingTable items={couple.vendorTiming} />
     </div>

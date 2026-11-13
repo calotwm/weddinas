@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
 import { AestheticForm, AestheticPhotos } from "@/components/planner/aesthetic";
+import { TeamFileCard, TeamImageGallery } from "@/components/planner/team-files";
 import { WebOptionsForm } from "@/components/planner/web-options";
-import { MAX_AESTHETIC_PHOTOS } from "@/core/portal-service";
+import { MAX_AESTHETIC_PHOTOS, MAX_STATIONERY } from "@/core/portal-service";
 import { removeAestheticPhoto, saveAestheticGeneral, saveAestheticWeb, uploadAestheticPhotos } from "@/app/admin/planner-actions";
+import { removeStationery, removeTeamCoverPhoto, uploadStationery, uploadTeamCoverPhoto } from "@/app/admin/team-file-actions";
 import { requireAdmin } from "@/server/auth";
 import { portal } from "@/server/container";
 
@@ -37,6 +39,23 @@ export default async function AestheticAdminPage({ params }: { params: Promise<{
         remove={removeAestheticPhoto}
         sendCoupleId
         max={MAX_AESTHETIC_PHOTOS}
+      />
+      <TeamImageGallery
+        title="Papelería"
+        description="Los diseños de papelería elegidos. Los subís vos; la pareja los ve en su portal"
+        coupleId={couple.id}
+        fileIds={couple.teamFiles.stationeryIds}
+        max={MAX_STATIONERY}
+        emptyText="Una vez que se elijan los diseños van a figurar acá."
+        edit={{ upload: uploadStationery, remove: removeStationery }}
+      />
+      <TeamFileCard
+        title="Portada del contador"
+        description="La foto de la pareja que aparece detrás de la cuenta regresiva en su portal."
+        coupleId={couple.id}
+        fileId={couple.publicInfo.coverPhotoId ?? null}
+        emptyText="Todavía no hay portada."
+        edit={{ upload: uploadTeamCoverPhoto, remove: removeTeamCoverPhoto, fields: { coupleId: couple.id }, inputName: "photo", accept: "image" }}
       />
 
       <h3 className="font-display text-2xl text-forest">Web</h3>
