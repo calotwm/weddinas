@@ -50,13 +50,13 @@ General
 
 ## Tasks
 
-- [ ] T1 [S1, S2] proposals comparison with per-vendor Elegir — delegated writer (worktree)
-- [ ] T2 [S3-S6, S17] budget + brief payment — delegated writer (worktree)
-- [ ] T3 [S7-S9, S20] month topics drafts/no check + Pendientes tab — delegated writer (worktree)
-- [ ] T4 [S12-S16] guests: status bug, numbers, colored select, download with checkbox, check-in — delegated writer (worktree)
-- [ ] T5 [S10, S11, S18, S19, S24, S25] team uploads shown to the couple: 20 photos, Papelería, timing image + link, Planos, cover — delegated writer (worktree)
-- [ ] T6 [S22, S23] downloads: none for the couple, team PDFs — delegated writer (worktree)
-- [ ] T7 [S21] team users — pending decision
+- [x] T1 [S1, S2] proposals comparison with per-vendor Elegir — delegated writer (worktree) — `8ac7095`, `b8a7919`
+- [x] T2 [S3-S6, S17] budget + brief payment — delegated writer (worktree) — `a32627d`; team vendor sheet uses briefPaymentDetail after merge
+- [x] T3 [S7-S9, S20] month topics drafts/no check + Pendientes tab — delegated writer (worktree) — `3cc2d89` (publish = all drafts at once)
+- [x] T4 [S12-S16] guests: status bug, numbers, colored select, download link, in-app "Llegó" — delegated writer (worktree) — `01275fa`
+- [x] T5 [S10, S11, S18, S19, S24, S25] team uploads shown to the couple: 20 photos, Papelería, timing image + link, Planos, cover — delegated writer (manual worktree) — `a398fa6`
+- [x] T6 [S22, S23] downloads: none for the couple, team PDFs (proveedores, invitados with "Llegó" box, presupuesto, timing, familia, música) — delegated writer (manual worktree) — `970eb94`
+- [x] T7 [S21] team users: email + own password, scrypt hashes in ADMIN_USERS, shared code until set — inline — `ba60530` — Risk item 2
 - [ ] T8 merge, suite, tsc, lint, build, verifier
 
 Route evidence: T1-T6 are independent units, each several files / 100+ lines, launched together (Writer trigger a). Shared files (`src/core/couple.ts`, `src/core/portal-service.ts`, action files) are append-only per unit; the parent merges.
@@ -65,3 +65,8 @@ Route evidence: T1-T6 are independent units, each several files / 100+ lines, la
 
 - L1 (2026-11-13) "buenas, te dejo las correcciones que hizo para q las hagas, esta en descargas se llama modificaciones y es un pdf, decime que son y hacelas"
 - L2 Explorer map: comparison Excel import exists (`uploadComparison`, `ComparisonTableView`); guest status revert is the React 19 form reset + uncontrolled `<select defaultValue>` (guests.tsx); team auth is one shared ADMIN_CODE; no team downloads; checklist has no draft concept; only "pending owner" concept is the brief LineState; cover photo upload lives on the unlinked couple "Mi página".
+- L3 User decision (S21): "Mail + clave propia (Recommended)" — each member logs in with email + own password; only scrypt hashes in ADMIN_USERS (Railway); shared ADMIN_CODE keeps working until ADMIN_USERS is set.
+- L4 Writers T1-T4 ran in tool worktrees created from 21a7845 (main) instead of d26890f; they read the doc by absolute path / fast-forwarded. T5/T6 worktree creation failed twice in the tool, so the parent created manual worktrees (.claude/worktrees/phase6-t5, phase6-t6).
+- L5 Merges: conflicts in src/app/portal/proveedores/page.tsx (kept T2 receipts, dropped the couple download link) and parejas/[id]/tabs.tsx (kept Planos and Descargas). Seam: suite 331/331, tsc clean after removing stale .next/types, eslint src clean. S13 root cause confirmed by T4: React 19.1 uncontrolled <select defaultValue> keeps its mount default after the server-action form reset; fixed by keying the row form by its saved values; updateGuest now keeps travels/arrived.
+- L6 Writer decisions to surface: choosing a comparison vendor overwrites the brief vendor; T3 publishes all drafts at once; presupuesto sheet totals per currency; team "Llegó" is in-app, printed sheet has an empty box.
+- L7 T7 inline: suite 339/339, tsc + eslint clean.
