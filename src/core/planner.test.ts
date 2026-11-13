@@ -92,16 +92,25 @@ describe("planner workspace", () => {
       expect((await load()).budget.items).toHaveLength(1);
     });
 
-    it("sets only an item's freight flag, clears it, and rejects unknown values or items", async () => {
-      const item = await service.addBudgetItem(coupleId, base);
-      const before = (await load()).budget.items[0];
-      await service.setBudgetItemFreight(coupleId, item.id, "yes");
-      expect((await load()).budget.items[0]).toEqual({ ...before, freight: "yes" });
-      await service.setBudgetItemFreight(coupleId, item.id, null);
-      expect((await load()).budget.items[0].freight).toBeUndefined();
-      await expect(service.setBudgetItemFreight(coupleId, item.id, "maybe" as never)).rejects.toThrow("Unknown freight value");
-      await expect(service.setBudgetItemFreight(coupleId, "nope", "no")).rejects.toThrow("Budget item not found");
-      expect((await load()).budget.items[0].freight).toBeUndefined();
+    it("stores the confirmed guests of Espacio, Catering, Barra and Ambientación, and clears them", async () => {
+      const item = await service.addBudgetItem(coupleId, { ...base, confirmedGuests: 180 });
+      expect((await load()).budget.items[0].confirmedGuests).toBe(180);
+      for (const category of ["espacio", "barra", "ambientacion"]) {
+        await service.updateBudgetItem(coupleId, item.id, { ...base, category, confirmedGuests: 150 });
+        expect((await load()).budget.items[0]).toMatchObject({ category, confirmedGuests: 150 });
+      }
+      await service.updateBudgetItem(coupleId, item.id, base);
+      expect((await load()).budget.items[0].confirmedGuests).toBeUndefined();
+    });
+
+    it("rejects confirmed guests that are not a positive whole number or belong to another rubro", async () => {
+      for (const confirmedGuests of [0, -3, 2.5, Number.NaN]) {
+        await expect(service.addBudgetItem(coupleId, { ...base, confirmedGuests })).rejects.toThrow("Confirmed guests");
+      }
+      await expect(service.addBudgetItem(coupleId, { ...base, category: "dj", confirmedGuests: 100 })).rejects.toThrow("Confirmed guests");
+      expect((await load()).budget.items).toEqual([]);
+      await service.addBudgetItem(coupleId, { ...base, category: "dj" });
+      expect((await load()).budget.items[0].confirmedGuests).toBeUndefined();
     });
 
     it("stores an optional next due date and rejects malformed ones", async () => {

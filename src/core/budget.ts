@@ -149,6 +149,40 @@ export function briefPaymentLabel(
   return [...totals].map(([currency, t]) => `Pagado ${format(t.paid, currency)} de ${format(t.total, currency)}`).join(" · ");
 }
 
+export const NO_PAYMENTS_LABEL = "Sin pagos cargados";
+
+/** The brief's "Pago" line of a vendor rubro, always from the budget: its payment label, or "Sin pagos cargados". */
+export function briefPaymentDetail(
+  items: BudgetItem[],
+  category: string,
+  ipc: IpcSeries | null,
+  format: (amount: number, currency: Currency) => string,
+): string {
+  return briefPaymentLabel(items, category, ipc, format) ?? NO_PAYMENTS_LABEL;
+}
+
+export interface RubroReceipt {
+  paymentId: string;
+  /** "YYYY-MM-DD" of the payment. */
+  date: string;
+  receiptId: string;
+}
+
+/** Receipts of every payment of the rubro's budget items, oldest payment first, for the brief block. */
+export function rubroReceipts(items: BudgetItem[], category: string): RubroReceipt[] {
+  return items
+    .filter((i) => i.category === category)
+    .flatMap((i) => i.payments)
+    .filter((p) => p.receiptId)
+    .map((p) => ({ paymentId: p.id, date: p.date, receiptId: p.receiptId! }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/** Rubros whose budget item records how many guests were confirmed to the vendor. */
+export const CONFIRMED_GUESTS_RUBROS: readonly string[] = ["espacio", "catering", "barra", "ambientacion"];
+
+export const tracksConfirmedGuests = (category: string) => CONFIRMED_GUESTS_RUBROS.includes(category);
+
 export interface DueItem {
   item: BudgetItem;
   /** Pending balance in the item's currency. */

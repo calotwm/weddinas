@@ -239,14 +239,6 @@ export async function uploadPaymentReceipt(_prev: ReceiptResult, formData: FormD
   return result;
 }
 
-export async function setBudgetItemFreight(formData: FormData): Promise<void> {
-  const coupleId = await requireCoupleId();
-  const value = text(formData, "freight", 10);
-  const freight = value === "yes" || value === "no" ? value : null;
-  await portal.setBudgetItemFreight(coupleId, text(formData, "itemId", 100), freight).catch(() => undefined);
-  revalidatePath("/", "layout");
-}
-
 // Answers from the invitation web that did not match a guest: the couple can assign or dismiss them too.
 
 export async function assignRsvp(formData: FormData): Promise<void> {

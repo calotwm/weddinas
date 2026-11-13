@@ -5,7 +5,8 @@ import type { ComparisonTable } from "./comparison-table";
 import { byDayTime } from "./timing";
 import { normalizeWhatsapp } from "./whatsapp";
 import { cleanWebSelection, webDressCode } from "./web-options";
-import type { AestheticWeb, FreightIncluded } from "./couple";
+import type { AestheticWeb } from "./couple";
+import { tracksConfirmedGuests } from "./budget";
 import { BRIEF_CATALOG, catalogBlock, categoryName, CUSTOM_BLOCK_NAME_MAX, CUSTOM_BLOCK_PREFIX, defaultBrief, defaultMusic, musicMomentKeys, newBriefBlock, newCustomBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
 import {
   emptyPublicInfo,
@@ -233,6 +234,11 @@ function cleanBudgetItem(input: BudgetItemInput): BudgetItemInput {
   const dueDate = input.dueDate?.trim() ?? "";
   if (dueDate && !DAY.test(dueDate)) throw new Error("Due date must be YYYY-MM-DD");
   if (input.freight !== undefined && input.freight !== "yes" && input.freight !== "no") throw new Error("Unknown freight value");
+  const { confirmedGuests } = input;
+  if (confirmedGuests !== undefined) {
+    if (!Number.isInteger(confirmedGuests) || confirmedGuests <= 0) throw new Error("Confirmed guests must be a positive whole number");
+    if (!tracksConfirmedGuests(input.category)) throw new Error("Confirmed guests only apply to Espacio, Catering, Barra and Ambientación");
+  }
   return {
     category: input.category,
     vendor: input.vendor.trim(),
@@ -244,6 +250,7 @@ function cleanBudgetItem(input: BudgetItemInput): BudgetItemInput {
     note: input.note.trim(),
     dueDate,
     freight: input.freight,
+    confirmedGuests,
   };
 }
 
@@ -631,17 +638,6 @@ export class PortalService {
       c.budget.items.push(item);
     });
     return item;
-  }
-
-  /** Flete/Viáticos only: the couple may record it without editing the rest of the item; null clears it. */
-  async setBudgetItemFreight(coupleId: string, itemId: string, freight: FreightIncluded | null): Promise<void> {
-    if (freight !== null && freight !== "yes" && freight !== "no") throw new Error("Unknown freight value");
-    await this.mutate(coupleId, (c) => {
-      const item = c.budget.items.find((i) => i.id === itemId);
-      if (!item) throw new Error("Budget item not found");
-      if (freight) item.freight = freight;
-      else delete item.freight;
-    });
   }
 
   async updateBudgetItem(coupleId: string, itemId: string, input: BudgetItemInput): Promise<void> {
