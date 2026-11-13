@@ -122,6 +122,8 @@ export interface BudgetItem {
   dueDate?: string;
   /** Freight/travel expenses included in the amount. Optional: missing means "sin dato". */
   freight?: FreightIncluded;
+  /** Guests confirmed to the vendor (Espacio, Catering, Barra and Ambientación only). Optional. */
+  confirmedGuests?: number;
   payments: Payment[];
 }
 

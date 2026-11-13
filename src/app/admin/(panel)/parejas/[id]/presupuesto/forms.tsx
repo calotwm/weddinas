@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { SubmitButton } from "@/components/submit-button";
 import { FREIGHT_LABEL, PAYMENT_KIND } from "@/components/planner/budget";
+import { tracksConfirmedGuests } from "@/core/budget";
 import type { BudgetItem } from "@/core/couple";
 import type { Currency } from "@/core/money";
 import { addPayment, saveBudgetItem, type PlannerResult } from "@/app/admin/planner-actions";
@@ -40,16 +41,18 @@ export function BudgetItemForm({
   const [state, action] = useActionState(saveBudgetItem, null);
   const ref = useResetOnSuccess(item ? null : state);
   const [currency, setCurrency] = useState<Currency>(item?.currency ?? "ARS");
+  // Drives the "Invitados confirmados" field, which only Espacio, Catering, Barra and Ambientación have.
+  const [category, setCategory] = useState(item?.category ?? "espacio");
   const id = item?.id ?? "new";
 
   return (
-    <form ref={ref} action={action} className="space-y-4">
+    <form ref={ref} action={action} onReset={() => setCategory(item?.category ?? "espacio")} className="space-y-4">
       <input type="hidden" name="coupleId" value={coupleId} />
       {item && <input type="hidden" name="itemId" value={item.id} />}
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor={`cat-${id}`} className="label">Rubro</label>
-          <select id={`cat-${id}`} name="category" defaultValue={item?.category ?? "espacio"} className="field">
+          <select id={`cat-${id}`} name="category" defaultValue={item?.category ?? "espacio"} onChange={(e) => setCategory(e.target.value)} className="field">
             {categories.map((c) => (
               <option key={c.key} value={c.key}>{c.name}</option>
             ))}
@@ -105,13 +108,31 @@ export function BudgetItemForm({
           <input id={`due-${id}`} name="dueDate" type="date" defaultValue={item?.dueDate} className="field" />
         </div>
       </div>
-      <div className="sm:w-1/2">
-        <label htmlFor={`freight-${id}`} className="label">Flete/Viáticos</label>
-        <select id={`freight-${id}`} name="freight" defaultValue={item?.freight ?? ""} className="field">
-          <option value="">{FREIGHT_LABEL.unknown}</option>
-          <option value="yes">{FREIGHT_LABEL.yes}</option>
-          <option value="no">{FREIGHT_LABEL.no}</option>
-        </select>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label htmlFor={`freight-${id}`} className="label">Flete/Viáticos</label>
+          <select id={`freight-${id}`} name="freight" defaultValue={item?.freight ?? ""} className="field">
+            <option value="">{FREIGHT_LABEL.unknown}</option>
+            <option value="yes">{FREIGHT_LABEL.yes}</option>
+            <option value="no">{FREIGHT_LABEL.no}</option>
+          </select>
+        </div>
+        {tracksConfirmedGuests(category) && (
+          <div>
+            <label htmlFor={`guests-${id}`} className="label">Invitados confirmados</label>
+            <input
+              id={`guests-${id}`}
+              name="confirmedGuests"
+              type="number"
+              min={1}
+              step={1}
+              defaultValue={item?.confirmedGuests}
+              className="field"
+              placeholder="Opcional"
+            />
+            <p className="hint mt-1">Lo ven los novios en su presupuesto.</p>
+          </div>
+        )}
       </div>
       <Feedback state={state} />
       <SubmitButton doneText="¡Guardado!">{item ? "Guardar cambios" : "Agregar al presupuesto"}</SubmitButton>
