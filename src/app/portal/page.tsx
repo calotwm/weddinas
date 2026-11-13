@@ -5,7 +5,7 @@ import { categoryName } from "@/core/brief-catalog";
 import { dueItems } from "@/core/budget";
 import { GuestSummaryView } from "@/components/planner/guest-summary";
 import { TimingList } from "@/components/planner/timing";
-import { checklistSections, isPresented } from "@/core/couple";
+import { checklistSections, isPresented, publishedTasks } from "@/core/couple";
 import { guestSummary } from "@/core/guests";
 import { coverCss } from "@/core/url";
 import { currentMonth, formatDay, formatMoney, monthEnd, today, weddingDateToIso } from "@/lib/format";
@@ -15,12 +15,14 @@ import { getCurrentCouple } from "./data";
 export default async function PortalHome() {
   const couple = await getCurrentCouple();
   const pending = couple.proposals.filter((p) => isPresented(p) && p.status === "pending");
-  const done = couple.tasks.filter((t) => t.done).length;
-  const checklist = checklistSections(couple.tasks, currentMonth());
+  // The team's unpublished draft topics stay out of the couple's card and progress.
+  const tasks = publishedTasks(couple.tasks);
+  const done = tasks.filter((t) => t.done).length;
+  const checklist = checklistSections(tasks, currentMonth());
   const thisMonthOpen = checklist.thisMonth.filter((t) => !t.done);
   const noMonthOpen = checklist.noMonth.filter((t) => !t.done);
   const upcomingOpen = checklist.upcoming.flatMap((g) => g.tasks).filter((t) => !t.done).length;
-  const progress = couple.tasks.length ? Math.round((done / couple.tasks.length) * 100) : 0;
+  const progress = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
   const { ipc } = await loadRates(couple.budget.usdQuote);
   const day = today();
   const due = dueItems(couple.budget.items, ipc, day, monthEnd(day));
@@ -58,7 +60,7 @@ export default async function PortalHome() {
         </div>
         <div className="mt-5 flex items-baseline gap-2">
           <p className="font-display text-5xl text-forest">{progress}%</p>
-          <p className="text-sm text-ink/60">{done} de {couple.tasks.length}</p>
+          <p className="text-sm text-ink/60">{done} de {tasks.length}</p>
         </div>
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-sand" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
           <div className="h-full rounded-full bg-gradient-to-r from-mint to-teal transition-all" style={{ width: `${progress}%` }} />

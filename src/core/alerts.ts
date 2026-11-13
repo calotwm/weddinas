@@ -31,7 +31,7 @@ const plusDays = (day: string, n: number) => new Date(Date.parse(`${day}T12:00:0
 
 /**
  * What the team should look at: payments due within a week or overdue, proposals to remind the couple about,
- * proposals waiting for an answer for a week or more, and open tasks of past months. `today` is "YYYY-MM-DD" (Buenos Aires).
+ * proposals waiting for an answer for a week or more, and open published tasks of past months. `today` is "YYYY-MM-DD" (Buenos Aires).
  */
 export function coupleAlerts(couples: AlertCouple[], today: string, now: Date, ipc: IpcSeries | null = null): CoupleAlert[] {
   const payments: Extract<CoupleAlert, { kind: "payment" }>[] = [];
@@ -55,6 +55,7 @@ export function coupleAlerts(couples: AlertCouple[], today: string, now: Date, i
     }
 
     for (const t of c.tasks) {
+      if (t.draft) continue;
       // `month` ("YYYY-MM") is optional on checklist tasks; read defensively.
       const month = (t as { month?: string }).month;
       if (!t.done && month && month < thisMonth) tasks.push({ kind: "task", ...base, id: t.id, title: t.title, month });

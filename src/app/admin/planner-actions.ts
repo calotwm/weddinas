@@ -201,6 +201,13 @@ export async function setChecklistTaskMonth(formData: FormData): Promise<void> {
   revalidatePath("/", "layout");
 }
 
+/** Publishes every draft topic of the couple at once ("Publicar"). */
+export async function publishChecklistTasks(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.publishTasks(text(formData, "coupleId", 100));
+  revalidatePath("/", "layout");
+}
+
 export async function toggleChecklistTask(formData: FormData): Promise<void> {
   await requireAdmin();
   await portal.toggleTask(text(formData, "coupleId", 100), text(formData, "taskId", 100));

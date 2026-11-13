@@ -591,10 +591,10 @@ export class PortalService {
     return couple && photoId ? { coupleId: couple.id, photoId } : null;
   }
 
-  /** `month` ("YYYY-MM") places the task in the monthly checklist; without it the task has no month. */
+  /** `month` ("YYYY-MM") places the task in the monthly checklist; without it the task has no month. It starts as a draft, hidden from the couple. */
   async addTask(coupleId: string, title: string, month?: string): Promise<ChecklistTask> {
     if (month && !MONTH.test(month)) throw new Error("Month must be YYYY-MM");
-    const task: ChecklistTask = { id: randomUUID(), title, done: false, ...(month ? { month } : {}) };
+    const task: ChecklistTask = { id: randomUUID(), title, done: false, ...(month ? { month } : {}), draft: true };
     await this.mutate(coupleId, (c) => {
       c.tasks.push(task);
     });
@@ -609,6 +609,19 @@ export class PortalService {
       if (month) task.month = month;
       else delete task.month;
     });
+  }
+
+  /** Publishes every draft topic so the couple sees it; returns how many were published. */
+  async publishTasks(coupleId: string): Promise<number> {
+    let published = 0;
+    await this.mutate(coupleId, (c) => {
+      for (const task of c.tasks) {
+        if (!task.draft) continue;
+        delete task.draft;
+        published++;
+      }
+    });
+    return published;
   }
 
   async toggleTask(coupleId: string, taskId: string): Promise<void> {

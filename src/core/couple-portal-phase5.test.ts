@@ -85,8 +85,9 @@ describe("couple portal, second review round", () => {
     const coupleActions = readFileSync(path.join(process.cwd(), "src/app/portal/actions.ts"), "utf8");
     const exported = [...coupleActions.matchAll(/export async function (\w+)/g)].map((m) => m[1]);
 
-    it("exposes no action to add or delete tasks, only to tick them", () => {
-      expect(exported).toContain("toggleTask");
+    // Phase 6 S7: the couple no longer ticks tasks either; only the team does.
+    it("exposes no action to add, delete or tick tasks", () => {
+      expect(exported).not.toContain("toggleTask");
       expect(exported).not.toContain("addTask");
       expect(exported).not.toContain("deleteTask");
       expect(coupleActions).not.toMatch(/portal\.(addTask|deleteTask|setTaskMonth)\(/);
