@@ -1,0 +1,67 @@
+# Client feedback, phase 6 (third review round, "Modificaciones.pdf")
+
+Objective: apply the agency's third review (Canela, Modificaciones.pdf) to the couple and team portals.
+Branch: `feat/client-feedback-phase-6` (base `21a7845`) · Delivery: ask-on-risk · Test runner: `npx vitest run` · UI copy in Spanish (rioplatense "ustedes" for the couple, "vos" for the team), code/comments in English.
+
+## Specs
+
+Propuestas
+- S1. "Nos gustaría que quede así con cada proveedor: *Nosotras cargamos un cuadro comparativo en la IA y nos salió así. Nos gustaría que cuando vamos a "Nueva propuesta" en nuestro portal se pueda cargar el excel, subir los pdfs y que se transforme en este estilo de comparativo y que tenga el botón para elegir en cada proveedor" — reference image: title "Cuadro comparativo · Catering", one column per vendor (Softies, Caruchef, Nantes, U Catering) each with an "Elegir" button under the vendor name ("Elegida" filled on the chosen one, whose column is tinted), row labels on the left (Formato, Precio por adulto, Precio por niño, Menú (subtotal), Bebidas, Isla de recepción, Precocktel, Flete, Total final, Total en USD, Seña agosto, Degustación). The "Nueva propuesta" form accepts the Excel and the PDFs in one go.
+- S2. "Lo que modificaría es que aparezca todo centrado y más marcado con líneas las divisiones".
+
+Presupuesto
+- S3. "Solo el equipo puede modificar fletes y viáticos. NO novios" (reverts the couple freight control of `e0fc28a`).
+- S4. "Hacer la división de pago al 100% más grande. Quizás que figure de punta a punta el cuadrado de pago 100%".
+- S5. "Seleccionar archivo de comprobante y que se cargue automáticamente en el brief" — a payment receipt shows in that rubro's brief block without extra steps.
+- S6. "Espacio + Catering + Barra + Ambientación: Que se pueda agregar cuantos invitados fueron confirmados (Solo en portal" — assumption: the team records the confirmed guest count on those rubros' budget items; the couple sees it.
+
+Temas del mes
+- S7. "Que los novios NO puedan dar check" (reverts phase 5 S12's couple check).
+- S8. "Lo ya realizado de meses anteriores que tenga un despliegue de "ver más"".
+- S9. "Que esté en borrador en el portal equipo hasta que demos el ok" — new topics are drafts the couple does not see until the team publishes them.
+
+Estética
+- S10. "Que se puedan sumar hasta 20 fotos en inspiración".
+- S11. "Sumar como el cuadrado de carga de inspiración uno que diga "Papelería" y que diga "Una vez que se elijan los diseños van a figurar aca"" — assumption: the team uploads the stationery designs; the couple sees them, or that text while empty.
+
+Invitados
+- S12. "Boton para descargar".
+- S13. "Botón confirmado no funciona. Nos vuelve a figurar como "Pendiente"".
+- S14. "Que se traslade la refe de colores a cuando elegis la opción del desplegable" — the status select shows the status color.
+- S15. "Sumar al lado de los invitados numero 1, 2, 3".
+- S16. "Se puede sumar un checkbox cuando se pone "descargar" como para que nosotras podamos tomar lista desde la app?" — assumption: the downloaded list has a checkbox column, and the team can tick arrivals in the app.
+
+Brief
+- S17. "Que esté bien formulado para que en todos salga el pago desde presupuesto".
+
+Timing
+- S18. "Que aparezca en el portal de los novios la imagen de nuestro excel".
+- S19. "Que aparezca en el portal de equipo el link para cargar nuestro excel" — assumption: the team stores the link to their timing Excel (shown in the team portal) and uploads its image (shown to the couple).
+
+Panel equipo
+- S20. "Sumar al lado de parejas, proveedores, pagos, invitados, civil uno que diga "Pendientes" y que te filtre los pendientes de: Weddinas / Novios / Proveedores" — built on the brief line states.
+- S21. "Se puede tener un usuario por persona del equipo? Si es asi te digo los mails:" canela@, natasha@, morena@, paula@, administracion@weddinas.com — open: login method pending the user's decision.
+
+General
+- S22. "Portal novios no descargar nada".
+- S23. "Portal equipo poder descargar todo en pdf".
+- S24. "Armar un nuevo apartado en ambos portales que se llame "Planos" donde podamos cargar - PLAN A - PLAN B - UBICACIÓN CEREMONIA. Carga equipo, no novios".
+- S25. "Cómo se sube la foto de la pareja para que quede de portada en el contador?" — today only the couple can, from the unlinked "Mi página"; the team gets a cover upload on the couple's page.
+
+## Tasks
+
+- [ ] T1 [S1, S2] proposals comparison with per-vendor Elegir — delegated writer (worktree)
+- [ ] T2 [S3-S6, S17] budget + brief payment — delegated writer (worktree)
+- [ ] T3 [S7-S9, S20] month topics drafts/no check + Pendientes tab — delegated writer (worktree)
+- [ ] T4 [S12-S16] guests: status bug, numbers, colored select, download with checkbox, check-in — delegated writer (worktree)
+- [ ] T5 [S10, S11, S18, S19, S24, S25] team uploads shown to the couple: 20 photos, Papelería, timing image + link, Planos, cover — delegated writer (worktree)
+- [ ] T6 [S22, S23] downloads: none for the couple, team PDFs — delegated writer (worktree)
+- [ ] T7 [S21] team users — pending decision
+- [ ] T8 merge, suite, tsc, lint, build, verifier
+
+Route evidence: T1-T6 are independent units, each several files / 100+ lines, launched together (Writer trigger a). Shared files (`src/core/couple.ts`, `src/core/portal-service.ts`, action files) are append-only per unit; the parent merges.
+
+## Log
+
+- L1 (2026-11-13) "buenas, te dejo las correcciones que hizo para q las hagas, esta en descargas se llama modificaciones y es un pdf, decime que son y hacelas"
+- L2 Explorer map: comparison Excel import exists (`uploadComparison`, `ComparisonTableView`); guest status revert is the React 19 form reset + uncontrolled `<select defaultValue>` (guests.tsx); team auth is one shared ADMIN_CODE; no team downloads; checklist has no draft concept; only "pending owner" concept is the brief LineState; cover photo upload lives on the unlinked couple "Mi página".
