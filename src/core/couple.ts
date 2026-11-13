@@ -69,6 +69,8 @@ export interface Proposal {
   comparison?: ComparisonTable | null;
   /** The couple shortlisted it ("Finalista"); independent of the status. Missing until first marked. */
   finalist?: boolean;
+  /** Vendor the couple chose ("Elegir") from the comparison table; missing until they choose one. */
+  chosenVendor?: string;
 }
 
 export interface Report {
