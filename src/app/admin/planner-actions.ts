@@ -343,6 +343,13 @@ export async function updateGuest(formData: FormData): Promise<void> {
   refresh();
 }
 
+/** The "Llegó" tick on the day: team only, the couple's portal has no such action. */
+export async function setGuestArrived(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.setGuestArrived(coupleOf(formData), text(formData, "guestId", 100), text(formData, "arrived", 3) === "yes").catch(() => undefined);
+  refresh();
+}
+
 export async function deleteGuest(formData: FormData): Promise<void> {
   await requireAdmin();
   await portal.deleteGuest(coupleOf(formData), text(formData, "guestId", 100));

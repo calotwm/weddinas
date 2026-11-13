@@ -287,6 +287,8 @@ export interface Guest {
   transport?: string;
   travels?: boolean;
   phone?: string;
+  /** Ticked by the team on the day to take attendance; the couple never sees or sets it. */
+  arrived?: boolean;
 }
 
 export interface Couple {

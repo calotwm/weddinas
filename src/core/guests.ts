@@ -97,6 +97,16 @@ export function parseGuestNames(pasted: string): string[] {
     .slice(0, MAX_PASTED);
 }
 
+/**
+ * A key built from the saved values of a guest's row form. React 19 resets a form after its action, and an
+ * uncontrolled <select> resets to the option it mounted with (React never updates it when defaultValue changes),
+ * so the row would show the old status and save it back. Keying the form by this remounts it with the saved values.
+ */
+export function guestFormKey(guest: Guest): string {
+  const { id, name, lastName, group, status, table, restriction, age, side, transport, phone, travels } = guest;
+  return JSON.stringify([id, name, lastName, group, status, table, restriction, age, side, transport, phone, travels]);
+}
+
 export const GUEST_STATUS_LABEL: Record<GuestStatus, string> = {
   confirmed: "Confirmado",
   pending: "Pendiente",
