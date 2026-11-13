@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { BriefBlockSummary } from "@/components/planner/brief";
 import { PrintSheet } from "@/components/print/print-sheet";
 import { downloadsPath } from "@/components/print/sheets";
-import { briefPaymentLabel } from "@/core/budget";
+import { briefPaymentDetail } from "@/core/budget";
 import { formatMoney } from "@/lib/format";
 import { loadRates } from "@/server/rates";
 import { sheetCouple } from "../data";
@@ -29,7 +29,7 @@ export default async function VendorsDownloadPage({
       {vendors.length === 0 && <p className="text-ink/60">Todavía no hay proveedores confirmados.</p>}
       <div className="space-y-5">
         {vendors.map((block) => (
-          <BriefBlockSummary key={block.key} coupleId={couple.id} block={block} payment={briefPaymentLabel(couple.budget.items, block.key, ipc, formatMoney)} expanded />
+          <BriefBlockSummary key={block.key} coupleId={couple.id} block={block} payment={briefPaymentDetail(couple.budget.items, block.key, ipc, formatMoney)} expanded />
         ))}
       </div>
     </PrintSheet>
