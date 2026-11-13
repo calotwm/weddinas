@@ -91,7 +91,7 @@ h3 {
   @apply flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-peach-soft text-rust;
 }
 
-/* Printable pages (/portal/descargas): only the sheet is printed, the portal chrome around it stays on screen. */
+/* Printable pages (/admin/parejas/<id>/descargas): only the sheet is printed, the panel chrome around it stays on screen. */
 @media print {
   @page {
     margin: 14mm;
@@ -119,7 +119,8 @@ h3 {
   }
   /* Rows and small items stay whole; long vendor cards may break across pages instead of leaving a page empty. */
   .print-sheet li,
-  .print-sheet dl > div {
+  .print-sheet dl > div,
+  .print-sheet tr {
     break-inside: avoid;
   }
   .print-sheet a {

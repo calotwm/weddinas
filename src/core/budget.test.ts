@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { briefPaymentLabel, dueItems, isFullyPaid, paidLast, paidVsPending, splitPaid, summarizeBudget, summarizeItem } from "./budget";
+import {
+  briefPaymentDetail,
+  briefPaymentLabel,
+  dueItems,
+  isFullyPaid,
+  paidLast,
+  paidVsPending,
+  rubroReceipts,
+  splitPaid,
+  summarizeBudget,
+  summarizeItem,
+  tracksConfirmedGuests,
+} from "./budget";
 import type { BudgetItem } from "./couple";
 import type { IpcSeries } from "./money";
 
@@ -153,5 +165,41 @@ describe("briefPaymentLabel", () => {
       item({ id: "d", category: "dj", currency: "USD", amount: 9000 }),
     ];
     expect(briefPaymentLabel(items, "catering", null, fmt)).toBe("Pagado USD 300 de USD 1500 · Pagado ARS 500 de ARS 2000");
+  });
+});
+
+describe("briefPaymentDetail", () => {
+  const fmt = (n: number, c: "ARS" | "USD") => `${c} ${n}`;
+
+  it("says no payments were loaded when the budget has no item for the rubro", () => {
+    expect(briefPaymentDetail([item({ category: "dj" })], "catering", null, fmt)).toBe("Sin pagos cargados");
+    expect(briefPaymentDetail([], "custom-fuegos", null, fmt)).toBe("Sin pagos cargados");
+  });
+
+  it("is the budget's payment label when the rubro has items", () => {
+    expect(briefPaymentDetail([item({ payments: [pay(1000)] })], "catering", null, fmt)).toBe("Pago al 100%");
+    expect(briefPaymentDetail([item({ payments: [pay(300)] })], "catering", null, fmt)).toBe("Pagado ARS 300 de ARS 1000");
+  });
+});
+
+describe("rubroReceipts", () => {
+  it("lists the receipts of every payment of the rubro's items, oldest first", () => {
+    const items = [
+      item({ payments: [{ ...pay(100), id: "a", date: "2026-08-01", receiptId: "r-a.pdf" }, { ...pay(200), id: "b", date: "2026-07-01" }] }),
+      item({ id: "second", payments: [{ ...pay(300), id: "c", date: "2026-06-01", receiptId: "r-c.jpg" }] }),
+      item({ id: "other", category: "dj", payments: [{ ...pay(400), id: "d", receiptId: "r-d.pdf" }] }),
+    ];
+    expect(rubroReceipts(items, "catering")).toEqual([
+      { paymentId: "c", date: "2026-06-01", receiptId: "r-c.jpg" },
+      { paymentId: "a", date: "2026-08-01", receiptId: "r-a.pdf" },
+    ]);
+    expect(rubroReceipts(items, "barra")).toEqual([]);
+  });
+});
+
+describe("confirmed guests rubros", () => {
+  it("are Espacio, Catering, Barra and Ambientación only", () => {
+    expect(["espacio", "catering", "barra", "ambientacion"].every(tracksConfirmedGuests)).toBe(true);
+    expect(["dj", "foto", "custom-fuegos", "evento"].some(tracksConfirmedGuests)).toBe(false);
   });
 });

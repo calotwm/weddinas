@@ -7,6 +7,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { DEFAULT_WELCOME_TEMPLATE, renderWelcomeMessage, WELCOME_PLACEHOLDERS, WELCOME_TEMPLATE_MAX } from "@/core/welcome-message";
 import {
   adminLogin,
+  changeTeamPassword,
   createCouple,
   importCoupleFile,
   regenerateCode,
@@ -43,14 +44,28 @@ function CodeNotice({ result, origin, names, template }: { result: FormResult; o
   );
 }
 
-export function AdminLoginForm() {
+/** withEmail: each team member logs in with their own email and password (ADMIN_USERS is set). */
+export function AdminLoginForm({ withEmail = false }: { withEmail?: boolean }) {
   const [state, action] = useActionState(adminLogin, null);
   return (
     <form action={action} className="space-y-4">
-      <div>
-        <label htmlFor="code" className="label">Código de administración</label>
-        <input id="code" name="code" type="password" required autoComplete="current-password" className="field" />
-      </div>
+      {withEmail ? (
+        <>
+          <div>
+            <label htmlFor="email" className="label">Mail</label>
+            <input id="email" name="email" type="email" required autoComplete="username" className="field" />
+          </div>
+          <div>
+            <label htmlFor="password" className="label">Clave</label>
+            <input id="password" name="password" type="password" required autoComplete="current-password" className="field" />
+          </div>
+        </>
+      ) : (
+        <div>
+          <label htmlFor="code" className="label">Código de administración</label>
+          <input id="code" name="code" type="password" required autoComplete="current-password" className="field" />
+        </div>
+      )}
       <CodeNotice result={state} />
       <SubmitButton className="btn-primary w-full py-3" pendingText="Entrando…">Entrar al panel</SubmitButton>
     </form>
@@ -181,6 +196,30 @@ export function WelcomeTemplateForm({ template, origin }: { template: string; or
         </p>
         <p className="text-xs text-ink/55">Ejemplo con datos de prueba. Al crear una pareja o generar un código nuevo, el botón “Copiar mensaje para enviar” usa este texto.</p>
       </div>
+    </form>
+  );
+}
+
+export function ChangePasswordForm() {
+  const [state, action] = useActionState(changeTeamPassword, null);
+  return (
+    <form action={action} className="space-y-4" key={state?.ok ? "saved" : "editing"}>
+      <div>
+        <label htmlFor="current" className="label">Clave actual</label>
+        <input id="current" name="current" type="password" required autoComplete="current-password" className="field" />
+      </div>
+      <div>
+        <label htmlFor="next" className="label">Clave nueva</label>
+        <input id="next" name="next" type="password" required minLength={10} maxLength={200} autoComplete="new-password" className="field" />
+        <p className="hint">Al menos 10 caracteres.</p>
+      </div>
+      <div>
+        <label htmlFor="repeat" className="label">Repetí la clave nueva</label>
+        <input id="repeat" name="repeat" type="password" required minLength={10} maxLength={200} autoComplete="new-password" className="field" />
+      </div>
+      {state?.error && <p role="alert" className="rounded-xl bg-rust/10 px-3 py-2 text-sm text-rust">{state.error}</p>}
+      {state?.ok && <p role="status" className="rounded-xl bg-mint/20 px-3 py-2 text-sm text-forest">Listo, tu clave quedó cambiada. Se cerró la sesión en tus otros dispositivos.</p>}
+      <SubmitButton pendingText="Guardando…">Cambiar clave</SubmitButton>
     </form>
   );
 }

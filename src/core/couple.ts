@@ -69,6 +69,8 @@ export interface Proposal {
   comparison?: ComparisonTable | null;
   /** The couple shortlisted it ("Finalista"); independent of the status. Missing until first marked. */
   finalist?: boolean;
+  /** Vendor the couple chose ("Elegir") from the comparison table; missing until they choose one. */
+  chosenVendor?: string;
 }
 
 export interface Report {
@@ -85,7 +87,12 @@ export interface ChecklistTask {
   done: boolean;
   /** "YYYY-MM": month the task belongs to in the monthly checklist. Missing on tasks without a month. */
   month?: string;
+  /** Set on topics the team added and has not published yet; the couple, alerts and WhatsApp skip them. Unset (published) on tasks stored before drafts existed. */
+  draft?: true;
 }
+
+/** Tasks the couple sees: every task except the team's unpublished drafts. */
+export const publishedTasks = (tasks: ChecklistTask[]) => tasks.filter((t) => !t.draft);
 
 export type PaymentKind = "sena" | "saldo" | "adicional" | "iva" | "intermedio";
 
@@ -122,6 +129,8 @@ export interface BudgetItem {
   dueDate?: string;
   /** Freight/travel expenses included in the amount. Optional: missing means "sin dato". */
   freight?: FreightIncluded;
+  /** Guests confirmed to the vendor (Espacio, Catering, Barra and Ambientación only). Optional. */
+  confirmedGuests?: number;
   payments: Payment[];
 }
 
@@ -145,6 +154,36 @@ export const LINE_STATES: { value: LineState; label: string }[] = [
 ];
 
 export const isLineState = (value: unknown): value is LineState => LINE_STATES.some((s) => s.value === value);
+
+/** States of a brief line still waiting on someone ("Pendientes" in the team panel). */
+export type PendingState = Exclude<LineState, "confirmed">;
+
+export const isPendingState = (value: unknown): value is PendingState => isLineState(value) && value !== "confirmed";
+
+export interface PendingLine {
+  blockKey: string;
+  blockName: string;
+  label: string;
+  detail: string;
+  state: PendingState;
+}
+
+type PendingCouple = Pick<Couple, "id" | "partnerA" | "partnerB" | "weddingDate" | "brief">;
+
+/** Brief lines waiting on Weddinas, the couple or a vendor (`filter` narrows to one), grouped by couple by wedding date; couples with none are left out. */
+export function pendingBriefLines<C extends PendingCouple>(couples: C[], filter: PendingState | "all"): Array<{ couple: C; lines: PendingLine[] }> {
+  return [...couples]
+    .sort((a, b) => a.weddingDate.localeCompare(b.weddingDate))
+    .map((couple) => ({
+      couple,
+      lines: (couple.brief ?? []).flatMap((block) =>
+        block.fields
+          .filter((f): f is BriefField & { state: PendingState } => isPendingState(f.state) && (filter === "all" || f.state === filter))
+          .map((f) => ({ blockKey: block.key, blockName: block.name, label: f.label, detail: f.detail, state: f.state })),
+      ),
+    }))
+    .filter((g) => g.lines.length > 0);
+}
 
 export interface BriefField {
   label: string;
@@ -264,6 +303,22 @@ export interface VendorTimingItem {
   contact: string;
 }
 
+/** "Planos": Plan A, Plan B and the ceremony location, one image or PDF each. */
+export const PLAN_SLOTS = ["planA", "planB", "ceremony"] as const;
+export type PlanSlot = (typeof PLAN_SLOTS)[number];
+export const PLAN_SLOT_LABELS: Record<PlanSlot, string> = { planA: "Plan A", planB: "Plan B", ceremony: "Ubicación ceremonia" };
+
+/** Files the team uploads for the couple to see; only the team writes them. */
+export interface TeamFiles {
+  /** "Papelería": the chosen stationery designs (images), oldest first. */
+  stationeryIds: string[];
+  /** Image of the team's timing spreadsheet, shown on the couple's timing page. */
+  timingImageId: string | null;
+  /** Link to the team's timing spreadsheet (http/https or ""); shown in the team portal only. */
+  timingSheetUrl: string;
+  plans: Record<PlanSlot, string | null>;
+}
+
 /** "pending": invitation not sent yet; "sent": sent, no answer yet. */
 export type GuestStatus = "confirmed" | "pending" | "sent" | "declined";
 
@@ -287,6 +342,8 @@ export interface Guest {
   transport?: string;
   travels?: boolean;
   phone?: string;
+  /** Ticked by the team on the day to take attendance; the couple never sees or sets it. */
+  arrived?: boolean;
 }
 
 export interface Couple {
@@ -322,6 +379,8 @@ export interface Couple {
   rsvpToken?: string;
   /** Answers received from the invitation web, oldest first. */
   rsvpInbox?: RsvpEntry[];
+  /** Papelería, timing image and link, Planos. Missing on couples stored before they existed. */
+  teamFiles?: TeamFiles;
 }
 
 /** One RSVP answer from the invitation web; guestId is null until it is matched to a guest. */
@@ -340,7 +399,14 @@ export interface RsvpEntry {
 export type CoupleView = Omit<Couple, "accessCodeHash" | "rsvpToken"> & Required<Pick<Couple, CoupleSection>>;
 
 /** Optional in storage, always present once loaded through the service. */
-export type CoupleSection = "aesthetic" | "timing" | "guests" | "vendorTiming" | "rsvpInbox";
+export type CoupleSection = "aesthetic" | "timing" | "guests" | "vendorTiming" | "rsvpInbox" | "teamFiles";
+
+export const emptyTeamFiles = (): TeamFiles => ({
+  stationeryIds: [],
+  timingImageId: null,
+  timingSheetUrl: "",
+  plans: { planA: null, planB: null, ceremony: null },
+});
 
 export type PublicPage = Pick<Couple, "slug" | "partnerA" | "partnerB" | "weddingDate" | "publicInfo">;
 

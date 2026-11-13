@@ -128,10 +128,10 @@ describe("PortalService guests from the agency's sheet", () => {
     expect(juan).toEqual({ id: juan.id, name: "Juan", group: "", status: "pending", table: "", restriction: "" });
   });
 
-  it("clears optional fields on edit and keeps the id", async () => {
+  it("clears optional fields on edit and keeps the id (travels stays unless the edit answers it)", async () => {
     const [ana] = await service.addGuests(coupleId, [sheetGuest]);
     await service.updateGuest(coupleId, ana.id, { name: "Ana", group: "Amigos", status: "confirmed", table: "", restriction: "" });
-    expect(await guests()).toEqual([{ id: ana.id, name: "Ana", group: "Amigos", status: "confirmed", table: "", restriction: "" }]);
+    expect(await guests()).toEqual([{ id: ana.id, name: "Ana", group: "Amigos", status: "confirmed", table: "", restriction: "", travels: true }]);
   });
 
   it("rejects an unknown age", async () => {

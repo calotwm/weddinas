@@ -2,7 +2,7 @@ import "server-only";
 import type { GuestAge, GuestStatus } from "@/core/couple";
 import { GUEST_IMPORT_LIMITS, GuestImportError, parseGuestFile } from "@/core/guest-import";
 import { GUEST_AGES, GUEST_STATUSES, MAX_GUESTS, parseGuestNames } from "@/core/guests";
-import { MAX_AESTHETIC_PHOTOS, type AestheticInput, type GuestInput, type NewGuestInput, type TimingInput } from "@/core/portal-service";
+import { MAX_AESTHETIC_PHOTOS, MAX_STATIONERY, type AestheticInput, type GuestInput, type NewGuestInput, type TimingInput } from "@/core/portal-service";
 import { MAX_IMAGE_BYTES } from "@/core/uploads";
 import { files, portal } from "@/server/container";
 
@@ -16,13 +16,17 @@ const MAX_UPLOAD_BYTES = 11 * 1024 * 1024;
 
 export type UploadResult = { error?: string; ok?: number } | null;
 
-/** Saves the picked "photos" (sniffed and size-checked by the file store) as the couple's Estética photos. */
-export async function uploadAestheticPhotos(coupleId: string, formData: FormData): Promise<UploadResult> {
+/** Saves the picked "photos" (sniffed and size-checked by the file store) one by one through `add`, up to `max` in all. */
+async function uploadImages(
+  coupleId: string,
+  formData: FormData,
+  { max, current, add }: { max: number; current: number; add: (fileId: string) => Promise<void> },
+): Promise<UploadResult> {
   const picked = formData.getAll("photos").filter((f): f is File => f instanceof File && f.size > 0);
   if (picked.length === 0) return { error: "Elegí al menos una foto." };
-  const room = MAX_AESTHETIC_PHOTOS - ((await portal.getCouple(coupleId))?.aesthetic.photoIds.length ?? 0);
+  const room = max - current;
   if (picked.length > room) {
-    return { error: room > 0 ? `Se pueden sumar ${room} foto${room === 1 ? "" : "s"} más.` : `Ya hay ${MAX_AESTHETIC_PHOTOS} fotos: hay que quitar alguna para sumar otra.` };
+    return { error: room > 0 ? `Se pueden sumar ${room} foto${room === 1 ? "" : "s"} más.` : `Ya hay ${max} fotos: hay que quitar alguna para sumar otra.` };
   }
   if (picked.some((f) => f.size > MAX_IMAGE_BYTES)) return { error: "Cada foto puede pesar hasta 5 MB." };
   if (picked.reduce((n, f) => n + f.size, 0) > MAX_UPLOAD_BYTES) return { error: "Entre todas pesan más de 11 MB: conviene subirlas en partes." };
@@ -35,13 +39,58 @@ export async function uploadAestheticPhotos(coupleId: string, formData: FormData
       return { error: `«${file.name.slice(0, 80)}» no es una foto en JPG, PNG o WebP.` };
     }
     try {
-      await portal.addAestheticPhoto(coupleId, photoId);
+      await add(photoId);
     } catch {
       await files.delete(coupleId, photoId).catch(() => undefined);
       return { error: "No se pudo guardar la foto. Recargá la página." };
     }
   }
   return { ok: Date.now() };
+}
+
+/** The couple's Estética inspiration photos. */
+export async function uploadAestheticPhotos(coupleId: string, formData: FormData): Promise<UploadResult> {
+  const current = (await portal.getCouple(coupleId))?.aesthetic.photoIds.length ?? 0;
+  return uploadImages(coupleId, formData, { max: MAX_AESTHETIC_PHOTOS, current, add: (id) => portal.addAestheticPhoto(coupleId, id) });
+}
+
+/** Papelería: the stationery designs, uploaded by the team only (callers use requireAdmin). */
+export async function uploadStationery(coupleId: string, formData: FormData): Promise<UploadResult> {
+  const current = (await portal.getCouple(coupleId))?.teamFiles.stationeryIds.length ?? 0;
+  return uploadImages(coupleId, formData, { max: MAX_STATIONERY, current, add: (id) => portal.addStationery(coupleId, id) });
+}
+
+export async function removeStationery(coupleId: string, fileId: string): Promise<void> {
+  const removed = await portal.removeStationery(coupleId, fileId);
+  if (removed) await files.delete(coupleId, removed).catch(() => undefined);
+}
+
+/** The cover photo behind the couple's countdown, uploaded by the couple or the team with the same checks. */
+export async function replaceCoverPhoto(coupleId: string, formData: FormData): Promise<UploadResult> {
+  const file = formData.get("photo");
+  if (!(file instanceof File) || file.size === 0) return { error: "Elegí una foto." };
+  if (file.size > MAX_IMAGE_BYTES) return { error: "La foto pesa más de 5 MB." };
+
+  let photoId: string;
+  try {
+    photoId = await files.saveImage(coupleId, new Uint8Array(await file.arrayBuffer()));
+  } catch {
+    return { error: "Subí una foto en JPG, PNG o WebP." };
+  }
+  let previous: string | null;
+  try {
+    previous = await portal.setCoverPhoto(coupleId, photoId);
+  } catch {
+    await files.delete(coupleId, photoId);
+    return { error: "No se pudo guardar la foto. Recargá la página." };
+  }
+  if (previous) await files.delete(coupleId, previous).catch(() => undefined);
+  return { ok: Date.now() };
+}
+
+export async function clearCoverPhoto(coupleId: string): Promise<void> {
+  const previous = await portal.setCoverPhoto(coupleId, null);
+  if (previous) await files.delete(coupleId, previous).catch(() => undefined);
 }
 
 export async function removeAestheticPhoto(coupleId: string, photoId: string): Promise<void> {

@@ -4,7 +4,8 @@ import { StatusChip } from "@/components/planner/brief";
 import { LineStateLegend } from "@/components/planner/line-state";
 import { SubmitButton } from "@/components/submit-button";
 import { BRIEF_CATALOG } from "@/core/brief-catalog";
-import { briefPaymentLabel } from "@/core/budget";
+import { briefPaymentDetail, rubroReceipts } from "@/core/budget";
+import { ReceiptLinks } from "@/components/planner/budget";
 import { formatMoney } from "@/lib/format";
 import { requireAdmin } from "@/server/auth";
 import { portal } from "@/server/container";
@@ -78,7 +79,19 @@ export default async function BriefAdminPage({ params }: { params: Promise<{ id:
                 </span>
               </summary>
               <div className="space-y-4 border-t border-forest/5 px-6 py-5">
-                <BriefBlockForm coupleId={couple.id} block={block} budgetPayment={briefPaymentLabel(couple.budget.items, block.key, ipc, formatMoney)} />
+                {/* Vendor rubros always take "Pago" from the budget ("Sin pagos cargados" without an item); event blocks are never budgeted. */}
+                <BriefBlockForm
+                  coupleId={couple.id}
+                  block={block}
+                  budgetPayment={block.kind === "vendor" ? briefPaymentDetail(couple.budget.items, block.key, ipc, formatMoney) : null}
+                />
+                {rubroReceipts(couple.budget.items, block.key).length > 0 && (
+                  <div>
+                    <p className="label">Comprobantes de pago</p>
+                    <ReceiptLinks coupleId={couple.id} receipts={rubroReceipts(couple.budget.items, block.key)} />
+                    <p className="hint mt-1">Salen de los pagos del presupuesto.</p>
+                  </div>
+                )}
                 <AdminAttachments coupleId={couple.id} kind="brief" targetId={block.key} attachments={block.attachments} allowInternal />
                 <form action={removeBriefBlock} className="text-right">
                   {hidden}

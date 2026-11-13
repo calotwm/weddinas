@@ -3,7 +3,7 @@ import type { BriefBlock } from "@/core/couple";
 
 /** The couple's brief, so custom rubros show the name the team gave them. */
 type RubroNames = ReadonlyArray<Pick<BriefBlock, "key" | "name">>;
-import { dueItems, paidVsPending, splitPaid, summarizeBudget, summarizeItem } from "@/core/budget";
+import { dueItems, paidVsPending, splitPaid, summarizeBudget, summarizeItem, type RubroReceipt } from "@/core/budget";
 import type { Budget, BudgetItem, FreightIncluded, Payment, PaymentKind } from "@/core/couple";
 import type { IpcSeries, UsdQuote } from "@/core/money";
 import { addDays, formatDay, formatMoney, formatMonth } from "@/lib/format";
@@ -70,14 +70,41 @@ export function orderedBudgetItems(
   });
 }
 
-/** Separates the items that still have a balance from the ones paid in full. */
+/** Separates the items that still have a balance from the ones paid in full: a filled band across the whole grid. */
 export function PaidDivider() {
   return (
-    <div role="separator" className="col-span-full flex items-center gap-3 pt-2 text-xs font-semibold tracking-[0.2em] text-forest uppercase">
-      <span className="h-px flex-1 bg-forest/20" />
-      <span className="chip bg-mint/25 tracking-normal normal-case">Pago al 100%</span>
-      <span className="h-px flex-1 bg-forest/20" />
+    <div
+      role="separator"
+      aria-label="Pago al 100%"
+      className="col-span-full mt-2 flex w-full items-center justify-center gap-3 rounded-2xl bg-mint/30 px-6 py-5 text-forest ring-1 ring-mint/60"
+    >
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-forest text-cream">
+        <Icon name="check" className="h-5 w-5" />
+      </span>
+      <span className="font-display text-2xl sm:text-3xl">Pago al 100%</span>
     </div>
+  );
+}
+
+/** A rubro's payment receipts as links ("Comprobante 10/06/2026"), for its brief block. */
+export function ReceiptLinks({ coupleId, receipts }: { coupleId: string; receipts: RubroReceipt[] }) {
+  if (receipts.length === 0) return null;
+  return (
+    <ul className="flex flex-wrap gap-2">
+      {receipts.map((r) => (
+        <li key={r.paymentId}>
+          <a
+            href={receiptUrl(coupleId, r.receiptId)}
+            target="_blank"
+            rel="noopener"
+            className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-sm font-semibold text-teal ring-1 ring-forest/10 underline-offset-4 hover:underline"
+          >
+            <Icon name="file" className="h-3.5 w-3.5" />
+            Comprobante {formatDay(r.date)}
+          </a>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -205,7 +232,6 @@ export function BudgetItemCard({
   anchor,
   paymentAction,
   receiptAction,
-  freightAction,
   brief,
   children,
 }: {
@@ -218,8 +244,6 @@ export function BudgetItemCard({
   paymentAction?: (payment: Payment) => React.ReactNode;
   /** Optional control to attach or replace a payment's receipt. */
   receiptAction?: (payment: Payment) => React.ReactNode;
-  /** Optional control replacing the read-only Flete/Viáticos line (the couple sets it there). */
-  freightAction?: React.ReactNode;
   brief?: RubroNames;
   children?: React.ReactNode;
 }) {
@@ -267,9 +291,13 @@ export function BudgetItemCard({
           Próximo vencimiento: {formatDay(item.dueDate)}
         </p>
       )}
-      {freightAction ?? (
-        <p className="text-sm text-ink/70">
-          <span className="font-semibold text-forest">Flete/Viáticos:</span> {FREIGHT_LABEL[item.freight ?? "unknown"]}
+      <p className="text-sm text-ink/70">
+        <span className="font-semibold text-forest">Flete/Viáticos:</span> {FREIGHT_LABEL[item.freight ?? "unknown"]}
+      </p>
+      {item.confirmedGuests !== undefined && (
+        <p className="flex items-center gap-2 text-sm text-ink/70">
+          <Icon name="users" className="h-4 w-4 text-teal" />
+          <span className="font-semibold text-forest">Invitados confirmados:</span> {item.confirmedGuests}
         </p>
       )}
       {item.note && <p className="text-sm text-ink/70">{item.note}</p>}

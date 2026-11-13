@@ -58,6 +58,8 @@ function budgetItemInput(formData: FormData): BudgetItemInput {
     note: text(formData, "note", 500),
     dueDate: text(formData, "dueDate", 10),
     freight: ["yes", "no"].includes(text(formData, "freight", 3)) ? (text(formData, "freight", 3) as "yes" | "no") : undefined,
+    // Empty clears it; anything else must be a positive whole number (the service validates it and its rubro).
+    confirmedGuests: text(formData, "confirmedGuests", 10) ? Number(text(formData, "confirmedGuests", 10)) : undefined,
   };
 }
 
@@ -76,7 +78,9 @@ export async function saveBudgetItem(_prev: PlannerResult, formData: FormData): 
     return {
       error: message.includes("currency")
         ? "No se puede cambiar la moneda de un ítem que ya tiene pagos. Borrá los pagos o creá un ítem nuevo."
-        : "No se pudo guardar. Revisá el rubro y los datos.",
+        : message.includes("Confirmed guests")
+          ? "Los invitados confirmados tienen que ser un número entero mayor a cero, y solo van en Espacio, Catering, Barra y Ambientación."
+          : "No se pudo guardar. Revisá el rubro y los datos.",
     };
   }
   return done();
@@ -194,6 +198,13 @@ export async function addChecklistTask(formData: FormData): Promise<void> {
 export async function setChecklistTaskMonth(formData: FormData): Promise<void> {
   await requireAdmin();
   await portal.setTaskMonth(text(formData, "coupleId", 100), text(formData, "taskId", 100), month(formData));
+  revalidatePath("/", "layout");
+}
+
+/** Publishes every draft topic of the couple at once ("Publicar"). */
+export async function publishChecklistTasks(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.publishTasks(text(formData, "coupleId", 100));
   revalidatePath("/", "layout");
 }
 
@@ -340,6 +351,13 @@ export async function addGuestList(formData: FormData): Promise<void> {
 export async function updateGuest(formData: FormData): Promise<void> {
   await requireAdmin();
   await portal.updateGuest(coupleOf(formData), text(formData, "guestId", 100), guestInput(formData)).catch(() => undefined);
+  refresh();
+}
+
+/** The "Llegó" tick on the day: team only, the couple's portal has no such action. */
+export async function setGuestArrived(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.setGuestArrived(coupleOf(formData), text(formData, "guestId", 100), text(formData, "arrived", 3) === "yes").catch(() => undefined);
   refresh();
 }
 

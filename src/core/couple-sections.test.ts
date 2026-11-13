@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { PortalService } from "./portal-service";
+import { MAX_AESTHETIC_PHOTOS, PortalService } from "./portal-service";
 import { JsonCoupleRepository } from "@/infra/json-couple-repository";
 
 describe("estética, timing and guests", () => {
@@ -99,7 +99,7 @@ describe("estética, timing and guests", () => {
     });
 
     it("adds photos up to the limit and removes them returning the file to delete", async () => {
-      const ids = Array.from({ length: 12 }, (_, i) => `${i}`.padStart(8, "0") + "-0000-4000-8000-000000000000.jpg");
+      const ids = Array.from({ length: MAX_AESTHETIC_PHOTOS }, (_, i) => `${i}`.padStart(8, "0") + "-0000-4000-8000-000000000000.jpg");
       for (const id of ids) await service.addAestheticPhoto(coupleId, id);
       await expect(service.addAestheticPhoto(coupleId, "ffffffff-0000-4000-8000-000000000000.jpg")).rejects.toThrow("photos");
       expect((await load()).aesthetic.photoIds).toEqual(ids);

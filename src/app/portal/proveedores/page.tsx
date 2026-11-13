@@ -1,8 +1,7 @@
-import Link from "next/link";
 import { Icon } from "@/components/icons";
 import { BriefBlockSummary } from "@/components/planner/brief";
 import { LineStateLegend } from "@/components/planner/line-state";
-import { briefPaymentLabel } from "@/core/budget";
+import { briefPaymentDetail, rubroReceipts } from "@/core/budget";
 import { formatMoney } from "@/lib/format";
 import { loadRates } from "@/server/rates";
 import { getCurrentCouple } from "../data";
@@ -12,7 +11,8 @@ export default async function VendorsPage() {
   // The couple only sees what is confirmed; vendors still being searched or decided stay internal.
   const vendors = couple.brief.filter((b) => b.kind === "vendor" && b.status === "confirmed");
   const { ipc } = await loadRates(couple.budget.usdQuote);
-  const payment = (key: string) => briefPaymentLabel(couple.budget.items, key, ipc, formatMoney);
+  // Every vendor block's "Pago" comes from the budget ("Sin pagos cargados" when the rubro has no item).
+  const payment = (key: string) => briefPaymentDetail(couple.budget.items, key, ipc, formatMoney);
   const event = couple.brief.filter((b) => b.kind === "event" && b.status === "confirmed" && (b.fields.some((f) => f.detail) || (b.attachments ?? []).some((x) => !x.internal)));
 
   return (
@@ -25,12 +25,6 @@ export default async function VendorsPage() {
           </p>
           {vendors.some((b) => b.fields.some((f) => f.state)) && <div className="mt-3"><LineStateLegend /></div>}
         </div>
-        {vendors.length > 0 && (
-          <Link href="/portal/descargas/proveedores" className="btn-ghost btn-sm">
-            <Icon name="file" className="h-3.5 w-3.5" />
-            Descargar todo
-          </Link>
-        )}
       </div>
 
       {vendors.length === 0 && (
@@ -46,7 +40,7 @@ export default async function VendorsPage() {
             coupleId={couple.id}
             block={block}
             payment={payment(block.key)}
-            download={`/portal/descargas/proveedores?rubro=${encodeURIComponent(block.key)}`}
+            receipts={rubroReceipts(couple.budget.items, block.key)}
           />
         ))}
       </div>

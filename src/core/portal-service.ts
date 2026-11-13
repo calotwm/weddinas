@@ -5,12 +5,15 @@ import type { ComparisonTable } from "./comparison-table";
 import { byDayTime } from "./timing";
 import { normalizeWhatsapp } from "./whatsapp";
 import { cleanWebSelection, webDressCode } from "./web-options";
-import type { AestheticWeb, FreightIncluded } from "./couple";
+import type { AestheticWeb } from "./couple";
+import { tracksConfirmedGuests } from "./budget";
 import { BRIEF_CATALOG, catalogBlock, categoryName, CUSTOM_BLOCK_NAME_MAX, CUSTOM_BLOCK_PREFIX, defaultBrief, defaultMusic, musicMomentKeys, newBriefBlock, newCustomBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
 import {
   emptyPublicInfo,
+  emptyTeamFiles,
   isLineState,
   isPresented,
+  PLAN_SLOTS,
   type Attachment,
   type BlockStatus,
   type BriefBlock,
@@ -29,6 +32,7 @@ import {
   type PaletteColor,
   type Payment,
   type PaymentKind,
+  type PlanSlot,
   type Proposal,
   type ProposalComment,
   type ProposalStatus,
@@ -43,6 +47,7 @@ import { GUEST_AGES, GUEST_STATUSES, MAX_GUESTS } from "./guests";
 import type { CoupleRepository } from "./ports";
 import { slugify } from "./slug";
 import { isFileId } from "./uploads";
+import { safeHttpUrl } from "./url";
 
 export interface NewCoupleInput {
   partnerA: string;
@@ -79,7 +84,16 @@ export type VendorTimingInput = Omit<VendorTimingItem, "id">;
 export type GuestInput = Omit<Guest, "id">;
 export type NewGuestInput = Pick<Guest, "name"> & Partial<Omit<Guest, "id" | "name">>;
 
-export const MAX_AESTHETIC_PHOTOS = 12;
+export const MAX_AESTHETIC_PHOTOS = 20;
+/** Papelería designs the team can upload for one couple. */
+export const MAX_STATIONERY = 20;
+
+/** The team's single-file slots: the timing image (image only) and the three Planos (image or PDF). */
+export type TeamFileSlot = "timingImage" | PlanSlot;
+export const TEAM_FILE_SLOTS: readonly TeamFileSlot[] = ["timingImage", ...PLAN_SLOTS];
+
+const isImageId = (id: string) => isFileId(id) && /\.(jpg|png|webp)$/.test(id);
+const isImageOrPdfId = (id: string) => isFileId(id) && !id.endsWith(".xlsx");
 const MAX_PALETTE = 24;
 const MAX_TIMING = 100;
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -183,6 +197,41 @@ function setBlockStatus(block: BriefBlock, status: BlockStatus) {
   block.status = status;
 }
 
+/** A proposal the couple can answer: presented and not discarded by another one of its rubro. */
+function answerableProposal(couple: Couple, proposalId: string): Proposal {
+  const proposal = couple.proposals.find((p) => p.id === proposalId);
+  if (!proposal || !isPresented(proposal) || proposal.status === "discarded") throw new Error("Proposal not found");
+  return proposal;
+}
+
+function comparisonVendorNames(table: ComparisonTable): string[] {
+  return table.sheets.flatMap((sheet) => sheet.vendors.map((v) => v.name));
+}
+
+/**
+ * The couple's answer. Approving one with a rubro wins it: the other open ones of that rubro go away and the
+ * brief block gets confirmed. `chosenVendor` (from the comparison table) becomes the brief vendor.
+ */
+function answerProposal(couple: Couple, proposal: Proposal, status: ProposalStatus, comment: string, chosenVendor?: string) {
+  if (status !== "approved" && status !== "rejected") throw new Error("Unknown answer");
+  proposal.status = status;
+  proposal.coupleComment = comment;
+  proposal.respondedAt = new Date().toISOString();
+  if (chosenVendor) proposal.chosenVendor = chosenVendor;
+  else if (status !== "approved") delete proposal.chosenVendor;
+  if (status !== "approved" || !proposal.category) return;
+  for (const other of couple.proposals) {
+    if (other !== proposal && other.category === proposal.category && isPresented(other) && other.status === "pending") {
+      other.status = "discarded";
+    }
+  }
+  const block = ensureBriefBlock(couple, proposal.category);
+  // The vendor the couple picked wins; otherwise a vendor the team already wrote is more precise than the proposal title.
+  if (chosenVendor) block.vendor = chosenVendor;
+  else if (!block.vendor) block.vendor = proposal.title;
+  setBlockStatus(block, "confirmed");
+}
+
 /** An optional vendor rubro of the brief catalog or one of the couple's custom rubros; empty means "Sin rubro". */
 function proposalCategory(category: string | undefined, brief: BriefBlock[]): string | undefined {
   const key = category?.trim();
@@ -215,6 +264,8 @@ function withPlannerDefaults(couple: Couple): LoadedCouple {
   couple.vendorTiming ??= [];
   couple.guests ??= [];
   couple.rsvpInbox ??= [];
+  couple.teamFiles ??= emptyTeamFiles();
+  couple.teamFiles.plans = { ...emptyTeamFiles().plans, ...couple.teamFiles.plans };
   couple.brief.forEach(withCatalogFields);
   return couple as LoadedCouple;
 }
@@ -233,6 +284,11 @@ function cleanBudgetItem(input: BudgetItemInput): BudgetItemInput {
   const dueDate = input.dueDate?.trim() ?? "";
   if (dueDate && !DAY.test(dueDate)) throw new Error("Due date must be YYYY-MM-DD");
   if (input.freight !== undefined && input.freight !== "yes" && input.freight !== "no") throw new Error("Unknown freight value");
+  const { confirmedGuests } = input;
+  if (confirmedGuests !== undefined) {
+    if (!Number.isInteger(confirmedGuests) || confirmedGuests <= 0) throw new Error("Confirmed guests must be a positive whole number");
+    if (!tracksConfirmedGuests(input.category)) throw new Error("Confirmed guests only apply to Espacio, Catering, Barra and Ambientación");
+  }
   return {
     category: input.category,
     vendor: input.vendor.trim(),
@@ -244,6 +300,7 @@ function cleanBudgetItem(input: BudgetItemInput): BudgetItemInput {
     note: input.note.trim(),
     dueDate,
     freight: input.freight,
+    confirmedGuests,
   };
 }
 
@@ -413,23 +470,21 @@ export class PortalService {
 
   async respondToProposal(coupleId: string, proposalId: string, status: ProposalStatus, comment: string): Promise<void> {
     await this.mutate(coupleId, (c) => {
-      const proposal = c.proposals.find((p) => p.id === proposalId);
-      if (!proposal || !isPresented(proposal) || proposal.status === "discarded") throw new Error("Proposal not found");
-      if (status !== "approved" && status !== "rejected") throw new Error("Unknown answer");
-      proposal.status = status;
-      proposal.coupleComment = comment;
-      proposal.respondedAt = new Date().toISOString();
-      if (status !== "approved" || !proposal.category) return;
-      // The chosen proposal wins its rubro: the other open ones go away and the brief block gets confirmed.
-      for (const other of c.proposals) {
-        if (other !== proposal && other.category === proposal.category && isPresented(other) && other.status === "pending") {
-          other.status = "discarded";
-        }
-      }
-      const block = ensureBriefBlock(c, proposal.category);
-      // A vendor the team already wrote in the brief is more precise than the proposal title, so it is kept.
-      if (!block.vendor) block.vendor = proposal.title;
-      setBlockStatus(block, "confirmed");
+      answerProposal(c, answerableProposal(c, proposalId), status, comment);
+    });
+  }
+
+  /**
+   * The couple's "Elegir" on one vendor of the proposal's comparison table: approves the proposal like
+   * respondToProposal and names that vendor in the brief. Choosing another vendor later switches it.
+   */
+  async chooseProposalVendor(coupleId: string, proposalId: string, vendorName: string): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      const proposal = answerableProposal(c, proposalId);
+      if (!proposal.comparison) throw new Error("Proposal has no comparison table");
+      const vendor = comparisonVendorNames(proposal.comparison).find((name) => name === vendorName.trim());
+      if (!vendor) throw new Error("Unknown vendor");
+      answerProposal(c, proposal, "approved", proposal.coupleComment, vendor);
     });
   }
 
@@ -488,6 +543,8 @@ export class PortalService {
       const attachments = (proposal.attachments ??= []);
       const previous = attachments.findIndex((a) => a.id === proposal.comparison?.attachmentId);
       if (previous >= 0) removed = attachments.splice(previous, 1)[0].id;
+      // A choice that is no longer in the table would point at nothing.
+      if (proposal.chosenVendor && !(table && comparisonVendorNames(table).includes(proposal.chosenVendor))) delete proposal.chosenVendor;
       if (!table) {
         delete proposal.comparison;
         return;
@@ -584,10 +641,10 @@ export class PortalService {
     return couple && photoId ? { coupleId: couple.id, photoId } : null;
   }
 
-  /** `month` ("YYYY-MM") places the task in the monthly checklist; without it the task has no month. */
+  /** `month` ("YYYY-MM") places the task in the monthly checklist; without it the task has no month. It starts as a draft, hidden from the couple. */
   async addTask(coupleId: string, title: string, month?: string): Promise<ChecklistTask> {
     if (month && !MONTH.test(month)) throw new Error("Month must be YYYY-MM");
-    const task: ChecklistTask = { id: randomUUID(), title, done: false, ...(month ? { month } : {}) };
+    const task: ChecklistTask = { id: randomUUID(), title, done: false, ...(month ? { month } : {}), draft: true };
     await this.mutate(coupleId, (c) => {
       c.tasks.push(task);
     });
@@ -602,6 +659,19 @@ export class PortalService {
       if (month) task.month = month;
       else delete task.month;
     });
+  }
+
+  /** Publishes every draft topic so the couple sees it; returns how many were published. */
+  async publishTasks(coupleId: string): Promise<number> {
+    let published = 0;
+    await this.mutate(coupleId, (c) => {
+      for (const task of c.tasks) {
+        if (!task.draft) continue;
+        delete task.draft;
+        published++;
+      }
+    });
+    return published;
   }
 
   async toggleTask(coupleId: string, taskId: string): Promise<void> {
@@ -631,17 +701,6 @@ export class PortalService {
       c.budget.items.push(item);
     });
     return item;
-  }
-
-  /** Flete/Viáticos only: the couple may record it without editing the rest of the item; null clears it. */
-  async setBudgetItemFreight(coupleId: string, itemId: string, freight: FreightIncluded | null): Promise<void> {
-    if (freight !== null && freight !== "yes" && freight !== "no") throw new Error("Unknown freight value");
-    await this.mutate(coupleId, (c) => {
-      const item = c.budget.items.find((i) => i.id === itemId);
-      if (!item) throw new Error("Budget item not found");
-      if (freight) item.freight = freight;
-      else delete item.freight;
-    });
   }
 
   async updateBudgetItem(coupleId: string, itemId: string, input: BudgetItemInput): Promise<void> {
@@ -910,6 +969,52 @@ export class PortalService {
     });
   }
 
+  /** Papelería: a stationery design image uploaded by the team. */
+  async addStationery(coupleId: string, fileId: string): Promise<void> {
+    if (!isImageId(fileId)) throw new Error("Invalid stationery file");
+    await this.mutate(coupleId, (c) => {
+      if (c.teamFiles.stationeryIds.length >= MAX_STATIONERY) throw new Error("Too many stationery designs");
+      c.teamFiles.stationeryIds.push(fileId);
+    });
+  }
+
+  /** Returns the file id to delete, or null when it was not one of the couple's stationery designs. */
+  async removeStationery(coupleId: string, fileId: string): Promise<string | null> {
+    let removed: string | null = null;
+    await this.mutate(coupleId, (c) => {
+      if (!c.teamFiles.stationeryIds.includes(fileId)) return;
+      removed = fileId;
+      c.teamFiles.stationeryIds = c.teamFiles.stationeryIds.filter((id) => id !== fileId);
+    });
+    return removed;
+  }
+
+  /** Sets (or clears with null) one of the team's file slots; returns the previous file id to delete. */
+  async setTeamFile(coupleId: string, slot: TeamFileSlot, fileId: string | null): Promise<string | null> {
+    if (!TEAM_FILE_SLOTS.includes(slot)) throw new Error("Unknown file slot");
+    if (fileId !== null && !(slot === "timingImage" ? isImageId(fileId) : isImageOrPdfId(fileId))) throw new Error("Invalid file");
+    let previous: string | null = null;
+    await this.mutate(coupleId, (c) => {
+      if (slot === "timingImage") {
+        previous = c.teamFiles.timingImageId;
+        c.teamFiles.timingImageId = fileId;
+      } else {
+        previous = c.teamFiles.plans[slot];
+        c.teamFiles.plans[slot] = fileId;
+      }
+    });
+    return previous;
+  }
+
+  /** The team's timing spreadsheet link; an empty text clears it, anything but http(s) is rejected. */
+  async setTimingSheetUrl(coupleId: string, value: string): Promise<void> {
+    const url = value.trim() ? safeHttpUrl(value) : "";
+    if (value.trim() && !url) throw new Error("Invalid link");
+    await this.mutate(coupleId, (c) => {
+      c.teamFiles.timingSheetUrl = url;
+    });
+  }
+
   /** Returns the file id to delete, or null when it was not one of the couple's photos. */
   async removeAestheticPhoto(coupleId: string, photoId: string): Promise<string | null> {
     let removed: string | null = null;
@@ -999,8 +1104,25 @@ export class PortalService {
     await this.mutate(coupleId, (c) => {
       const index = c.guests.findIndex((g) => g.id === guestId);
       if (index === -1) throw new Error("Guest not found");
-      // Replaced rather than merged, so cleared optional fields go away.
-      c.guests[index] = { id: guestId, ...clean };
+      // Replaced rather than merged, so cleared optional fields go away; the fields the row form does not carry
+      // (travels without an answer, the team's attendance tick) keep their stored value.
+      const { travels, arrived } = c.guests[index];
+      c.guests[index] = {
+        id: guestId,
+        ...clean,
+        ...(clean.travels === undefined && travels !== undefined ? { travels } : {}),
+        ...(arrived ? { arrived } : {}),
+      };
+    });
+  }
+
+  /** The team's attendance tick on the day; unticking removes the field. */
+  async setGuestArrived(coupleId: string, guestId: string, arrived: boolean): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      const guest = c.guests.find((g) => g.id === guestId);
+      if (!guest) throw new Error("Guest not found");
+      if (arrived) guest.arrived = true;
+      else delete guest.arrived;
     });
   }
 

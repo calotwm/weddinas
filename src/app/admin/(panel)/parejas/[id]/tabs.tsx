@@ -14,6 +14,8 @@ const TABS: Array<{ path: string; label: string; icon: IconName }> = [
   { path: "/estetica", label: "Estética", icon: "edit" },
   { path: "/timing", label: "Timing", icon: "clock" },
   { path: "/invitados", label: "Invitados", icon: "list" },
+  { path: "/planos", label: "Planos", icon: "map" },
+  { path: "/descargas", label: "Descargas", icon: "file" },
 ];
 
 export function CoupleTabs({ coupleId }: { coupleId: string }) {

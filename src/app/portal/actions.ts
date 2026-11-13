@@ -3,27 +3,28 @@
 import { revalidatePath } from "next/cache";
 import {
   aestheticInput,
+  clearCoverPhoto,
   guestInput,
   importGuestList,
   pastedGuests,
   type GuestImportResult,
   removeAestheticPhoto as dropPhoto,
+  replaceCoverPhoto,
   uploadAestheticPhotos as savePhotos,
 } from "@/components/planner/section-forms";
 import { musicInput } from "@/components/planner/music";
 import type { ScheduleItem } from "@/core/couple";
 import { normalizeAlias, normalizeCbu } from "@/core/gift";
-import { MAX_IMAGE_BYTES } from "@/core/uploads";
 import { safeHttpUrl as safeUrl } from "@/core/url";
 import { readWebForm } from "@/core/web-options";
 import { requireCoupleId } from "@/server/auth";
-import { files, portal } from "@/server/container";
+import { portal } from "@/server/container";
 import { attachReceipt, type ReceiptResult } from "@/server/receipts";
 import { addFamilyMemberFrom, removeFamilyMemberFrom, saveFamilyPhoto, updateFamilyMemberFrom } from "./familia/family-forms";
 
 // Every action takes the couple id from the signed session, never from the form.
-// The couple only reads "Temas del mes" (and ticks them) and the timing: the team owns adding, removing and editing them,
-// so there are deliberately no task-creation, task-deletion or timing-write actions here.
+// The couple only reads "Temas del mes" and the timing: the team owns adding, ticking, removing and editing them,
+// so there are deliberately no task-creation, task-toggle, task-deletion or timing-write actions here.
 
 const text = (formData: FormData, key: string, max = 2000) => String(formData.get(key) ?? "").trim().slice(0, max);
 
@@ -62,6 +63,14 @@ export async function respondToProposal(formData: FormData): Promise<void> {
   revalidatePath("/admin", "layout");
 }
 
+/** "Elegir" on one vendor of the comparison table: approves the proposal; the service refuses vendors outside the table. */
+export async function chooseProposalVendor(formData: FormData): Promise<void> {
+  const coupleId = await requireCoupleId();
+  await portal.chooseProposalVendor(coupleId, text(formData, "proposalId", 100), text(formData, "vendor"));
+  revalidatePath("/portal", "layout");
+  revalidatePath("/admin", "layout");
+}
+
 /** "Finalista": the couple's shortlist; the service refuses drafts and discarded proposals. */
 export async function setProposalFinalist(formData: FormData): Promise<void> {
   const coupleId = await requireCoupleId();
@@ -76,12 +85,6 @@ export async function commentOnProposal(formData: FormData): Promise<void> {
   if (comment) await portal.addProposalComment(coupleId, text(formData, "proposalId", 100), "couple", comment);
   revalidatePath("/portal", "layout");
   revalidatePath("/admin", "layout");
-}
-
-export async function toggleTask(formData: FormData): Promise<void> {
-  const coupleId = await requireCoupleId();
-  await portal.toggleTask(coupleId, text(formData, "taskId", 100));
-  revalidatePath("/portal", "layout");
 }
 
 export async function saveMusic(formData: FormData): Promise<void> {
@@ -134,33 +137,13 @@ export async function uploadFamilyPhoto(_prev: PhotoResult, formData: FormData):
 }
 
 export async function uploadCoverPhoto(_prev: PhotoResult, formData: FormData): Promise<PhotoResult> {
-  const coupleId = await requireCoupleId();
-  const file = formData.get("photo");
-  if (!(file instanceof File) || file.size === 0) return { error: "Elegí una foto." };
-  if (file.size > MAX_IMAGE_BYTES) return { error: "La foto pesa más de 5 MB." };
-
-  let photoId: string;
-  try {
-    photoId = await files.saveImage(coupleId, new Uint8Array(await file.arrayBuffer()));
-  } catch {
-    return { error: "Subí una foto en JPG, PNG o WebP." };
-  }
-  let previous: string | null;
-  try {
-    previous = await portal.setCoverPhoto(coupleId, photoId);
-  } catch {
-    await files.delete(coupleId, photoId);
-    return { error: "No se pudo guardar la foto. Recargá la página." };
-  }
-  if (previous) await files.delete(coupleId, previous).catch(() => undefined);
-  revalidatePath("/", "layout");
-  return { ok: Date.now() };
+  const result = await replaceCoverPhoto(await requireCoupleId(), formData);
+  if (result?.ok) revalidatePath("/", "layout");
+  return result;
 }
 
 export async function removeCoverPhoto(): Promise<void> {
-  const coupleId = await requireCoupleId();
-  const previous = await portal.setCoverPhoto(coupleId, null);
-  if (previous) await files.delete(coupleId, previous).catch(() => undefined);
+  await clearCoverPhoto(await requireCoupleId());
   revalidatePath("/", "layout");
 }
 
@@ -237,14 +220,6 @@ export async function uploadPaymentReceipt(_prev: ReceiptResult, formData: FormD
   const result = await attachReceipt(coupleId, formData);
   if (result?.ok) revalidatePath("/", "layout");
   return result;
-}
-
-export async function setBudgetItemFreight(formData: FormData): Promise<void> {
-  const coupleId = await requireCoupleId();
-  const value = text(formData, "freight", 10);
-  const freight = value === "yes" || value === "no" ? value : null;
-  await portal.setBudgetItemFreight(coupleId, text(formData, "itemId", 100), freight).catch(() => undefined);
-  revalidatePath("/", "layout");
 }
 
 // Answers from the invitation web that did not match a guest: the couple can assign or dismiss them too.

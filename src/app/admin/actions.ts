@@ -8,8 +8,10 @@ import { importCouple, type CoupleImport } from "@/core/couple-import";
 import { redirect } from "next/navigation";
 import { safeHttpUrl } from "@/core/url";
 import { WELCOME_TEMPLATE_MAX } from "@/core/welcome-message";
-import { adminCode, allowLoginAttempt, requireAdmin, startAdminSession } from "@/server/auth";
+import { newPasswordProblem, TEAM_PASSWORD_LIMITS } from "@/core/team-users";
+import { adminCode, allowLoginAttempt, checkTeamUser, currentTeamUser, requireAdmin, saveTeamPassword, startAdminSession, teamLoginUsesEmail } from "@/server/auth";
 import { ensureDemoData, files, portal, settings } from "@/server/container";
+import { uploadAttachments } from "./attachment-actions";
 
 const text = (formData: FormData, key: string, max = 4000) => String(formData.get(key) ?? "").trim().slice(0, max);
 
@@ -21,6 +23,13 @@ export async function adminLogin(_prev: FormResult, formData: FormData): Promise
   if (!(await allowLoginAttempt("admin"))) {
     return { error: "Demasiados intentos. Esperá unos minutos y volvé a probar." };
   }
+  if (teamLoginUsesEmail()) {
+    const user = await checkTeamUser(text(formData, "email", 200), String(formData.get("password") ?? "").slice(0, 200));
+    if (!user) return { error: "Mail o clave incorrectos." };
+    await ensureDemoData();
+    await startAdminSession(user);
+    redirect("/admin");
+  }
   const given = Buffer.from(text(formData, "code", 200));
   const expected = Buffer.from(adminCode());
   if (given.length !== expected.length || !timingSafeEqual(given, expected)) {
@@ -29,6 +38,24 @@ export async function adminLogin(_prev: FormResult, formData: FormData): Promise
   await ensureDemoData();
   await startAdminSession();
   redirect("/admin");
+}
+
+export type PasswordResult = { error?: string; ok?: boolean } | null;
+
+/** A team member changes their own password: the current one is required and attempts share the login limits. */
+export async function changeTeamPassword(_prev: PasswordResult, formData: FormData): Promise<PasswordResult> {
+  await requireAdmin();
+  const user = await currentTeamUser();
+  if (!user) return { error: "Para cambiar la clave entrá con tu mail." };
+  if (!(await allowLoginAttempt("admin"))) return { error: "Demasiados intentos. Esperá unos minutos y volvé a probar." };
+  const raw = (key: string) => String(formData.get(key) ?? "").slice(0, TEAM_PASSWORD_LIMITS.max + 1);
+  const current = raw("current");
+  if ((await checkTeamUser(user, current)) !== user) return { error: "La clave actual no es correcta." };
+  const next = raw("next");
+  const problem = newPasswordProblem(current, next, raw("repeat"));
+  if (problem) return { error: problem };
+  await saveTeamPassword(user, next);
+  return { ok: true };
 }
 
 export async function createCouple(_prev: FormResult, formData: FormData): Promise<FormResult> {
@@ -84,17 +111,64 @@ export async function updateCouple(formData: FormData): Promise<void> {
   revalidatePath("/", "layout");
 }
 
-export async function addProposal(formData: FormData): Promise<void> {
+export type ProposalResult = { error?: string; ok?: number } | null;
+
+/** The comparison Excel and the PDFs travel in one request, under the server action body limit in next.config.ts. */
+const NEW_PROPOSAL_MAX_BYTES = 11 * 1024 * 1024;
+
+/**
+ * "Nueva propuesta", optionally with its comparison Excel and files in the same submit. The files go through the
+ * same actions as uploading them later; while they upload the proposal stays a draft, and it is only presented when
+ * every file made it, so the couple never sees a half-loaded proposal.
+ */
+export async function addProposal(_prev: ProposalResult, formData: FormData): Promise<ProposalResult> {
   await requireAdmin();
   const coupleId = text(formData, "coupleId", 100);
-  await portal.addProposal(coupleId, {
-    title: text(formData, "title", 200),
-    description: text(formData, "description"),
-    amount: text(formData, "amount", 100),
-    link: safeHttpUrl(text(formData, "link", 500)),
-    category: text(formData, "category", 60),
-  }, { present: formData.get("intent") !== "draft" });
+  const picked = formData.get("comparison");
+  const sheet = picked instanceof File && picked.size > 0 ? picked : null;
+  const docs = formData.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
+  if ((sheet?.size ?? 0) + docs.reduce((n, f) => n + f.size, 0) > NEW_PROPOSAL_MAX_BYTES) {
+    return { error: "Entre el cuadro y los archivos pesan más de 11 MB. Creá la propuesta con menos archivos y sumá el resto desde la lista." };
+  }
+  const present = formData.get("intent") !== "draft";
+  const withFiles = Boolean(sheet) || docs.length > 0;
+  let proposalId: string;
+  try {
+    ({ id: proposalId } = await portal.addProposal(coupleId, {
+      title: text(formData, "title", 200),
+      description: text(formData, "description"),
+      amount: text(formData, "amount", 100),
+      link: safeHttpUrl(text(formData, "link", 500)),
+      category: text(formData, "category", 60),
+    }, { present: present && !withFiles }));
+  } catch {
+    return { error: "No se pudo crear la propuesta. Recargá la página y probá de nuevo." };
+  }
+
+  const problems: string[] = [];
+  if (sheet) {
+    const upload = new FormData();
+    upload.set("coupleId", coupleId);
+    upload.set("proposalId", proposalId);
+    upload.set("file", sheet);
+    const result = await uploadComparison(null, upload);
+    if (result?.error) problems.push(`Cuadro comparativo: ${result.error}`);
+  }
+  if (docs.length > 0) {
+    const upload = new FormData();
+    upload.set("coupleId", coupleId);
+    upload.set("targetKind", "proposal");
+    upload.set("targetId", proposalId);
+    for (const doc of docs) upload.append("files", doc);
+    const result = await uploadAttachments(null, upload);
+    if (result?.error) problems.push(result.error);
+  }
+  if (present && withFiles && problems.length === 0) await portal.presentProposal(coupleId, proposalId);
   revalidatePath("/", "layout");
+  if (problems.length > 0) {
+    return { error: `${problems.join(" ")} La propuesta quedó como borrador: corregilo desde la lista y presentala cuando esté lista.` };
+  }
+  return { ok: Date.now() };
 }
 
 /** The team's edit of a proposal's content, on any status. */

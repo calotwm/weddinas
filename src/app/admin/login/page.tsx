@@ -2,7 +2,11 @@ import Link from "next/link";
 import { Logo } from "@/components/brand";
 import { Icon } from "@/components/icons";
 import { MadeBy } from "@/components/made-by";
+import { teamLoginUsesEmail } from "@/server/auth";
 import { AdminLoginForm } from "../forms";
+
+// Reads ADMIN_USERS on every request, so the form matches the login mode in use.
+export const dynamic = "force-dynamic";
 
 // Photo: Bruno Ngarukiye on Unsplash (Unsplash License), self-hosted to keep the CSP tight.
 const TEAM_PHOTO = "/img/team-login.jpg";
@@ -17,7 +21,7 @@ export default function AdminLoginPage() {
         <p className="font-script text-5xl text-peach">Equipo Weddinas</p>
         <p className="mt-1 mb-8 text-xs tracking-[0.3em] text-cream/70 uppercase">Panel de organización</p>
         <div className="card text-left">
-          <AdminLoginForm />
+          <AdminLoginForm withEmail={teamLoginUsesEmail()} />
         </div>
         <Link href="/" className="mt-6 inline-flex items-center gap-2 text-sm text-cream/80 transition-colors hover:text-peach">
           <Icon name="arrowLeft" className="h-4 w-4" />
