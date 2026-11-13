@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import type { Guest, GuestStatus } from "@/core/couple";
-import { GUEST_AGE_LABEL, GUEST_AGES, GUEST_STATUS_LABEL, GUEST_STATUSES, guestDisplayName, sortGuests } from "@/core/guests";
+import { GUEST_AGE_LABEL, GUEST_AGES, GUEST_STATUS_LABEL, GUEST_STATUSES, guestDisplayName, guestFormKey, sortGuests } from "@/core/guests";
 import { Icon } from "../icons";
 import { SubmitButton } from "../submit-button";
 
@@ -14,6 +14,8 @@ export interface GuestActions {
   update: (formData: FormData) => Promise<void>;
   remove: (formData: FormData) => Promise<void>;
   importList: (prev: GuestImportState, formData: FormData) => Promise<GuestImportState>;
+  /** Team only: the attendance tick on the day ("Llegó"). The couple's portal leaves it out. */
+  setArrived?: (formData: FormData) => Promise<void>;
 }
 
 /** Hidden couple id for the team's actions; the couple's actions read it from the session instead. */
@@ -28,11 +30,38 @@ const STATUS_TONE: Record<GuestStatus, string> = {
   declined: "bg-ink/8 text-ink/60",
 };
 
+/** The same palette on the status select itself; important so it wins over the field's white background. */
+const STATUS_FIELD_TONE: Record<GuestStatus, string> = {
+  confirmed: "!bg-mint/25 !text-forest",
+  pending: "!bg-peach !text-forest",
+  sent: "!bg-teal/15 !text-forest",
+  declined: "!bg-ink/8 !text-ink/60",
+};
+
 const ROW = "grid gap-2 grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_10rem_7rem_1fr_auto] lg:items-center";
 
+/** Tinted with the color of the picked status, following the user's choice and the form's reset after saving. */
 function StatusSelect({ id, defaultValue }: { id?: string; defaultValue: GuestStatus }) {
+  const [status, setStatus] = useState(defaultValue);
+  const ref = useRef<HTMLSelectElement>(null);
+  useEffect(() => {
+    const form = ref.current?.form;
+    if (!form) return;
+    // "reset" fires before the fields go back to their defaults, so read the value once it is done.
+    const onReset = () => setTimeout(() => ref.current && setStatus(ref.current.value as GuestStatus));
+    form.addEventListener("reset", onReset);
+    return () => form.removeEventListener("reset", onReset);
+  }, []);
   return (
-    <select id={id} name="status" defaultValue={defaultValue} aria-label={id ? undefined : "Estado"} className="field py-2">
+    <select
+      ref={ref}
+      id={id}
+      name="status"
+      defaultValue={defaultValue}
+      onChange={(e) => setStatus(e.target.value as GuestStatus)}
+      aria-label={id ? undefined : "Estado"}
+      className={`field py-2 font-semibold ${STATUS_FIELD_TONE[status]}`}
+    >
       {GUEST_STATUSES.map((s) => (
         <option key={s} value={s}>{GUEST_STATUS_LABEL[s]}</option>
       ))}
@@ -73,10 +102,34 @@ function ExtraFields({ guest, idPrefix }: { guest?: Guest; idPrefix?: string }) 
   );
 }
 
-function GuestRow({ guest, actions, coupleId }: { guest: Guest; actions: GuestActions; coupleId?: string }) {
+/** The team's "Llegó" tick: posts on change, so attendance is one tap per guest. */
+function ArrivedToggle({ guest, coupleId, action }: { guest: Guest; coupleId?: string; action: (formData: FormData) => Promise<void> }) {
+  return (
+    <form action={action} className="flex items-center self-center">
+      <CoupleField coupleId={coupleId} />
+      <input type="hidden" name="guestId" value={guest.id} />
+      <label className="flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-forest">
+        <input
+          type="checkbox"
+          name="arrived"
+          value="yes"
+          defaultChecked={Boolean(guest.arrived)}
+          onChange={(e) => e.currentTarget.form?.requestSubmit()}
+          className="h-4 w-4 accent-forest"
+        />
+        Llegó
+      </label>
+    </form>
+  );
+}
+
+function GuestRow({ guest, number, actions, coupleId }: { guest: Guest; number: number; actions: GuestActions; coupleId?: string }) {
   const name = guestDisplayName(guest);
   return (
     <li className="flex flex-wrap items-start gap-2 rounded-2xl p-2 ring-1 ring-forest/5 lg:items-center">
+      <span className="w-7 shrink-0 self-center text-right text-sm font-semibold tabular-nums text-ink/50" aria-label={`Invitado ${number}`}>
+        {number}
+      </span>
       <form action={actions.update} className={`min-w-0 flex-1 ${ROW}`}>
         <CoupleField coupleId={coupleId} />
         <input type="hidden" name="guestId" value={guest.id} />
@@ -97,6 +150,8 @@ function GuestRow({ guest, actions, coupleId }: { guest: Guest; actions: GuestAc
           </div>
         </details>
       </form>
+      {/* Keyed by the stored tick for the same reason as the row form: the reset after saving goes back to the mounted default. */}
+      {actions.setArrived && <ArrivedToggle key={guest.arrived ? "in" : "out"} guest={guest} coupleId={coupleId} action={actions.setArrived} />}
       <form action={actions.remove}>
         <CoupleField coupleId={coupleId} />
         <input type="hidden" name="guestId" value={guest.id} />
@@ -176,6 +231,7 @@ export function GuestManager({ guests, actions, coupleId }: { guests: Guest[]; a
     [sorted, filter, table],
   );
   const counts = useMemo(() => Object.fromEntries(GUEST_STATUSES.map((s) => [s, guests.filter((g) => g.status === s).length])), [guests]);
+  const arrived = useMemo(() => guests.filter((g) => g.arrived).length, [guests]);
 
   return (
     <div className="space-y-6">
@@ -243,7 +299,10 @@ export function GuestManager({ guests, actions, coupleId }: { guests: Guest[]; a
 
       <section className="card space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="section-title">Lista ({guests.length})</h3>
+          <h3 className="section-title">
+            Lista ({guests.length})
+            {actions.setArrived && <span className="ml-2 text-sm font-semibold text-teal">{arrived} {arrived === 1 ? "llegó" : "llegaron"}</span>}
+          </h3>
           <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtrar por estado">
             {(["all", ...GUEST_STATUSES] as const).map((s) => (
               <button
@@ -276,8 +335,9 @@ export function GuestManager({ guests, actions, coupleId }: { guests: Guest[]; a
           <p className="text-sm text-ink/50">{guests.length === 0 ? "Todavía no hay invitados cargados." : "Nadie con ese filtro."}</p>
         ) : (
           <ul className="space-y-2">
-            {visible.map((g) => (
-              <GuestRow key={g.id} guest={g} actions={actions} coupleId={coupleId} />
+            {visible.map((g, i) => (
+              // Keyed by the saved values so a saved row remounts with them (see guestFormKey).
+              <GuestRow key={guestFormKey(g)} guest={g} number={i + 1} actions={actions} coupleId={coupleId} />
             ))}
           </ul>
         )}

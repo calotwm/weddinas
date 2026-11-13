@@ -995,8 +995,25 @@ export class PortalService {
     await this.mutate(coupleId, (c) => {
       const index = c.guests.findIndex((g) => g.id === guestId);
       if (index === -1) throw new Error("Guest not found");
-      // Replaced rather than merged, so cleared optional fields go away.
-      c.guests[index] = { id: guestId, ...clean };
+      // Replaced rather than merged, so cleared optional fields go away; the fields the row form does not carry
+      // (travels without an answer, the team's attendance tick) keep their stored value.
+      const { travels, arrived } = c.guests[index];
+      c.guests[index] = {
+        id: guestId,
+        ...clean,
+        ...(clean.travels === undefined && travels !== undefined ? { travels } : {}),
+        ...(arrived ? { arrived } : {}),
+      };
+    });
+  }
+
+  /** The team's attendance tick on the day; unticking removes the field. */
+  async setGuestArrived(coupleId: string, guestId: string, arrived: boolean): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      const guest = c.guests.find((g) => g.id === guestId);
+      if (!guest) throw new Error("Guest not found");
+      if (arrived) guest.arrived = true;
+      else delete guest.arrived;
     });
   }
 

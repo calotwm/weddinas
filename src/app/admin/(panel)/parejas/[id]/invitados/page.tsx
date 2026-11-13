@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Icon } from "@/components/icons";
 import { GuestSummaryView } from "@/components/planner/guest-summary";
 import { GuestManager } from "@/components/planner/guests";
 import { guestSummary } from "@/core/guests";
-import { addGuest, addGuestList, assignRsvp, createRsvpLink, deleteGuest, dismissRsvp, importGuests, rotateRsvpLink, updateGuest } from "@/app/admin/planner-actions";
+import { addGuest, addGuestList, assignRsvp, createRsvpLink, deleteGuest, dismissRsvp, importGuests, rotateRsvpLink, setGuestArrived, updateGuest } from "@/app/admin/planner-actions";
 import { CopyButton } from "@/components/copy-button";
 import { RsvpInbox } from "@/components/planner/rsvp-inbox";
 import { siteOrigin } from "@/server/site-url";
@@ -20,9 +22,17 @@ export default async function GuestsAdminPage({ params }: { params: Promise<{ id
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="font-display text-3xl text-forest">Invitados</h2>
-        <p className="hint">La lista la carga la pareja o la importás desde su Excel.</p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h2 className="font-display text-3xl text-forest">Invitados</h2>
+          <p className="hint">La lista la carga la pareja o la importás desde su Excel. El día del casamiento tildá &quot;Llegó&quot; para tomar lista.</p>
+        </div>
+        {couple.guests.length > 0 && (
+          <Link href={`/admin/parejas/${couple.id}/descargas/invitados`} className="btn-ghost btn-sm">
+            <Icon name="file" className="h-3.5 w-3.5" />
+            Descargar
+          </Link>
+        )}
       </div>
       <section className="card">
         <GuestSummaryView summary={guestSummary(couple.guests)} />
@@ -57,7 +67,7 @@ export default async function GuestsAdminPage({ params }: { params: Promise<{ id
       <GuestManager
         guests={couple.guests}
         coupleId={couple.id}
-        actions={{ add: addGuest, addList: addGuestList, update: updateGuest, remove: deleteGuest, importList: importGuests }}
+        actions={{ add: addGuest, addList: addGuestList, update: updateGuest, remove: deleteGuest, importList: importGuests, setArrived: setGuestArrived }}
       />
     </div>
   );
