@@ -43,7 +43,7 @@ Set these in `.env.local` (or the host's environment). In production `SESSION_SE
 | Variable | Purpose |
 | --- | --- |
 | `SESSION_SECRET` | HMAC key for the session cookie |
-| `ADMIN_USERS` | One login per team member: `email=hash` entries separated by commas or new lines. Build each entry with `node scripts/hash-team-password.mjs <email> <password>` (only the hash is stored). When set, the shared `ADMIN_CODE` stops working |
+| `ADMIN_USERS` | One login per team member: `email=hash` entries separated by commas or new lines. Build each entry with `node scripts/hash-team-password.mjs <email> <password>` (only the hash is stored). When set, the shared `ADMIN_CODE` stops working. Members change their own password at `/admin/cuenta` (stored hashed in `settings.json`); writing a new hash for a member here resets it |
 | `ADMIN_CODE` | Shared code for the planner admin, used while `ADMIN_USERS` is empty |
 | `DATA_FILE` | Path of the JSON database (default `data/db.json`). Uploaded photos are stored in an `uploads` folder next to it |
 

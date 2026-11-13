@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import { signSession, verifySession } from "./session";
-import { authenticateTeamUser, hashTeamPassword, parseTeamUsers, TeamUsersError, verifyTeamPassword } from "./team-users";
+import { authenticateTeamUser, effectiveTeamUsers, hashTeamPassword, newPasswordProblem, parseTeamUsers, passwordOverride, TeamUsersError, verifyTeamPassword } from "./team-users";
 
 describe("team passwords", () => {
   it("hashes with a random salt and verifies only the same password", () => {
@@ -67,5 +67,42 @@ describe("admin sessions", () => {
     const withUser = verifySession(signSession({ role: "admin", key: "k", user: "canela@weddinas.com" }, "s", 60), "s");
     expect(withUser).toEqual({ role: "admin", key: "k", user: "canela@weddinas.com" });
     expect(verifySession(signSession({ role: "admin", key: "k" }, "s", 60), "s")).toEqual({ role: "admin", key: "k" });
+  });
+});
+
+describe("passwords changed from the app", () => {
+  const envHash = hashTeamPassword("clave-inicial-canela");
+  const env = parseTeamUsers(`canela@weddinas.com=${envHash}`);
+  const changed = hashTeamPassword("clave-nueva-canela");
+
+  it("a changed password replaces the ADMIN_USERS one for that member only", () => {
+    const users = effectiveTeamUsers(env, { "canela@weddinas.com": passwordOverride(changed, envHash) });
+    expect(authenticateTeamUser(users, "canela@weddinas.com", "clave-nueva-canela")).toBe("canela@weddinas.com");
+    expect(authenticateTeamUser(users, "canela@weddinas.com", "clave-inicial-canela")).toBeNull();
+  });
+
+  it("a member removed from ADMIN_USERS stays out even with a changed password", () => {
+    const users = effectiveTeamUsers(new Map(), { "canela@weddinas.com": passwordOverride(changed, envHash) });
+    expect(users.size).toBe(0);
+  });
+
+  it("a new password set in ADMIN_USERS (reset) wins over the one changed in the app", () => {
+    const resetHash = hashTeamPassword("clave-reseteada-canela");
+    const users = effectiveTeamUsers(parseTeamUsers(`canela@weddinas.com=${resetHash}`), { "canela@weddinas.com": passwordOverride(changed, envHash) });
+    expect(authenticateTeamUser(users, "canela@weddinas.com", "clave-reseteada-canela")).toBe("canela@weddinas.com");
+    expect(authenticateTeamUser(users, "canela@weddinas.com", "clave-nueva-canela")).toBeNull();
+  });
+
+  it("ignores malformed stored overrides instead of locking the member out", () => {
+    const users = effectiveTeamUsers(env, { "canela@weddinas.com": { hash: "plain", base: "x" } as never, otro: null as never });
+    expect(authenticateTeamUser(users, "canela@weddinas.com", "clave-inicial-canela")).toBe("canela@weddinas.com");
+  });
+
+  it("checks the new password: length, different from the current one, and repeated the same", () => {
+    expect(newPasswordProblem("actual-123456", "corta", "corta")).toBe("La clave nueva tiene que tener al menos 10 caracteres.");
+    expect(newPasswordProblem("actual-123456", "x".repeat(201), "x".repeat(201))).toBe("La clave nueva puede tener hasta 200 caracteres.");
+    expect(newPasswordProblem("actual-123456", "actual-123456", "actual-123456")).toBe("La clave nueva tiene que ser distinta de la actual.");
+    expect(newPasswordProblem("actual-123456", "nueva-1234567", "nueva-1234568")).toBe("Las claves nuevas no coinciden.");
+    expect(newPasswordProblem("actual-123456", "nueva-1234567", "nueva-1234567")).toBeNull();
   });
 });

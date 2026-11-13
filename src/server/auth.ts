@@ -4,8 +4,8 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { RateLimiter } from "@/core/rate-limit";
 import { signSession, verifySession, type Session } from "@/core/session";
-import { authenticateTeamUser, parseTeamUsers } from "@/core/team-users";
-import { portal } from "./container";
+import { authenticateTeamUser, effectiveTeamUsers, hashTeamPassword, parseTeamUsers, passwordOverride } from "@/core/team-users";
+import { portal, settings } from "./container";
 
 const COOKIE = "weddinas_session";
 const COUPLE_TTL = 60 * 60 * 24 * 30;
@@ -19,14 +19,28 @@ function secret(): string {
 }
 
 /** Team members with their own login (ADMIN_USERS); empty means the shared ADMIN_CODE is still in use. */
-export function teamUsers(): Map<string, string> {
-  return parseTeamUsers(process.env.ADMIN_USERS);
+const envTeamUsers = () => parseTeamUsers(process.env.ADMIN_USERS);
+
+/** Email → current password hash: ADMIN_USERS plus the passwords members changed from the app. */
+async function teamUsers(): Promise<Map<string, string>> {
+  const env = envTeamUsers();
+  return env.size ? effectiveTeamUsers(env, (await settings.get()).teamPasswords) : env;
 }
 
-export const teamLoginUsesEmail = () => teamUsers().size > 0;
+export const teamLoginUsesEmail = () => envTeamUsers().size > 0;
 
 /** The member's email for valid credentials, or null; only meaningful when teamLoginUsesEmail(). */
-export const checkTeamUser = (email: string, password: string) => authenticateTeamUser(teamUsers(), email, password);
+export const checkTeamUser = async (email: string, password: string) => authenticateTeamUser(await teamUsers(), email, password);
+
+/** Stores a member's new password (hashed) and moves this browser's session to it; other sessions end. */
+export async function saveTeamPassword(user: string, password: string): Promise<void> {
+  const envHash = envTeamUsers().get(user);
+  if (!envHash) throw new Error("Unknown team member");
+  const current = await settings.get();
+  const teamPasswords = { ...current.teamPasswords, [user]: passwordOverride(hashTeamPassword(password), envHash) };
+  await settings.save({ ...current, teamPasswords });
+  await startAdminSession(user);
+}
 
 export function adminCode(): string {
   const value = process.env.ADMIN_CODE;
@@ -53,21 +67,27 @@ async function setSessionCookie(session: Session, ttl: number): Promise<void> {
  * With ADMIN_USERS, a session is bound to its member's email and password hash: removing the member or changing
  * the password revokes it. Without it, sessions are bound to the shared ADMIN_CODE as before.
  */
-function adminKey(user: string | undefined): string | null {
-  const users = teamUsers();
+async function adminKey(user: string | undefined): Promise<string | null> {
+  const users = await teamUsers();
   if (users.size === 0) return user ? null : credentialKey("admin", adminCode());
   const hash = user ? users.get(user) : undefined;
   return hash ? credentialKey("admin", `user:${user}:${hash}`) : null;
 }
 
-function isAdminSession(session: Session | null): boolean {
+async function isAdminSession(session: Session | null): Promise<boolean> {
   if (session?.role !== "admin") return false;
-  const key = adminKey(session.user);
+  const key = await adminKey(session.user);
   return key !== null && key === session.key;
 }
 
+/** The logged-in team member's email (null with the shared code or no valid admin session). */
+export async function currentTeamUser(): Promise<string | null> {
+  const session = await getSession();
+  return session?.role === "admin" && session.user && (await isAdminSession(session)) ? session.user : null;
+}
+
 export async function startAdminSession(user?: string): Promise<void> {
-  const key = adminKey(user);
+  const key = await adminKey(user);
   if (!key) throw new Error("Unknown team member");
   await setSessionCookie(user ? { role: "admin", key, user } : { role: "admin", key }, ADMIN_TTL);
 }
@@ -98,7 +118,7 @@ export async function requireCoupleId(): Promise<string> {
 /** True for a valid admin session or the couple's own valid session; never redirects. */
 export async function canAccessCouple(coupleId: string): Promise<boolean> {
   const session = await getSession();
-  if (session?.role === "admin") return isAdminSession(session);
+  if (session?.role === "admin") return await isAdminSession(session);
   if (session?.role !== "couple" || session.coupleId !== coupleId) return false;
   const fingerprint = await portal.credentialFingerprint(coupleId);
   return !!fingerprint && credentialKey("couple", fingerprint) === session.key;
@@ -106,7 +126,7 @@ export async function canAccessCouple(coupleId: string): Promise<boolean> {
 
 /** Call from every admin page and action: layouts are not re-run on client navigation. */
 export async function requireAdmin(): Promise<void> {
-  if (!isAdminSession(await getSession())) redirect("/admin/login");
+  if (!(await isAdminSession(await getSession()))) redirect("/admin/login");
 }
 
 // Per-IP limits stop guessing from one client; the global admin cap also covers spoofed or rotating IPs.

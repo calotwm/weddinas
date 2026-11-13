@@ -1,4 +1,4 @@
-import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 
 // One login per team member. ADMIN_USERS holds "email=scrypt$<salt>$<hash>" entries (commas, semicolons or
 // new lines between them); only password hashes live there, built with scripts/hash-team-password.mjs.
@@ -51,4 +51,41 @@ export function authenticateTeamUser(users: Map<string, string>, email: string, 
   const stored = users.get(key);
   const ok = verifyTeamPassword(password, stored ?? DUMMY_HASH);
   return stored && ok ? key : null;
+}
+
+// Passwords changed from the app are stored (hashed) in settings, never in ADMIN_USERS. Each one remembers which
+// ADMIN_USERS hash it replaced: membership still comes from ADMIN_USERS, and writing a new hash there (a reset for
+// a forgotten password) makes the app-changed one stop applying.
+
+export interface PasswordOverride {
+  hash: string;
+  /** Fingerprint of the ADMIN_USERS hash this password replaced. */
+  base: string;
+}
+
+export const TEAM_PASSWORD_LIMITS = { min: 10, max: 200 } as const;
+
+const fingerprint = (hash: string) => createHash("sha256").update(hash).digest("base64url").slice(0, 22);
+
+export const passwordOverride = (hash: string, envHash: string): PasswordOverride => ({ hash, base: fingerprint(envHash) });
+
+/** ADMIN_USERS with each member's app-changed password applied while it still replaces their current entry. */
+export function effectiveTeamUsers(env: Map<string, string>, overrides: Record<string, PasswordOverride> | undefined): Map<string, string> {
+  const users = new Map(env);
+  for (const [email, envHash] of env) {
+    const override = overrides?.[email];
+    if (override && typeof override.hash === "string" && HASH.test(override.hash) && override.base === fingerprint(envHash)) {
+      users.set(email, override.hash);
+    }
+  }
+  return users;
+}
+
+/** The message to show for an unacceptable new password, or null when it can be saved. */
+export function newPasswordProblem(current: string, next: string, repeated: string): string | null {
+  if (next.length < TEAM_PASSWORD_LIMITS.min) return `La clave nueva tiene que tener al menos ${TEAM_PASSWORD_LIMITS.min} caracteres.`;
+  if (next.length > TEAM_PASSWORD_LIMITS.max) return `La clave nueva puede tener hasta ${TEAM_PASSWORD_LIMITS.max} caracteres.`;
+  if (next === current) return "La clave nueva tiene que ser distinta de la actual.";
+  if (next !== repeated) return "Las claves nuevas no coinciden.";
+  return null;
 }

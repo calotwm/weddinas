@@ -8,7 +8,8 @@ import { importCouple, type CoupleImport } from "@/core/couple-import";
 import { redirect } from "next/navigation";
 import { safeHttpUrl } from "@/core/url";
 import { WELCOME_TEMPLATE_MAX } from "@/core/welcome-message";
-import { adminCode, allowLoginAttempt, checkTeamUser, requireAdmin, startAdminSession, teamLoginUsesEmail } from "@/server/auth";
+import { newPasswordProblem, TEAM_PASSWORD_LIMITS } from "@/core/team-users";
+import { adminCode, allowLoginAttempt, checkTeamUser, currentTeamUser, requireAdmin, saveTeamPassword, startAdminSession, teamLoginUsesEmail } from "@/server/auth";
 import { ensureDemoData, files, portal, settings } from "@/server/container";
 import { uploadAttachments } from "./attachment-actions";
 
@@ -23,7 +24,7 @@ export async function adminLogin(_prev: FormResult, formData: FormData): Promise
     return { error: "Demasiados intentos. Esperá unos minutos y volvé a probar." };
   }
   if (teamLoginUsesEmail()) {
-    const user = checkTeamUser(text(formData, "email", 200), String(formData.get("password") ?? "").slice(0, 200));
+    const user = await checkTeamUser(text(formData, "email", 200), String(formData.get("password") ?? "").slice(0, 200));
     if (!user) return { error: "Mail o clave incorrectos." };
     await ensureDemoData();
     await startAdminSession(user);
@@ -37,6 +38,24 @@ export async function adminLogin(_prev: FormResult, formData: FormData): Promise
   await ensureDemoData();
   await startAdminSession();
   redirect("/admin");
+}
+
+export type PasswordResult = { error?: string; ok?: boolean } | null;
+
+/** A team member changes their own password: the current one is required and attempts share the login limits. */
+export async function changeTeamPassword(_prev: PasswordResult, formData: FormData): Promise<PasswordResult> {
+  await requireAdmin();
+  const user = await currentTeamUser();
+  if (!user) return { error: "Para cambiar la clave entrá con tu mail." };
+  if (!(await allowLoginAttempt("admin"))) return { error: "Demasiados intentos. Esperá unos minutos y volvé a probar." };
+  const raw = (key: string) => String(formData.get(key) ?? "").slice(0, TEAM_PASSWORD_LIMITS.max + 1);
+  const current = raw("current");
+  if ((await checkTeamUser(user, current)) !== user) return { error: "La clave actual no es correcta." };
+  const next = raw("next");
+  const problem = newPasswordProblem(current, next, raw("repeat"));
+  if (problem) return { error: problem };
+  await saveTeamPassword(user, next);
+  return { ok: true };
 }
 
 export async function createCouple(_prev: FormResult, formData: FormData): Promise<FormResult> {
