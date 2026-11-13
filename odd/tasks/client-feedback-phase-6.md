@@ -57,7 +57,7 @@ General
 - [x] T5 [S10, S11, S18, S19, S24, S25] team uploads shown to the couple: 20 photos, Papelería, timing image + link, Planos, cover — delegated writer (manual worktree) — `a398fa6`
 - [x] T6 [S22, S23] downloads: none for the couple, team PDFs (proveedores, invitados with "Llegó" box, presupuesto, timing, familia, música) — delegated writer (manual worktree) — `970eb94`
 - [x] T7 [S21] team users: email + own password, scrypt hashes in ADMIN_USERS, shared code until set — inline — `ba60530` — Risk item 2
-- [ ] T8 merge, suite, tsc, lint, build, verifier
+- [x] T8 merge, suite 339/339, tsc, lint, build, verifier (A logins, B action auth, C stored data, D S7/S9/S13/S17/S22: PASS, no blockers)
 
 Route evidence: T1-T6 are independent units, each several files / 100+ lines, launched together (Writer trigger a). Shared files (`src/core/couple.ts`, `src/core/portal-service.ts`, action files) are append-only per unit; the parent merges.
 
@@ -70,3 +70,4 @@ Route evidence: T1-T6 are independent units, each several files / 100+ lines, la
 - L5 Merges: conflicts in src/app/portal/proveedores/page.tsx (kept T2 receipts, dropped the couple download link) and parejas/[id]/tabs.tsx (kept Planos and Descargas). Seam: suite 331/331, tsc clean after removing stale .next/types, eslint src clean. S13 root cause confirmed by T4: React 19.1 uncontrolled <select defaultValue> keeps its mount default after the server-action form reset; fixed by keying the row form by its saved values; updateGuest now keeps travels/arrived.
 - L6 Writer decisions to surface: choosing a comparison vendor overwrites the brief vendor; T3 publishes all drafts at once; presupuesto sheet totals per currency; team "Llegó" is in-app, printed sheet has an empty box.
 - L7 T7 inline: suite 339/339, tsc + eslint clean.
+- L8 Verifier advisories: couple can still download shared attachments (baseline); `arrived` is in the couple page data (not shown); malformed ADMIN_USERS gives a 500 (fails closed); internal attachments served to the couple by file id (baseline).
