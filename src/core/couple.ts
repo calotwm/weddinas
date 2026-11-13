@@ -85,7 +85,12 @@ export interface ChecklistTask {
   done: boolean;
   /** "YYYY-MM": month the task belongs to in the monthly checklist. Missing on tasks without a month. */
   month?: string;
+  /** Set on topics the team added and has not published yet; the couple, alerts and WhatsApp skip them. Unset (published) on tasks stored before drafts existed. */
+  draft?: true;
 }
+
+/** Tasks the couple sees: every task except the team's unpublished drafts. */
+export const publishedTasks = (tasks: ChecklistTask[]) => tasks.filter((t) => !t.draft);
 
 export type PaymentKind = "sena" | "saldo" | "adicional" | "iva" | "intermedio";
 
@@ -145,6 +150,36 @@ export const LINE_STATES: { value: LineState; label: string }[] = [
 ];
 
 export const isLineState = (value: unknown): value is LineState => LINE_STATES.some((s) => s.value === value);
+
+/** States of a brief line still waiting on someone ("Pendientes" in the team panel). */
+export type PendingState = Exclude<LineState, "confirmed">;
+
+export const isPendingState = (value: unknown): value is PendingState => isLineState(value) && value !== "confirmed";
+
+export interface PendingLine {
+  blockKey: string;
+  blockName: string;
+  label: string;
+  detail: string;
+  state: PendingState;
+}
+
+type PendingCouple = Pick<Couple, "id" | "partnerA" | "partnerB" | "weddingDate" | "brief">;
+
+/** Brief lines waiting on Weddinas, the couple or a vendor (`filter` narrows to one), grouped by couple by wedding date; couples with none are left out. */
+export function pendingBriefLines<C extends PendingCouple>(couples: C[], filter: PendingState | "all"): Array<{ couple: C; lines: PendingLine[] }> {
+  return [...couples]
+    .sort((a, b) => a.weddingDate.localeCompare(b.weddingDate))
+    .map((couple) => ({
+      couple,
+      lines: (couple.brief ?? []).flatMap((block) =>
+        block.fields
+          .filter((f): f is BriefField & { state: PendingState } => isPendingState(f.state) && (filter === "all" || f.state === filter))
+          .map((f) => ({ blockKey: block.key, blockName: block.name, label: f.label, detail: f.detail, state: f.state })),
+      ),
+    }))
+    .filter((g) => g.lines.length > 0);
+}
 
 export interface BriefField {
   label: string;

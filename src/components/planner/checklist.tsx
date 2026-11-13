@@ -31,7 +31,22 @@ export function ChecklistBoard({ tasks, month, renderTask }: { tasks: ChecklistT
         </section>
       )}
       <Section title="Sin mes" tasks={s.noMonth} renderTask={renderTask} />
-      <Section title="Listas de meses anteriores" tone="text-ink/50" tasks={s.pastDone} renderTask={renderTask} />
+      <PastDone tasks={s.pastDone} renderTask={renderTask} />
     </>
+  );
+}
+
+/** Finished topics of past months, collapsed behind "Ver más" ("Ver menos" once open); a native disclosure, no client JavaScript. */
+function PastDone({ tasks, renderTask }: { tasks: ChecklistTask[]; renderTask: (task: ChecklistTask) => ReactNode }) {
+  if (tasks.length === 0) return null;
+  return (
+    <details className="group mt-6">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+        <h3 className="label !mb-0 text-ink/50">Listas de meses anteriores ({tasks.length})</h3>
+        <span className="text-sm font-semibold text-teal group-open:hidden">Ver más</span>
+        <span className="hidden text-sm font-semibold text-teal group-open:inline">Ver menos</span>
+      </summary>
+      <ul className="mt-2 divide-y divide-forest/8">{tasks.map(renderTask)}</ul>
+    </details>
   );
 }

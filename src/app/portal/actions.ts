@@ -22,8 +22,8 @@ import { attachReceipt, type ReceiptResult } from "@/server/receipts";
 import { addFamilyMemberFrom, removeFamilyMemberFrom, saveFamilyPhoto, updateFamilyMemberFrom } from "./familia/family-forms";
 
 // Every action takes the couple id from the signed session, never from the form.
-// The couple only reads "Temas del mes" (and ticks them) and the timing: the team owns adding, removing and editing them,
-// so there are deliberately no task-creation, task-deletion or timing-write actions here.
+// The couple only reads "Temas del mes" and the timing: the team owns adding, ticking, removing and editing them,
+// so there are deliberately no task-creation, task-toggle, task-deletion or timing-write actions here.
 
 const text = (formData: FormData, key: string, max = 2000) => String(formData.get(key) ?? "").trim().slice(0, max);
 
@@ -76,12 +76,6 @@ export async function commentOnProposal(formData: FormData): Promise<void> {
   if (comment) await portal.addProposalComment(coupleId, text(formData, "proposalId", 100), "couple", comment);
   revalidatePath("/portal", "layout");
   revalidatePath("/admin", "layout");
-}
-
-export async function toggleTask(formData: FormData): Promise<void> {
-  const coupleId = await requireCoupleId();
-  await portal.toggleTask(coupleId, text(formData, "taskId", 100));
-  revalidatePath("/portal", "layout");
 }
 
 export async function saveMusic(formData: FormData): Promise<void> {

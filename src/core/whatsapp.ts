@@ -3,6 +3,8 @@
  * No API, no cost; sending stays a human tap.
  */
 
+import { checklistSections, publishedTasks, type ChecklistTask } from "./couple";
+
 /** Buenos Aires has no daylight saving time. */
 const BUENOS_AIRES_OFFSET = "-03:00";
 const BUENOS_AIRES_OFFSET_MS = 3 * 60 * 60 * 1000;
@@ -34,6 +36,12 @@ export const proposalMessage = (names: string, title: string, link: string) =>
 
 export const reminderMessage = (names: string, title: string, link: string) =>
   `¡Hola ${names}! Les recordamos que tienen para ver la propuesta "${title}". Cuando puedan, nos cuentan qué les pareció: ${link}`;
+
+/** The month message's lists from the published tasks only: this month's open topics and past months' open ones. */
+export function monthTopics(tasks: ChecklistTask[], month: string): { topics: string[]; overdue: string[] } {
+  const sections = checklistSections(publishedTasks(tasks), month);
+  return { topics: sections.thisMonth.filter((t) => !t.done).map((t) => t.title), overdue: sections.overdue.map((t) => t.title) };
+}
 
 /** `overdue`: open items of past months; `topics`: this month's open ones. An empty list keeps a bare "* " for the team to type in. */
 export function monthTopicsMessage(partnerA: string, partnerB: string, topics: string[], overdue: string[], link: string): string {
