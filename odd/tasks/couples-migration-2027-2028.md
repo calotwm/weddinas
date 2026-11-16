@@ -22,8 +22,8 @@ Branch: feat/couples-migration-2027-2028. Delivery: ask-on-risk. Test runner: vi
 
 - [ ] T1 (S1, S3, S5) Download the briefs and folder sheets of all couples outside the repo. Route: inline.
 - [x] T2 (S2, S3, S7) Map sheet layouts to the data model. Route: delegated explorer + inline sheet inspection. Result: S7.
-- [x] T3 (S1-S5, S7) Importer with tests on synthetic fixtures. Route: delegated writer. RED: sheet-migration.test.ts (module missing), couple-import.test.ts 3 failing. GREEN: 13 + 6 tests; CLI rehearsal 22/23 ok (L6). Uncommitted.
-- [ ] T4 (S1-S3) Local dry run over the real data; report per couple what was imported and what was skipped.
+- [x] T3 (S1-S5, S7) Importer with tests on synthetic fixtures. Route: delegated writer. RED: sheet-migration.test.ts (module missing), couple-import.test.ts 3 failing. GREEN: 13 + 6 tests; CLI rehearsal 22/23 ok (L6). Commit 38dabcb.
+- [x] T4 (S1-S3) Local dry run over the real data; report per couple what was imported and what was skipped. Report: weddinas-migracion-out/report.md (outside the repo); 22/23 rehearsed ok, 1 without wedding date.
 - [ ] T5 (S6) Production import after the user's go-ahead, with backup.
 
 ## Log
@@ -41,3 +41,4 @@ Branch: feat/couples-migration-2027-2028. Delivery: ask-on-risk. Test runner: vi
   - Music: "Infaltables" -> mustPlay, "Prohibidos" -> banned, "Link Playlist" -> playlistUrl; unknown moments become custom moments only when they have content.
   - To check in T4: an hour written as "3 am máx" becomes 15:00 by the "+12 below 10" rule.
 - L6 (2026-11-16) CLI over the real data (out-dir outside the repo): 22 files written and rehearsed ok; 1 couple not imported (no wedding date). Warnings: 11 timing rows without a time (unfilled templates), 11 budget estimates skipped, 4 missing sheets, 1 couple whose guest list held only 2 "X" placeholder rows.
+- L7 (2026-11-16) Parent spot check: 18/18 tests in sheet-migration + couple-import pass. A real couple name in a code comment was replaced by a generic one (S5). Scratch dumps of client sheets removed. Pending for T5: user go-ahead, missing date of couple 18, hour of couple 20 ("3 am máx" read as 15:00).
