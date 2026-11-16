@@ -122,6 +122,32 @@ describe("refreshCoupleFromImport", () => {
     await expect(refreshCoupleFromImport(service, "missing", sheets)).rejects.toThrow("Couple not found");
   });
 
+  it("keeps the date a block was confirmed, so the couple is not notified again", async () => {
+    const { coupleId } = await existingCouple();
+    await refreshCoupleFromImport(service, coupleId, sheets);
+    const first = (await service.getCouple(coupleId))!.brief.find((b) => b.key === "cotillon")!.confirmedAt;
+    await new Promise((r) => setTimeout(r, 5));
+    await refreshCoupleFromImport(service, coupleId, sheets);
+    expect(first).toBeTruthy();
+    expect((await service.getCouple(coupleId))!.brief.find((b) => b.key === "cotillon")!.confirmedAt).toBe(first);
+  });
+
+  it("treats an empty guest list in the file as missing, like the import does", async () => {
+    const { coupleId } = await existingCouple();
+    await refreshCoupleFromImport(service, coupleId, { ...sheets, guests: [] });
+    expect((await service.getCouple(coupleId))!.guests.map((g) => g.name)).toEqual(["Old guest"]);
+  });
+
+  it("gives each of two same-named family members its own photo", async () => {
+    const twins: CoupleImport = { ...original, family: [{ side: "a", name: "Tía", relation: "Tía" }, { side: "a", name: "Tía", relation: "Tía" }] };
+    const { coupleId } = await importCouple(service, twins);
+    const [m1, m2] = (await service.getCouple(coupleId))!.family;
+    await service.setFamilyPhoto(coupleId, m1.id, MERCEDES);
+    await service.setFamilyPhoto(coupleId, m2.id, TITO);
+    await refreshCoupleFromImport(service, coupleId, twins);
+    expect((await service.getCouple(coupleId))!.family.map((m) => m.photoId)).toEqual([MERCEDES, TITO]);
+  });
+
   it("rejects another couple's file and changes nothing; names match regardless of order, case and accents", async () => {
     const { coupleId, before } = await existingCouple();
     await expect(refreshCoupleFromImport(service, coupleId, { ...sheets, partnerB: "Santi" })).rejects.toThrow("another couple");

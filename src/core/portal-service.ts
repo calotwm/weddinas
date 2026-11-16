@@ -427,14 +427,19 @@ export class PortalService {
       c.weddingDate = sheet.weddingDate;
       if (sheet.venue) c.publicInfo.venue = sheet.venue;
       if (sheet.ideas !== undefined) c.ideas = sheet.ideas;
-      if (sheet.brief) c.brief = sheet.brief;
+      if (sheet.brief) {
+        // A block that was already confirmed keeps its date, so the couple is not notified again.
+        const confirmed = new Map(c.brief.filter((b) => b.status === "confirmed" && b.confirmedAt).map((b) => [b.key, b.confirmedAt]));
+        c.brief = sheet.brief.map((b) => (b.status === "confirmed" && confirmed.has(b.key) ? { ...b, confirmedAt: confirmed.get(b.key) } : b));
+      }
       if (sheet.music) c.music = sheet.music;
       if (sheet.guests) c.guests = sheet.guests;
       if (sheet.timing) c.timing = sheet.timing;
       if (sheet.vendorTiming) c.vendorTiming = sheet.vendorTiming;
       if (sheet.family) {
-        const photos = new Map(c.family.filter((m) => m.photoId).map((m) => [familyKey(m), m.photoId]));
-        c.family = sheet.family.map((m) => ({ ...m, photoId: m.photoId ?? photos.get(familyKey(m)) ?? null }));
+        const photos = new Map<string, string[]>();
+        for (const m of c.family) if (m.photoId) photos.set(familyKey(m), [...(photos.get(familyKey(m)) ?? []), m.photoId]);
+        c.family = sheet.family.map((m) => ({ ...m, photoId: m.photoId ?? photos.get(familyKey(m))?.shift() ?? null }));
       }
       if (sheet.budget) {
         const receipts = new Map<string, string[]>();

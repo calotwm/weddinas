@@ -119,7 +119,8 @@ export async function refreshCoupleFromImport(service: PortalService, coupleId: 
     budget: has(data.budget) ? fresh.budget : undefined,
     music: has(data.music) ? fresh.music : undefined,
     family: has(data.family) ? fresh.family : undefined,
-    guests: has(data.guests) ? fresh.guests : undefined,
+    // Like the import, an empty list counts as missing (a sheet with only placeholder rows).
+    guests: data.guests?.length ? fresh.guests : undefined,
     timing: has(data.timing) ? fresh.timing : undefined,
     vendorTiming: has(data.vendorTiming) ? fresh.vendorTiming : undefined,
   });
