@@ -34,6 +34,11 @@ export class JsonCoupleRepository implements CoupleRepository {
     this.write(couples);
   }
 
+  /** The database file as stored, for team backups ("[]" before the first couple is saved). */
+  snapshot(): string {
+    return existsSync(this.filePath) ? readFileSync(this.filePath, "utf8") : "[]";
+  }
+
   private read(): Couple[] {
     if (!existsSync(this.filePath)) return [];
     return JSON.parse(readFileSync(this.filePath, "utf8")) as Couple[];

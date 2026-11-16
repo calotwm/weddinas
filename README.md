@@ -32,6 +32,10 @@ Open http://localhost:3000. In development an empty database is seeded with a de
 | Admin code (`/admin/login`) | `weddinas-admin` |
 | Public page | `/boda/sofia-y-martin` |
 
+### Backup
+
+**Mi cuenta** (`/admin/cuenta`) has **Descargar backup**: it downloads the couples database (`DATA_FILE`, a JSON array of couples) as `weddinas-backup-<date>.json`. Only a valid team session gets the file; anyone else gets 404. Uploaded photos and `settings.json` are not included. To restore, replace `DATA_FILE` on the volume with the downloaded file while the app is stopped.
+
 ### Importing couples
 
 The admin home has **Importar desde las planillas**: upload one JSON file per couple (shape: `CoupleImport` in `src/core/couple-import.ts`) and the couple is created with brief, budget and payments, songs, family and ideas, and its access code is shown once. The import is rehearsed in memory first, so an invalid file stores nothing. The JSON is built from the Drive spreadsheets outside the repo; real couple data is never committed.

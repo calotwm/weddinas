@@ -124,6 +124,11 @@ export async function canAccessCouple(coupleId: string): Promise<boolean> {
   return !!fingerprint && credentialKey("couple", fingerprint) === session.key;
 }
 
+/** True for a valid team session; never redirects, so route handlers can answer 404 instead. */
+export async function isAdmin(): Promise<boolean> {
+  return isAdminSession(await getSession());
+}
+
 /** Call from every admin page and action: layouts are not re-run on client navigation. */
 export async function requireAdmin(): Promise<void> {
   if (!(await isAdminSession(await getSession()))) redirect("/admin/login");

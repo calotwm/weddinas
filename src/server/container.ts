@@ -15,6 +15,9 @@ const repo = new JsonCoupleRepository(dataFile);
 
 export const portal = new PortalService(repo);
 
+/** The couples database file as stored, for the team's backup download. */
+export const databaseSnapshot = (): string => repo.snapshot();
+
 export const rates = new PublicRatesProvider();
 
 /** Uploads live next to the database file, so on Railway they share its volume. */
