@@ -36,6 +36,16 @@ Open http://localhost:3000. In development an empty database is seeded with a de
 
 The admin home has **Importar desde las planillas**: upload one JSON file per couple (shape: `CoupleImport` in `src/core/couple-import.ts`) and the couple is created with brief, budget and payments, songs, family and ideas, and its access code is shown once. The import is rehearsed in memory first, so an invalid file stores nothing. The JSON is built from the Drive spreadsheets outside the repo; real couple data is never committed.
 
+The JSON files can be built from the downloaded spreadsheets with the migration CLI (`src/core/sheet-migration.ts` holds the sheet-to-app mapping):
+
+```bash
+npx vite-node scripts/migrate-couples.mts <data-dir> <out-dir>
+```
+
+- `<data-dir>` holds `manifest.json` (an array of `{ name, year, dir, files: { brief: "brief.xlsx", presupuesto, invitados, timing, canciones, "fotos-familiares" }, missing: [...] }`) and one folder per couple with its `.xlsx` files.
+- `<out-dir>` must be outside the repository. It receives one `<dir>.json` per couple, ready for **Importar desde las planillas**, and `report.md` with each couple's names, wedding date, counts (brief blocks, custom rubros, budget items, payments, guests, timing, songs, family) and every warning to review.
+- Each file is also rehearsed on an in-memory repository; a file the upload would reject shows up in the report instead of stopping the run. A couple without a wedding date in its brief gets no file.
+
 ## Configuration
 
 Set these in `.env.local` (or the host's environment). In production `SESSION_SECRET` is required, plus `ADMIN_USERS` or `ADMIN_CODE`.

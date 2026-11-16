@@ -1,6 +1,15 @@
-import type { Couple, FamilySide, Music } from "./couple";
+import { catalogBlock } from "./brief-catalog";
+import type { Couple, CoupleView, FamilySide, Music } from "./couple";
 import type { CoupleRepository } from "./ports";
-import { PortalService, type BriefBlockUpdate, type BudgetItemInput, type PaymentInput } from "./portal-service";
+import {
+  PortalService,
+  type BriefBlockUpdate,
+  type BudgetItemInput,
+  type NewGuestInput,
+  type PaymentInput,
+  type TimingInput,
+  type VendorTimingInput,
+} from "./portal-service";
 
 /** A whole couple moved from the planners' spreadsheets (see README, "Importing couples"). */
 export interface CoupleImport {
@@ -14,9 +23,15 @@ export interface CoupleImport {
     guests?: number | null;
     items: Array<BudgetItemInput & { payments?: PaymentInput[] }>;
   };
+  /** Vendor rubros outside the catalog, created by name first; the brief and the budget refer to them by `customBlockKey(name)`. */
+  customRubros?: string[];
   brief?: Array<BriefBlockUpdate & { key: string }>;
+  guests?: NewGuestInput[];
+  timing?: TimingInput[];
+  vendorTiming?: VendorTimingInput[];
+  /** `customMoments` keys only link the file's songs to its moments; the app gives each moment a new key. */
   music?: Music;
-  family?: Array<{ side: FamilySide; name: string; relation: string }>;
+  family?: Array<{ side: FamilySide; name: string; relation: string; notes?: string }>;
 }
 
 /** Keeps couples in memory; used to rehearse an import before touching the real repository. */
@@ -47,8 +62,9 @@ async function apply(service: PortalService, data: CoupleImport): Promise<{ coup
   const id = couple.id;
   if (data.venue) await service.updatePublicInfo(id, { venue: data.venue.trim() });
   if (data.ideas) await service.updateIdeas(id, data.ideas);
+  for (const name of data.customRubros ?? []) await service.addCustomBriefBlock(id, name);
   for (const block of data.brief ?? []) {
-    await service.addBriefBlock(id, block.key);
+    if (catalogBlock(block.key)) await service.addBriefBlock(id, block.key);
     await service.updateBriefBlock(id, block.key, block);
   }
   if (data.budget) {
@@ -58,13 +74,27 @@ async function apply(service: PortalService, data: CoupleImport): Promise<{ coup
       for (const payment of payments ?? []) await service.addPayment(id, item.id, payment);
     }
   }
-  if (data.music) await service.saveMusic(id, data.music);
+  if (data.guests?.length) await service.replaceGuests(id, data.guests);
+  for (const item of data.timing ?? []) await service.addTimingItem(id, item);
+  for (const item of data.vendorTiming ?? []) await service.addVendorTimingItem(id, item);
+  if (data.music) {
+    const keys = new Map<string, string>();
+    for (const moment of data.music.customMoments ?? []) keys.set(moment.key, await service.addMusicMoment(id, moment));
+    await service.saveMusic(id, { ...data.music, songs: data.music.songs.map((s) => ({ ...s, moment: keys.get(s.moment) ?? s.moment })) });
+  }
   for (const member of data.family ?? []) await service.addFamilyMember(id, member);
   return { coupleId: id, accessCode };
 }
 
+/** Runs the import on an in-memory repository and returns the couple it would create; throws like the real import. */
+export async function rehearseCoupleImport(data: CoupleImport): Promise<CoupleView> {
+  const scratch = new PortalService(new ScratchRepository());
+  const { coupleId } = await apply(scratch, data);
+  return (await scratch.getCouple(coupleId))!;
+}
+
 /** Rehearses the import on a scratch repository first, so an invalid file never leaves a half-imported couple. */
 export async function importCouple(service: PortalService, data: CoupleImport): Promise<{ coupleId: string; accessCode: string }> {
-  await apply(new PortalService(new ScratchRepository()), data);
+  await rehearseCoupleImport(data);
   return apply(service, data);
 }

@@ -1,0 +1,43 @@
+# Couples migration 2027-2028
+
+Objective: load the 2027 and 2028 couples listed in "Parejas 2027 y 2028.pdf" into the platform from their Google Sheets.
+Branch: feat/couples-migration-2027-2028. Delivery: ask-on-risk. Test runner: vitest.
+
+## Specs
+
+- S1. Create one couple per row of "Parejas 2027 y 2028.pdf" (20 for 2027, 3 for 2028), with the name as written there (e.g. "Nati y Diego").
+- S2. Import each couple's brief from its "Abrir brief" Google Sheet.
+- S3. Import the sheets in each "Abrir carpeta" Drive folder: Presupuesto, Lista de invitados, Timing, Eleccion de Canciones, Fotos Familiares. User choice: "Datos de planillas (Recommended)": "Crear las 23 parejas y cargar brief, presupuesto, invitados, timing, canciones y fotos familiares desde los Sheets/Excel. Sin archivos pesados de proveedores."
+- S4. Vendor folder files (PDFs, photos) are not migrated.
+- S5. Client data never goes into the repository; tests use synthetic fixtures only. Downloaded data lives outside the repo.
+- S6. Writing to production needs the user's explicit go-ahead and a backup of the current production data first. (assumption: no existing couple is overwritten)
+
+- S7. Sheet-to-app mapping (T2 result; every rule below is an assumption derived from the sheets, to confirm in the T4 dry-run report):
+  - Couple: partnerA/partnerB from brief "Datos generales" row "Nombres" (columns Novia, Novio); fallback: split the PDF name on " y ". weddingDate from "Información del evento" > "Fecha" (Excel date, "dd/mm/yy" or "9 de octubre 2027") plus the first hour in "Hora" ("18 a 03 hs" -> 18:00; hours below 10 get +12; none -> 18:00). A couple without a date is reported and not imported. venue from "Lugar".
+  - Brief: every block in every visible brief tab is a header cell followed by "Detalle" and "Aclaraciones" cells (blocks can sit side by side, as in "Extras"); rows below are label / detail / note until a blank row; a row with empty label continues the previous field's detail (new line). "Proveedor" -> block vendor (its note kept as a field note), "Equipo" -> owner, also the owner row above blocks in "Extras" (e.g. "NAT", "MORE"). "Pago" rows are skipped (the brief shows payments from the budget). Values "-", "-%" count as empty. Block titles map to catalog keys by name ("Información del evento" -> evento, "Ramos" -> ramo, "Maquillaje y peinado" -> maquillaje, "Foto" -> foto, "Video" -> video, ...); unknown titles become custom rubros. Field labels go through the catalog; unknown labels are kept as extra fields. Status: Pago > 0 -> confirmed; vendor present -> deciding; else searching. "Ideas generales" -> ideas. The "Datos" family table is not imported (Fotos Familiares covers it).
+  - Budget: each rubro tab lists rows "<Seña|Saldo|IVA ...|Adicionales|Pago total> - <vendor>" with AR$, USD, TC, %, Fecha de pago, Obs. Rows are grouped into one budget item per vendor; the category comes from the tab ("Catering + Barra" and "Extras" by keywords of the row, else a custom rubro). Currency USD when every row's USD value is a whole number, else ARS; amount = sum of the rows in that currency. Rows with a Fecha de pago are payments (Seña -> sena, Saldo/Pago total -> saldo, IVA -> iva, Adicional -> adicional; TC as arsPerUsd); rows without date are what is still owed. Obs "Se ajusta por IPC" on an unpaid row -> ipc, else frozen; baseMonth = month of the first payment, else the import month. Rows with amount 0 ("estimado") are skipped. "Invitados" on the Presupuesto tab -> budget guests.
+  - Guests: existing parseGuestGrid. Timing: "Timing" tab rows Horario / Actividad / Descripción -> time, title, note; "Timing proveedores" tab -> vendor timing when its columns allow. Music: "Elección de Canciones" rows Momento / (sub-momento) / Canción / Artista / Estado / Notas -> SONG_MOMENTS by label, unknown moments as custom moments; "Elegida/Pendiente/No aplica" -> chosen/pending/na. Family: "NOVIA"/"NOVIO" section markers -> side a/b; Nombre, Vinculo, optional "Info relevante" -> notes; instruction rows ("Cómo insertar una foto") skipped.
+
+## Tasks
+
+- [ ] T1 (S1, S3, S5) Download the briefs and folder sheets of all couples outside the repo. Route: inline.
+- [x] T2 (S2, S3, S7) Map sheet layouts to the data model. Route: delegated explorer + inline sheet inspection. Result: S7.
+- [x] T3 (S1-S5, S7) Importer with tests on synthetic fixtures. Route: delegated writer. RED: sheet-migration.test.ts (module missing), couple-import.test.ts 3 failing. GREEN: 13 + 6 tests; CLI rehearsal 22/23 ok (L6). Uncommitted.
+- [ ] T4 (S1-S3) Local dry run over the real data; report per couple what was imported and what was skipped.
+- [ ] T5 (S6) Production import after the user's go-ahead, with backup.
+
+## Log
+
+- L1 (2026-11-16) User: "te tiro esto para arrancar la migracion" / "a estoy mega gaga, C:\Users\cseifar\Downloads hay un pdf llamado parejas 2027 2028". Scope answer: "Datos de planillas (Recommended)".
+- L2 PDF has 46 links: one Drive folder and one Google Sheets brief per couple; both open without login. Folder files: native Sheets (Presupuesto, Canciones, Fotos Familiares) and uploaded .xlsx (Lista de invitados, Timing).
+- L3 Download: 23 couples; missing sheets: 2 without Fotos Familiares, 1 without Presupuesto and Canciones. Layouts are the same across couples (brief tabs vary only in names such as "Foto" / "Espacio + Iglesia" / "Hospedaje + Plan B"). One couple has no wedding date in the brief.
+- L4 Existing importer: importCouple (src/core/couple-import.ts) rehearses on a scratch repository, then applies; it lacks guests, timing, vendor timing, custom rubros and family notes. Data lives in one JSON file (DATA_FILE) on the Railway volume; no backup mechanism exists.
+- L5 (2026-11-16) T3 built: src/core/sheet-migration.ts (migrateCouple), CoupleImport extended (customRubros, guests, timing, vendorTiming, music.customMoments, family notes; rehearseCoupleImport exported), CLI scripts/migrate-couples.mts (run with `npx vite-node`, out-dir refused inside the repo). Deviations from S7 found in the real layouts:
+  - Timing: readComparisonWorkbook keeps only the day of date cells, and the Timing tabs store times as time-formatted dates (1899-12-30 18:00). The CLI re-reads those cells as "HH:MM" with exceljs; comparison-table.ts is unchanged.
+  - Budget: two templates. Besides the S7 tabs ("<Seña|Saldo> - <vendor>" rows), 12 couples use per-rubro tabs (PROVEEDOR ELEGIDO, CERRADO EN Pesos/Dolares, CONCEPTO rows Seña/Saldo/Flete/IVA, side-by-side sections in EXTRAS) whose Saldo row carries the final-payments week date. So a payment is a row dated up to the import day; a later date becomes the item's dueDate. CERRADO EN sets the currency; "Presupuesto inicial estimado" rows are reported, not imported. Section titles outside the catalog (e.g. "WEDDING PLANNER") become custom rubros.
+  - Brief: blocks continue across blank rows until the next title in the column or an all-caps label ("SIN PROVEEDOR"); the owner row applies only to the "Extras" tab ("Extras Pau" row 1 holds section titles). Proveedor "No" -> status na; "Si" -> kept as a Proveedor field, status deciding; Equipo "No" -> no owner; "Contacto" -> block contact; the "Música" block of "Dj y técnica" is skipped (Canciones covers it); blocks with nothing filled and custom rubros nobody uses are dropped.
+  - Family: section markers are the partners' first names in most sheets, not only NOVIA/NOVIO.
+  - Guests: placeholder rows named "X" are dropped and "X" last names cleared (one couple). Many lists hold only the couple themselves (2 guests).
+  - Music: "Infaltables" -> mustPlay, "Prohibidos" -> banned, "Link Playlist" -> playlistUrl; unknown moments become custom moments only when they have content.
+  - To check in T4: an hour written as "3 am máx" becomes 15:00 by the "+12 below 10" rule.
+- L6 (2026-11-16) CLI over the real data (out-dir outside the repo): 22 files written and rehearsed ok; 1 couple not imported (no wedding date). Warnings: 11 timing rows without a time (unfilled templates), 11 budget estimates skipped, 4 missing sheets, 1 couple whose guest list held only 2 "X" placeholder rows.
