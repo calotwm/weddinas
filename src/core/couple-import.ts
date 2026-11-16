@@ -1,4 +1,5 @@
 import { catalogBlock } from "./brief-catalog";
+import { plain } from "./rsvp";
 import type { Couple, CoupleView, FamilySide, Music } from "./couple";
 import type { CoupleRepository } from "./ports";
 import {
@@ -52,6 +53,9 @@ class ScratchRepository implements CoupleRepository {
   async save(couple: Couple) {
     this.couples = [...this.couples.filter((c) => c.id !== couple.id), structuredClone(couple)];
   }
+  async delete(id: string) {
+    this.couples = this.couples.filter((c) => c.id !== id);
+  }
 }
 
 async function apply(service: PortalService, data: CoupleImport): Promise<{ coupleId: string; accessCode: string }> {
@@ -91,6 +95,34 @@ export async function rehearseCoupleImport(data: CoupleImport): Promise<CoupleVi
   const scratch = new PortalService(new ScratchRepository());
   const { coupleId } = await apply(scratch, data);
   return (await scratch.getCouple(coupleId))!;
+}
+
+/**
+ * Updates an existing couple from a newer import file: the file is rehearsed as a new couple, then its sections
+ * replace the couple's (see PortalService.replaceSheetData). Sections the file leaves out stay as they are;
+ * an invalid file changes nothing.
+ */
+export async function refreshCoupleFromImport(service: PortalService, coupleId: string, data: CoupleImport): Promise<void> {
+  const couple = await service.getCouple(coupleId);
+  if (!couple) throw new Error("Couple not found");
+  const names = (a: string, b: string) => [plain(a), plain(b)].sort().join("|");
+  if (names(couple.partnerA, couple.partnerB) !== names(data.partnerA ?? "", data.partnerB ?? "")) {
+    throw new Error("The file is for another couple");
+  }
+  const fresh = await rehearseCoupleImport(data);
+  const has = (value: unknown) => value !== undefined;
+  await service.replaceSheetData(coupleId, {
+    weddingDate: fresh.weddingDate,
+    venue: data.venue?.trim() || undefined,
+    ideas: has(data.ideas) ? fresh.ideas : undefined,
+    brief: has(data.brief) || has(data.customRubros) ? fresh.brief : undefined,
+    budget: has(data.budget) ? fresh.budget : undefined,
+    music: has(data.music) ? fresh.music : undefined,
+    family: has(data.family) ? fresh.family : undefined,
+    guests: has(data.guests) ? fresh.guests : undefined,
+    timing: has(data.timing) ? fresh.timing : undefined,
+    vendorTiming: has(data.vendorTiming) ? fresh.vendorTiming : undefined,
+  });
 }
 
 /** Rehearses the import on a scratch repository first, so an invalid file never leaves a half-imported couple. */

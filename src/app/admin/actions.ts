@@ -4,7 +4,7 @@ import { timingSafeEqual } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { CUSTOM_BLOCK_NAME_MAX } from "@/core/brief-catalog";
 import { COMPARISON_LIMITS, ComparisonTableError, parseComparisonFile, type ComparisonTable } from "@/core/comparison-table";
-import { importCouple, type CoupleImport } from "@/core/couple-import";
+import { importCouple, refreshCoupleFromImport, type CoupleImport } from "@/core/couple-import";
 import { redirect } from "next/navigation";
 import { safeHttpUrl } from "@/core/url";
 import { WELCOME_TEMPLATE_MAX } from "@/core/welcome-message";
@@ -91,6 +91,42 @@ export async function importCoupleFile(_prev: FormResult, formData: FormData): P
   } catch (e) {
     return { error: `No se importó nada: ${e instanceof Error ? e.message : "datos inválidos"}.` };
   }
+}
+
+export type RefreshResult = { error?: string; ok?: boolean } | null;
+
+/** Updates an existing couple from a newer import file; the team's own work on the couple stays. */
+export async function refreshCoupleFile(_prev: RefreshResult, formData: FormData): Promise<RefreshResult> {
+  await requireAdmin();
+  const coupleId = text(formData, "coupleId", 100);
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { error: "Elegí el archivo .json de la pareja." };
+  if (file.size > 1_000_000) return { error: "El archivo pesa más de 1 MB." };
+  let data: CoupleImport;
+  try {
+    data = JSON.parse(await file.text());
+  } catch {
+    return { error: "El archivo no es un JSON válido." };
+  }
+  try {
+    await refreshCoupleFromImport(portal, coupleId, data);
+  } catch (e) {
+    const message = e instanceof Error && e.message === "The file is for another couple" ? "el archivo es de otra pareja" : e instanceof Error ? e.message : "datos inválidos";
+    return { error: `No se cambió nada: ${message}.` };
+  }
+  revalidatePath(`/admin/parejas/${coupleId}`, "layout");
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+/** Deletes the couple and its uploaded files for good. */
+export async function removeCouple(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const coupleId = text(formData, "coupleId", 100);
+  await portal.deleteCouple(coupleId);
+  await files.deleteCouple(coupleId);
+  revalidatePath("/admin");
+  redirect("/admin");
 }
 
 export async function regenerateCode(_prev: FormResult, formData: FormData): Promise<FormResult> {

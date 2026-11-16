@@ -58,6 +58,12 @@ export class LocalFileStore {
     if (dir && isFileId(fileId)) await rm(path.join(dir, fileId), { force: true });
   }
 
+  /** Removes every uploaded file of a deleted couple. */
+  async deleteCouple(coupleId: string): Promise<void> {
+    const dir = this.coupleDir(coupleId);
+    if (dir) await rm(dir, { recursive: true, force: true });
+  }
+
   private coupleDir(coupleId: string): string | null {
     return COUPLE_ID.test(coupleId) ? path.join(this.root, coupleId) : null;
   }

@@ -55,6 +55,15 @@ export interface NewCoupleInput {
   weddingDate: string;
 }
 
+/** The spreadsheet-sourced sections of a couple; a missing section is left unchanged by replaceSheetData. */
+export type SheetData = Pick<Couple, "weddingDate"> &
+  Partial<Pick<CoupleView, "ideas" | "brief" | "budget" | "music" | "family" | "guests" | "timing" | "vendorTiming">> & { venue?: string };
+
+const familyKey = (m: Pick<FamilyMember, "side" | "name">) => `${m.side}|${plain(m.name)}`;
+
+const paymentKey = (item: Pick<BudgetItem, "category" | "vendor">, p: Pick<Payment, "date" | "amount" | "currency">) =>
+  [item.category, plain(item.vendor), p.date, p.amount, p.currency].join("|");
+
 export type BudgetItemInput = Omit<BudgetItem, "id" | "payments" | "dueDate"> & { dueDate?: string };
 export type PaymentInput = Omit<Payment, "id">;
 export interface BriefBlockUpdate {
@@ -397,6 +406,52 @@ export class PortalService {
       couple.accessCodeHash = hashAccessCode(accessCode);
       await this.repo.save(withPlannerDefaults(couple));
       return accessCode;
+    });
+  }
+
+  /** Removes the couple for good; its uploaded files are the caller's to delete. */
+  async deleteCouple(coupleId: string): Promise<void> {
+    await this.serialize(async () => {
+      if (!(await this.repo.findById(coupleId))) throw new Error("Couple not found");
+      await this.repo.delete(coupleId);
+    });
+  }
+
+  /**
+   * Replaces the sections that come from the planners' spreadsheets (see refreshCoupleFromImport); sections left
+   * out stay as they are, and so does the team's work (proposals, reports, tasks, files), the access code and links.
+   * Family photos and payment receipts carry over to the same member or payment in the new data.
+   */
+  async replaceSheetData(coupleId: string, sheet: SheetData): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      c.weddingDate = sheet.weddingDate;
+      if (sheet.venue) c.publicInfo.venue = sheet.venue;
+      if (sheet.ideas !== undefined) c.ideas = sheet.ideas;
+      if (sheet.brief) c.brief = sheet.brief;
+      if (sheet.music) c.music = sheet.music;
+      if (sheet.guests) c.guests = sheet.guests;
+      if (sheet.timing) c.timing = sheet.timing;
+      if (sheet.vendorTiming) c.vendorTiming = sheet.vendorTiming;
+      if (sheet.family) {
+        const photos = new Map(c.family.filter((m) => m.photoId).map((m) => [familyKey(m), m.photoId]));
+        c.family = sheet.family.map((m) => ({ ...m, photoId: m.photoId ?? photos.get(familyKey(m)) ?? null }));
+      }
+      if (sheet.budget) {
+        const receipts = new Map<string, string[]>();
+        for (const item of c.budget.items) {
+          for (const p of item.payments) if (p.receiptId) receipts.set(paymentKey(item, p), [...(receipts.get(paymentKey(item, p)) ?? []), p.receiptId]);
+        }
+        c.budget = {
+          ...sheet.budget,
+          items: sheet.budget.items.map((item) => ({
+            ...item,
+            payments: item.payments.map((p) => {
+              const receiptId = p.receiptId ?? receipts.get(paymentKey(item, p))?.shift();
+              return receiptId ? { ...p, receiptId } : p;
+            }),
+          })),
+        };
+      }
     });
   }
 

@@ -50,6 +50,10 @@ npx vite-node scripts/migrate-couples.mts <data-dir> <out-dir>
 - `<out-dir>` must be outside the repository. It receives one `<dir>.json` per couple, ready for **Importar desde las planillas**, and `report.md` with each couple's names, wedding date, counts (brief blocks, custom rubros, budget items, payments, guests, timing, songs, family) and every warning to review.
 - Each file is also rehearsed on an in-memory repository; a file the upload would reject shows up in the report instead of stopping the run. A couple without a wedding date in its brief gets no file.
 
+A couple already in the platform is updated, not imported again: its admin page has **Actualizar desde planillas**, which takes the same JSON file and replaces the brief, budget and payments, guests, timing, vendor timing, songs, family, ideas, wedding date and venue (sections missing from the file stay as they are). Proposals, reports, tasks, files, the access code and the links stay. Family photos and payment receipts carry over to the same member (side and name) or payment (rubro, vendor, date, amount and currency). A file for another couple (different names) or an invalid file changes nothing.
+
+**Eliminar pareja**, on the same page, deletes the couple and its uploaded files after a confirmation. It cannot be undone: download a backup first.
+
 ## Configuration
 
 Set these in `.env.local` (or the host's environment). In production `SESSION_SECRET` is required, plus `ADMIN_USERS` or `ADMIN_CODE`.

@@ -8,6 +8,7 @@ export interface CoupleRepository {
   findBySlug(slug: string): Promise<Couple | null>;
   findByAccessCodeHash(hash: string): Promise<Couple | null>;
   save(couple: Couple): Promise<void>;
+  delete(id: string): Promise<void>;
 }
 
 export interface RatesProvider {

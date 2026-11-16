@@ -10,6 +10,7 @@ import {
   changeTeamPassword,
   createCouple,
   importCoupleFile,
+  refreshCoupleFile,
   regenerateCode,
   saveWelcomeTemplate,
   type FormResult,
@@ -109,6 +110,29 @@ export function ImportCoupleForm({ origin, template }: { origin: string; templat
       </div>
       <CodeNotice result={state} origin={origin} template={template} />
       <SubmitButton className="btn-ghost w-full" pendingText="Importando…">Importar pareja</SubmitButton>
+    </form>
+  );
+}
+
+/** Re-imports the couple's spreadsheets file over the existing couple. */
+export function RefreshCoupleForm({ coupleId, names }: { coupleId: string; names: string }) {
+  const [state, action] = useActionState(refreshCoupleFile, null);
+  return (
+    <form action={action} className="space-y-3">
+      <input type="hidden" name="coupleId" value={coupleId} />
+      <p className="text-sm text-ink/70">
+        Reemplaza brief, presupuesto, invitados, timing, canciones y familia con el archivo .json de las planillas. Propuestas,
+        reportes, tareas, archivos, código y link quedan igual.
+      </p>
+      <div>
+        <label htmlFor="refresh-file" className="label">Archivo de la pareja (.json)</label>
+        <input id="refresh-file" name="file" type="file" accept="application/json,.json" required className="field text-sm" />
+      </div>
+      {state?.error && <p role="alert" className="rounded-xl bg-rust/10 px-3 py-2 text-sm text-rust">{state.error}</p>}
+      {state?.ok && <p role="status" className="rounded-xl bg-mint/20 px-3 py-2 text-sm text-forest">Listo, la pareja quedó actualizada.</p>}
+      <SubmitButton className="btn-ghost" pendingText="Actualizando…" confirm={`¿Actualizar ${names} con este archivo? Lo cargado en esas secciones se reemplaza.`}>
+        Actualizar desde planillas
+      </SubmitButton>
     </form>
   );
 }

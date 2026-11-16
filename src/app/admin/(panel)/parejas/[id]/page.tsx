@@ -10,10 +10,10 @@ import { WhatsappButton } from "@/components/whatsapp-button";
 import { proposalMessage } from "@/core/whatsapp";
 import { portal, welcomeTemplate } from "@/server/container";
 import { siteOrigin } from "@/server/site-url";
-import { deleteProposal, deleteReport, presentProposal, replyToProposal, updateCouple, updateProposal } from "../../../actions";
+import { deleteProposal, deleteReport, presentProposal, removeCouple, replyToProposal, updateCouple, updateProposal } from "../../../actions";
 import { AdminAttachments } from "../../../admin-attachments";
 import { AdminComparison, NewProposalForm } from "../../../comparison-form";
-import { RegenerateCodeForm } from "../../../forms";
+import { RefreshCoupleForm, RegenerateCodeForm } from "../../../forms";
 
 export const dynamic = "force-dynamic";
 
@@ -225,6 +225,22 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
         <section className="card space-y-4">
           <h2 className="section-title">Código de acceso</h2>
           <RegenerateCodeForm coupleId={couple.id} names={names} origin={origin} template={await welcomeTemplate()} />
+        </section>
+
+        <section className="card space-y-4">
+          <h2 className="section-title">Actualizar desde planillas</h2>
+          <RefreshCoupleForm coupleId={couple.id} names={names} />
+        </section>
+
+        <section className="card space-y-4">
+          <h2 className="section-title">Eliminar pareja</h2>
+          <p className="text-sm text-ink/70">Borra la pareja con todos sus datos y archivos. No se puede deshacer; antes descargá un backup desde Mi cuenta.</p>
+          <form action={removeCouple}>
+            {hidden}
+            <SubmitButton className="btn-ghost text-rust" pendingText="Eliminando…" confirm={`¿Eliminar a ${names} para siempre? Se borran todos sus datos y archivos.`}>
+              Eliminar pareja
+            </SubmitButton>
+          </form>
         </section>
       </div>
     </div>

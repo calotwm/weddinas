@@ -28,3 +28,14 @@ describe("JsonCoupleRepository.snapshot", () => {
     expect(JSON.parse(snapshot)).toEqual([{ id: "c1", slug: "ana-y-juan", partnerA: "Ana", partnerB: "Juan" }]);
   });
 });
+
+describe("JsonCoupleRepository.delete", () => {
+  it("removes the couple from the file and keeps the others", async () => {
+    const repo = new JsonCoupleRepository(file);
+    await repo.save({ id: "c1" } as Couple);
+    await repo.save({ id: "c2" } as Couple);
+    await repo.delete("c1");
+    expect(JSON.parse(readFileSync(file, "utf8"))).toEqual([{ id: "c2" }]);
+    expect(await new JsonCoupleRepository(file).findById("c1")).toBeNull();
+  });
+});

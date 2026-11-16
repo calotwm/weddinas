@@ -34,6 +34,10 @@ export class JsonCoupleRepository implements CoupleRepository {
     this.write(couples);
   }
 
+  async delete(id: string): Promise<void> {
+    this.write(this.read().filter((c) => c.id !== id));
+  }
+
   /** The database file as stored, for team backups ("[]" before the first couple is saved). */
   snapshot(): string {
     return existsSync(this.filePath) ? readFileSync(this.filePath, "utf8") : "[]";
