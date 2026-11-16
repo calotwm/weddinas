@@ -25,7 +25,7 @@ Branch: feat/couples-migration-2027-2028. Delivery: ask-on-risk. Test runner: vi
 - [x] T2 (S2, S3, S7) Map sheet layouts to the data model. Route: delegated explorer + inline sheet inspection. Result: S7.
 - [x] T3 (S1-S5, S7) Importer with tests on synthetic fixtures. Route: delegated writer. RED: sheet-migration.test.ts (module missing), couple-import.test.ts 3 failing. GREEN: 13 + 6 tests; CLI rehearsal 22/23 ok (L6). Commit 38dabcb.
 - [x] T4 (S1-S3) Local dry run over the real data; report per couple what was imported and what was skipped. Report: weddinas-migracion-out/report.md (outside the repo); 22/23 rehearsed ok, 1 without wedding date.
-- [ ] T6 (S6, S8) Admin backup download route + link. Route: inline. Risk: item 2 (new guarded route exposing the whole database) -> independent verifier.
+- [x] T6 (S6, S8) Admin backup download route + link. Route: inline. Risk: item 2 (new guarded route exposing the whole database) -> independent verifier: PASS (anonymous/expired/tampered/couple/wrong-key 404, admin 200 no-store, POST 405). Commit 17c82d2.
 - [ ] T5 (S6) Production import after the user's go-ahead, with backup.
 
 ## Log
@@ -45,3 +45,5 @@ Branch: feat/couples-migration-2027-2028. Delivery: ask-on-risk. Test runner: vi
 - L6 (2026-11-16) CLI over the real data (out-dir outside the repo): 22 files written and rehearsed ok; 1 couple not imported (no wedding date). Warnings: 11 timing rows without a time (unfilled templates), 11 budget estimates skipped, 4 missing sheets, 1 couple whose guest list held only 2 "X" placeholder rows.
 - L7 (2026-11-16) Parent spot check: 18/18 tests in sheet-migration + couple-import pass. A real couple name in a code comment was replaced by a generic one (S5). Scratch dumps of client sheets removed. Pending for T5: user go-ahead, missing date of couple 18, hour of couple 20 ("3 am máx" read as 15:00).
 - L8 (2026-11-16) User approved T5 ("dale"). `railway ssh` fails from this network ("ssh: connect to host ssh.railway.com port 22: Connection timed out"), so no backup path exists. Asked; answer: "Botón de backup en admin". Railway deploys service weddinas from GitHub calotwm/weddinas; DATA_FILE=/data/db.json.
+- L9 (2026-11-16) T6 committed 17c82d2: e2e on dev (anonymous 404, forged cookie 404, admin download 200 no-store); vitest 365 passed, tsc and eslint clean. Prod session: asked; answer: "Automático con tu cuenta (Recommended)" (headless Chromium with the user's own admin account: backup, duplicate check by partner names, upload of the JSON files). Note: createCouple does not reject duplicates (unique slug/code), so the dedup check is the script's job.
+- L10 (2026-11-16) Verifier PASS on T6, no blockers. Advisories: backup holds access-code hashes and personal data (handle carefully); raw bytes, no parse; no download audit log.
