@@ -4,7 +4,7 @@ import { useActionState, useCallback, useEffect, useRef, useState } from "react"
 import { Icon } from "@/components/icons";
 import { SubmitButton } from "@/components/submit-button";
 import { LINE_STATE_CHIP, LINE_STATE_DOT } from "@/components/planner/line-state";
-import { CUSTOM_BLOCK_NAME_MAX } from "@/core/brief-catalog";
+import { CUSTOM_BLOCK_NAME_MAX, TEAM_OWNERS } from "@/core/brief-catalog";
 import { isLineState, LINE_STATES, type BriefBlock, type LineState } from "@/core/couple";
 import { addCustomBriefBlock } from "@/app/admin/actions";
 import { saveBriefBlock, saveIdeas } from "@/app/admin/planner-actions";
@@ -137,7 +137,14 @@ export function BriefBlockForm({ coupleId, block, budgetPayment }: { coupleId: s
         </div>
         <div>
           <label htmlFor={`o-${id}`} className="label">A cargo (equipo)</label>
-          <input id={`o-${id}`} name="owner" defaultValue={block.owner} maxLength={60} className="field" placeholder="Ej: Pau" />
+          <select id={`o-${id}`} name="owner" defaultValue={block.owner} className="field">
+            <option value="">Sin asignar</option>
+            {TEAM_OWNERS.map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+            {/* A name typed before the list (or imported from the sheets) stays selectable until it is changed. */}
+            {block.owner && !(TEAM_OWNERS as readonly string[]).includes(block.owner) && <option value={block.owner}>{block.owner}</option>}
+          </select>
         </div>
       </div>
 

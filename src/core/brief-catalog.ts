@@ -74,6 +74,9 @@ export const catalogBlock = (key: string) => BRIEF_CATALOG.find((b) => b.key ===
 /** Rubros the team adds by name ("Fuegos artificiales") get this key prefix plus the name's slug. */
 export const CUSTOM_BLOCK_PREFIX = "custom-";
 export const CUSTOM_BLOCK_NAME_MAX = 60;
+
+/** Who can be in charge of a brief rubro ("A cargo"): the agency or one of the team. */
+export const TEAM_OWNERS = ["Weddinas", "Cane", "Nat", "More", "Pauli", "Belu", "Abru"] as const;
 /** Forms send block keys capped at 60 characters. */
 const CUSTOM_BLOCK_KEY_MAX = 60;
 
