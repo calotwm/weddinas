@@ -76,8 +76,8 @@ describe("downloads", () => {
     it("lists each item with total, paid and pending in its own currency, and totals per currency", () => {
       const sheet = budgetSheet(
         [
-          item({ id: "a", category: "catering", categories: ["catering"], vendor: "Softies", payments: [paid(400)] }),
-          item({ id: "b", category: "dj", categories: ["dj"], vendor: "DJ Uno", amount: 500, currency: "USD", payments: [paid(500, "USD")] }),
+          item({ id: "a", category: "catering", vendor: "Softies", payments: [paid(400)] }),
+          item({ id: "b", category: "dj", vendor: "DJ Uno", amount: 500, currency: "USD", payments: [paid(500, "USD")] }),
           item({ id: "c", category: "salon", extraCategories: ["catering"], vendor: "", amount: 2000 }),
         ],
         null,
