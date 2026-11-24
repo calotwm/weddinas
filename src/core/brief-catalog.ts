@@ -109,19 +109,30 @@ export function newBriefBlock(entry: CatalogBlock): BriefBlock {
   };
 }
 
-/** Brings a stored block up to its catalog: catalog fields first (renamed labels keep their detail), then the block's own extra fields. */
+/** Team-only row every vendor rubro has: never shown to the couple nor printed for vendors; "Comisiones" lists it. */
+export const TEAM_FIELD = "Equipo";
+
+/** The rows the couple (and the printed vendor sheet) may see. */
+export const coupleFields = <F extends { label: string }>(fields: F[]): F[] => fields.filter((f) => f.label !== TEAM_FIELD);
+
+/** Rows a block always has unless the team removed them: its catalog fields, plus "Equipo" on vendor rubros. */
+export function requiredFields(block: Pick<BriefBlock, "key" | "kind">): string[] {
+  const fields = catalogBlock(block.key)?.fields ?? [];
+  return block.kind === "vendor" && !fields.includes(TEAM_FIELD) ? [...fields, TEAM_FIELD] : fields;
+}
+
+/**
+ * Brings a stored block up to its catalog: renamed labels keep their detail, and required rows it lacks are added at the
+ * end. The stored order is kept (the team reorders rows) and rows the team removed stay out.
+ */
 export function withCatalogFields(block: BriefBlock): BriefBlock {
-  const entry = catalogBlock(block.key);
-  if (!entry) return block;
-  const own = block.fields.map((f) => ({ ...f, label: RENAMED_FIELDS[f.label] ?? f.label }));
-  const used = new Set<number>();
-  const fields = entry.fields.map((label) => {
-    const i = own.findIndex((f, j) => !used.has(j) && f.label === label);
-    if (i === -1) return { label, detail: "", note: "" };
-    used.add(i);
-    return own[i];
-  });
-  block.fields = [...fields, ...own.filter((_, j) => !used.has(j))];
+  const required = requiredFields(block);
+  if (required.length === 0) return block;
+  block.fields = block.fields.map((f) => ({ ...f, label: RENAMED_FIELDS[f.label] ?? f.label }));
+  const have = new Set(block.fields.map((f) => f.label));
+  const removed = new Set(block.removedFields ?? []);
+  const missing = required.filter((label) => !have.has(label) && !removed.has(label));
+  block.fields.push(...missing.map((label) => ({ label, detail: "", note: "" })));
   return block;
 }
 

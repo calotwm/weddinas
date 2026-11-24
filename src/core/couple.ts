@@ -206,6 +206,8 @@ export interface BriefBlock {
   /** Team member in charge ("Equipo" in the Excel brief). */
   owner: string;
   fields: BriefField[];
+  /** Catalog (or "Equipo") rows the team removed, so loading does not bring them back. Missing until one is removed. */
+  removedFields?: string[];
   attachments?: Attachment[];
   /** When the block last became "confirmed"; drives the couple's vendor notification. Unset while not confirmed. */
   confirmedAt?: string | null;

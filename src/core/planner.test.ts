@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { BRIEF_CATALOG, SONG_MOMENT_KEYS } from "./brief-catalog";
+import { BRIEF_CATALOG, SONG_MOMENT_KEYS, TEAM_FIELD } from "./brief-catalog";
 import { PortalService } from "./portal-service";
 import { JsonCoupleRepository } from "@/infra/json-couple-repository";
 
@@ -237,7 +237,7 @@ describe("planner workspace", () => {
       expect(saved.slice(0, 3).map((f) => f.state)).toEqual(["couple", undefined, undefined]);
     });
 
-    it("gives stored vendor blocks the common fields, renaming old labels without losing their detail", async () => {
+    it("gives stored vendor blocks the common fields after their own rows, renaming old labels without losing their detail", async () => {
       const stored = JSON.parse(readFileSync(file, "utf8"));
       const espacio = stored[0].brief.find((b: { key: string }) => b.key === "espacio");
       espacio.fields = [
@@ -248,7 +248,9 @@ describe("planner workspace", () => {
       writeFileSync(file, JSON.stringify(stored));
 
       const fields = (await load()).brief.find((b) => b.key === "espacio")!.fields;
-      expect(fields.map((f) => f.label)).toEqual([...BRIEF_CATALOG.find((b) => b.key === "espacio")!.fields, "Estacionamiento"]);
+      // The stored order is kept (the team reorders rows); missing catalog rows and the team-only row go after it.
+      const catalog = BRIEF_CATALOG.find((b) => b.key === "espacio")!.fields;
+      expect(fields.map((f) => f.label)).toEqual(["Pago", "Mobiliario", "Estacionamiento", ...catalog.filter((l) => l !== "Pago" && l !== "Mobiliario"), TEAM_FIELD]);
       expect(fields.find((f) => f.label === "Mobiliario")).toEqual({ label: "Mobiliario", detail: "Sillas Tiffany", note: "interno" });
       expect(fields.find((f) => f.label === "Pago")!.detail).toBe("50% seña");
     });

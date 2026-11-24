@@ -11,14 +11,15 @@ const SECTIONS: Array<{ href: string; label: string; icon: IconName; match: (pat
   { href: "/admin/invitados", label: "Invitados", icon: "list", match: (p) => p.startsWith("/admin/invitados") },
   { href: "/admin/civil", label: "Civil", icon: "file", match: (p) => p.startsWith("/admin/civil") },
   { href: "/admin/pendientes", label: "Pendientes", icon: "bell", match: (p) => p.startsWith("/admin/pendientes") },
+  { href: "/admin/comisiones", label: "Comisiones", icon: "key", match: (p) => p.startsWith("/admin/comisiones") },
 ];
 
-/** Top menu of the team panel; on phones the six sections share one row as icon + short label. */
+/** Top menu of the team panel; on phones the seven sections share one row as icon + short label. */
 export function AdminNav() {
   const pathname = usePathname();
   return (
     <nav aria-label="Secciones del panel" className="border-b border-forest/8 bg-white/80">
-      <ul className="mx-auto grid max-w-6xl grid-cols-6 gap-1 px-2 py-1.5 sm:flex sm:gap-2 sm:px-6">
+      <ul className="mx-auto grid max-w-6xl grid-cols-7 gap-1 px-2 py-1.5 sm:flex sm:gap-2 sm:px-6">
         {SECTIONS.map(({ href, label, icon, match }) => {
           const active = match(pathname);
           return (

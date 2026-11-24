@@ -4,7 +4,7 @@ import { useActionState, useCallback, useEffect, useRef, useState } from "react"
 import { Icon } from "@/components/icons";
 import { SubmitButton } from "@/components/submit-button";
 import { LINE_STATE_CHIP, LINE_STATE_DOT } from "@/components/planner/line-state";
-import { CUSTOM_BLOCK_NAME_MAX, TEAM_OWNERS } from "@/core/brief-catalog";
+import { CUSTOM_BLOCK_NAME_MAX, TEAM_FIELD, TEAM_OWNERS } from "@/core/brief-catalog";
 import { isLineState, LINE_STATES, type BriefBlock, type LineState } from "@/core/couple";
 import { addCustomBriefBlock } from "@/app/admin/actions";
 import { saveBriefBlock, saveIdeas } from "@/app/admin/planner-actions";
@@ -164,7 +164,10 @@ export function BriefBlockForm({ coupleId, block, budgetPayment }: { coupleId: s
               ) : (
                 <>
                   <input type="hidden" name="label" value={f.label} />
-                  <span className="text-sm font-semibold text-forest">{f.label}</span>
+                  <span className="text-sm font-semibold text-forest">
+                    {f.label}
+                    {f.label === TEAM_FIELD && <span className="block text-xs font-normal text-ink/55">Solo equipo · va a Comisiones</span>}
+                  </span>
                 </>
               )}
               {budgetPayment && f.label === "Pago" ? (

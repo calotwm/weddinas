@@ -7,7 +7,7 @@ import { normalizeWhatsapp } from "./whatsapp";
 import { cleanWebSelection, webDressCode } from "./web-options";
 import type { AestheticWeb } from "./couple";
 import { itemCategories, itemTracksConfirmedGuests } from "./budget";
-import { BRIEF_CATALOG, catalogBlock, categoryName, CUSTOM_BLOCK_NAME_MAX, CUSTOM_BLOCK_PREFIX, defaultBrief, defaultMusic, musicMomentKeys, newBriefBlock, newCustomBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
+import { BRIEF_CATALOG, catalogBlock, categoryName, CUSTOM_BLOCK_NAME_MAX, CUSTOM_BLOCK_PREFIX, defaultBrief, defaultMusic, musicMomentKeys, newBriefBlock, newCustomBriefBlock, requiredFields, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
 import {
   emptyPublicInfo,
   emptyTeamFiles,
@@ -871,9 +871,18 @@ export class PortalService {
       block.contact = update.contact.trim();
       setBlockStatus(block, update.status);
       block.owner = update.owner.trim();
-      block.fields = update.fields
+      const fields = update.fields
         .map((f) => ({ label: f.label.trim(), detail: f.detail.trim(), note: f.note.trim(), ...(isLineState(f.state) && { state: f.state }) }))
         .filter((f) => f.label);
+      // Required rows the team took out are remembered, so loading does not add them back; adding one by name undoes it.
+      const kept = new Set(fields.map((f) => f.label));
+      const removed = new Set(block.removedFields ?? []);
+      for (const label of requiredFields(block)) {
+        if (kept.has(label)) removed.delete(label);
+        else if (block.fields.some((f) => f.label === label)) removed.add(label);
+      }
+      block.removedFields = removed.size > 0 ? [...removed] : undefined;
+      block.fields = fields;
     });
   }
 

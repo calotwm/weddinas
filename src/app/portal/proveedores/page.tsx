@@ -4,6 +4,7 @@ import { LineStateLegend } from "@/components/planner/line-state";
 import { briefPaymentDetail, rubroReceipts } from "@/core/budget";
 import { formatMoney } from "@/lib/format";
 import { loadRates } from "@/server/rates";
+import { coupleFields } from "@/core/brief-catalog";
 import { getCurrentCouple } from "../data";
 
 export default async function VendorsPage() {
@@ -23,7 +24,7 @@ export default async function VendorsPage() {
           <p className="mt-1 text-sm text-ink/70">
             {vendors.length === 1 ? "1 proveedor confirmado" : `${vendors.length} proveedores confirmados`}. El equipo va completando el detalle de cada uno.
           </p>
-          {vendors.some((b) => b.fields.some((f) => f.state)) && <div className="mt-3"><LineStateLegend /></div>}
+          {vendors.some((b) => coupleFields(b.fields).some((f) => f.state)) && <div className="mt-3"><LineStateLegend /></div>}
         </div>
       </div>
 

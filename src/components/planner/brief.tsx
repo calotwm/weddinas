@@ -7,6 +7,7 @@ import { ReceiptLinks } from "@/components/planner/budget";
 import { LINE_STATE_DOT, LineStateChip } from "@/components/planner/line-state";
 import { Icon } from "@/components/icons";
 import { noteLines, type NoteLine } from "@/core/notes";
+import { coupleFields } from "@/core/brief-catalog";
 
 const PREVIEW_LINES = 3;
 
@@ -90,7 +91,8 @@ export function BriefBlockSummary({
   payment?: string | null;
   receipts?: RubroReceipt[];
 }) {
-  const filled = withBudgetPayment(block.fields, payment).filter((f) => f.detail || f.state);
+  // The team-only "Equipo" row never reaches the couple nor the printed vendor sheet.
+  const filled = withBudgetPayment(coupleFields(block.fields), payment).filter((f) => f.detail || f.state);
   const shared = (block.attachments ?? []).filter((a) => !a.internal);
   return (
     <article className="card space-y-4">

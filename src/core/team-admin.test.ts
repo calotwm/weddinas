@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { categoryName, CUSTOM_BLOCK_NAME_MAX, VENDOR_COMMON_FIELDS } from "./brief-catalog";
+import { categoryName, CUSTOM_BLOCK_NAME_MAX, TEAM_FIELD, VENDOR_COMMON_FIELDS } from "./brief-catalog";
 import { PortalService } from "./portal-service";
 import { JsonCoupleRepository } from "@/infra/json-couple-repository";
 
@@ -28,7 +28,7 @@ describe("team admin: custom rubros and proposal edits", () => {
       const brief = (await load()).brief;
       const block = brief.find((b) => b.key === key)!;
       expect(block).toMatchObject({ name: "Fuegos artificiales", kind: "vendor", vendor: "", status: "searching" });
-      expect(block.fields.map((f) => f.label)).toEqual(VENDOR_COMMON_FIELDS);
+      expect(block.fields.map((f) => f.label)).toEqual([...VENDOR_COMMON_FIELDS, TEAM_FIELD]);
       expect(brief.at(-1)!.key).toBe(key);
 
       await service.addBriefBlock(coupleId, "cotillon");
