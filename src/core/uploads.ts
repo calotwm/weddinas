@@ -1,7 +1,6 @@
-export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
-/** Same cap as the comparison table upload. */
-export const MAX_SPREADSHEET_BYTES = 5 * 1024 * 1024;
+import { MAX_DOCUMENT_BYTES, MAX_IMAGE_BYTES, MAX_SPREADSHEET_BYTES } from "./upload-limits";
+
+export { MAX_DOCUMENT_BYTES, MAX_IMAGE_BYTES, MAX_SPREADSHEET_BYTES };
 
 export interface FileType {
   ext: "jpg" | "png" | "webp" | "pdf" | "xlsx";

@@ -6,6 +6,7 @@ import { TEAM_FILE_SLOTS, type TeamFileSlot } from "@/core/portal-service";
 import { MAX_DOCUMENT_BYTES, MAX_IMAGE_BYTES } from "@/core/uploads";
 import { requireAdmin } from "@/server/auth";
 import { files, portal } from "@/server/container";
+import { megabytes } from "@/core/upload-limits";
 
 // Files the team uploads for the couple to see (Papelería, timing image and link, Planos, cover photo).
 // Team only: every action calls requireAdmin and takes the couple from the form.
@@ -43,7 +44,7 @@ export async function uploadTeamFile(_prev: TeamFileResult, formData: FormData):
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return { error: imageOnly ? "Elegí una imagen." : "Elegí una imagen o un PDF." };
   if (file.size > (imageOnly ? MAX_IMAGE_BYTES : MAX_DOCUMENT_BYTES)) {
-    return { error: imageOnly ? "La imagen pesa más de 5 MB." : "El archivo pesa más de 10 MB (las imágenes, hasta 5 MB)." };
+    return { error: imageOnly ? "La imagen pesa más de 5 MB." : `El archivo pesa más de ${megabytes(MAX_DOCUMENT_BYTES)} (las imágenes, hasta 5 MB).` };
   }
 
   let fileId: string;

@@ -5,6 +5,7 @@ import { Icon } from "@/components/icons";
 import { SubmitButton } from "@/components/submit-button";
 import { attachmentPickProblem } from "@/core/attachment-pick";
 import { uploadAttachments } from "./attachment-actions";
+import { MAX_DOCUMENT_BYTES, MAX_IMAGE_BYTES, megabytes, UPLOAD_REQUEST_MAX_BYTES } from "@/core/upload-limits";
 
 export function AttachmentUploadForm({
   coupleId,
@@ -35,7 +36,7 @@ export function AttachmentUploadForm({
       <input type="hidden" name="coupleId" value={coupleId} />
       <input type="hidden" name="targetKind" value={kind} />
       <input type="hidden" name="targetId" value={targetId} />
-      <label htmlFor={inputId} className="label">Adjuntar archivos (PDF hasta 10 MB; JPG, PNG o WebP hasta 5 MB)</label>
+      <label htmlFor={inputId} className="label">Adjuntar archivos (PDF hasta {megabytes(MAX_DOCUMENT_BYTES)}; JPG, PNG o WebP hasta {megabytes(MAX_IMAGE_BYTES)}; hasta {megabytes(UPLOAD_REQUEST_MAX_BYTES)} por vez)</label>
       <div className="flex flex-wrap items-center gap-2">
         <input id={inputId} name="files" type="file" multiple required accept="application/pdf,image/jpeg,image/png,image/webp" className="min-w-0 flex-1 text-sm" />
         {allowInternal && (

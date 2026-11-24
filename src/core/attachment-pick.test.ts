@@ -6,7 +6,7 @@ const file = (name: string, size: number, type = "") => ({ name, size, type });
 
 describe("attachmentPickProblem", () => {
   it("accepts PDFs and images within their limits", () => {
-    expect(attachmentPickProblem([file("presupuesto.pdf", 9 * MB, "application/pdf"), file("foto.JPG", 1 * MB, "image/jpeg")])).toBeNull();
+    expect(attachmentPickProblem([file("presupuesto.pdf", 19 * MB, "application/pdf"), file("foto.JPG", 1 * MB, "image/jpeg")])).toBeNull();
   });
 
   it("asks for a file when none was picked", () => {
@@ -24,15 +24,17 @@ describe("attachmentPickProblem", () => {
     );
   });
 
-  it("names images over 5 MB and PDFs over 10 MB", () => {
-    expect(attachmentPickProblem([file("foto.png", 6 * MB, "image/png"), file("menu.pdf", 10.5 * MB, "application/pdf")])).toBe(
-      "No se pueden subir: foto.png (las imágenes van hasta 5 MB), menu.pdf (los PDF van hasta 10 MB).",
+  it("names images over 5 MB and PDFs over 20 MB", () => {
+    expect(attachmentPickProblem([file("foto.png", 6 * MB, "image/png"), file("menu.pdf", 20.5 * MB, "application/pdf")])).toBe(
+      "No se pueden subir: foto.png (las imágenes van hasta 5 MB), menu.pdf (los PDF van hasta 20 MB).",
     );
   });
 
   it("stops a pick heavier than one upload can carry", () => {
-    expect(attachmentPickProblem([file("a.pdf", 6 * MB, "application/pdf"), file("b.pdf", 6 * MB, "application/pdf")])).toBe(
-      "Entre todos pesan más de 11 MB. Subilos en partes.",
+    // Two 15 MB PDFs (the agency's usual vendor quotes) go together; three do not.
+    expect(attachmentPickProblem([file("a.pdf", 15 * MB, "application/pdf"), file("b.pdf", 15 * MB, "application/pdf")])).toBeNull();
+    expect(attachmentPickProblem([1, 2, 3].map((n) => file(`${n}.pdf`, 15 * MB, "application/pdf")))).toBe(
+      "Entre todos pesan más de 40 MB. Subilos en partes.",
     );
   });
 

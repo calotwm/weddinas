@@ -30,8 +30,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  // Photos and attachments are uploaded through server actions (core/uploads caps images at 5 MB and PDFs at 10 MB; an upload request carries at most 11 MB).
-  experimental: { serverActions: { bodySizeLimit: "12mb" } },
+  // Photos and attachments are uploaded through server actions (core/upload-limits: images 5 MB, PDFs 20 MB, at most 40 MB per request; 1 MB more for the form fields).
+  experimental: { serverActions: { bodySizeLimit: "41mb" } },
   async redirects() {
     return [{ source: "/portal/reportes", destination: "/portal/notificaciones", permanent: true }];
   },

@@ -1,6 +1,7 @@
 import "server-only";
 import { MAX_DOCUMENT_BYTES } from "@/core/uploads";
 import { files, portal } from "@/server/container";
+import { megabytes } from "@/core/upload-limits";
 
 export type ReceiptResult = { error?: string; ok?: number } | null;
 
@@ -12,7 +13,7 @@ export function pickedReceipt(formData: FormData): File | null {
 
 /** Saves a receipt (image or PDF) with the same checks as attachments; returns its file id or the error to show. */
 export async function saveReceipt(coupleId: string, file: File): Promise<{ id: string } | { error: string }> {
-  if (file.size > MAX_DOCUMENT_BYTES) return { error: "El comprobante pesa más de 10 MB." };
+  if (file.size > MAX_DOCUMENT_BYTES) return { error: `El comprobante pesa más de ${megabytes(MAX_DOCUMENT_BYTES)}.` };
   try {
     return { id: await files.saveDocument(coupleId, new Uint8Array(await file.arrayBuffer())) };
   } catch (e) {

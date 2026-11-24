@@ -12,6 +12,7 @@ import { newPasswordProblem, TEAM_PASSWORD_LIMITS } from "@/core/team-users";
 import { adminCode, allowLoginAttempt, checkTeamUser, currentTeamUser, requireAdmin, saveTeamPassword, startAdminSession, teamLoginUsesEmail } from "@/server/auth";
 import { ensureDemoData, files, portal, settings } from "@/server/container";
 import { uploadAttachments } from "./attachment-actions";
+import { megabytes, UPLOAD_REQUEST_MAX_BYTES } from "@/core/upload-limits";
 
 const text = (formData: FormData, key: string, max = 4000) => String(formData.get(key) ?? "").trim().slice(0, max);
 
@@ -150,7 +151,7 @@ export async function updateCouple(formData: FormData): Promise<void> {
 export type ProposalResult = { error?: string; ok?: number } | null;
 
 /** The comparison Excel and the PDFs travel in one request, under the server action body limit in next.config.ts. */
-const NEW_PROPOSAL_MAX_BYTES = 11 * 1024 * 1024;
+const NEW_PROPOSAL_MAX_BYTES = UPLOAD_REQUEST_MAX_BYTES;
 
 /**
  * "Nueva propuesta", optionally with its comparison Excel and files in the same submit. The files go through the
@@ -164,7 +165,7 @@ export async function addProposal(_prev: ProposalResult, formData: FormData): Pr
   const sheet = picked instanceof File && picked.size > 0 ? picked : null;
   const docs = formData.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
   if ((sheet?.size ?? 0) + docs.reduce((n, f) => n + f.size, 0) > NEW_PROPOSAL_MAX_BYTES) {
-    return { error: "Entre el cuadro y los archivos pesan más de 11 MB. Creá la propuesta con menos archivos y sumá el resto desde la lista." };
+    return { error: `Entre el cuadro y los archivos pesan más de ${megabytes(NEW_PROPOSAL_MAX_BYTES)}. Creá la propuesta con menos archivos y sumá el resto desde la lista.` };
   }
   const present = formData.get("intent") !== "draft";
   const withFiles = Boolean(sheet) || docs.length > 0;

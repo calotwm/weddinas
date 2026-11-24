@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 import { Icon } from "../icons";
 import { SubmitButton } from "../submit-button";
 import { photoUrl } from "./family";
+import { MAX_DOCUMENT_BYTES, megabytes } from "@/core/upload-limits";
 
 // Files the team uploads for the couple to see (Papelería, timing image, Planos, cover photo).
 // Without `edit` they render read-only, which is how the couple sees them.
@@ -95,7 +96,7 @@ export function TeamFileCard({
 }) {
   const [state, action] = useActionState(edit?.upload ?? (async () => null), null);
   const inputId = `team-file-${coupleId}-${title.replace(/\W+/g, "-")}`;
-  const hint = edit?.accept === "document" ? "Imagen (JPG, PNG, WebP, hasta 5 MB) o PDF (hasta 10 MB)." : "JPG, PNG o WebP de hasta 5 MB.";
+  const hint = edit?.accept === "document" ? `Imagen (JPG, PNG, WebP, hasta 5 MB) o PDF (hasta ${megabytes(MAX_DOCUMENT_BYTES)}).` : "JPG, PNG o WebP de hasta 5 MB.";
 
   return (
     <section className="card space-y-4">

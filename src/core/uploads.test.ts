@@ -31,10 +31,10 @@ describe("detectImage", () => {
 const pdf = Buffer.from("%PDF-1.7\n%");
 
 describe("detectDocument", () => {
-  it("accepts PDFs and the same images, up to 10 MB", () => {
+  it("accepts PDFs and the same images, PDFs up to 20 MB", () => {
     expect(detectDocument(pdf)).toEqual({ ext: "pdf", mime: "application/pdf" });
     expect(detectDocument(png)).toEqual({ ext: "png", mime: "image/png" });
-    expect(MAX_DOCUMENT_BYTES).toBe(10 * 1024 * 1024);
+    expect(MAX_DOCUMENT_BYTES).toBe(20 * 1024 * 1024);
   });
 
   it("rejects HTML and SVG", () => {
@@ -193,7 +193,7 @@ describe("LocalFileStore", () => {
     expect(await store.read("couple-1", "../../etc/passwd")).toBeNull();
   });
 
-  it("saves documents (PDF or image) up to 10 MB, refusing anything else", async () => {
+  it("saves documents (PDF up to 20 MB, images up to 5 MB), refusing anything else", async () => {
     const id = await store.saveDocument("couple-1", pdf);
     expect(id).toMatch(/\.pdf$/);
     expect(await store.read("couple-1", id)).toEqual({ bytes: pdf, mime: "application/pdf" });

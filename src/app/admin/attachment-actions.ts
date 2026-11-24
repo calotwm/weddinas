@@ -2,15 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import type { AttachmentTarget } from "@/core/portal-service";
-import { MAX_DOCUMENT_BYTES } from "@/core/uploads";
+import { MAX_DOCUMENT_BYTES, MAX_IMAGE_BYTES, megabytes, UPLOAD_REQUEST_MAX_BYTES } from "@/core/upload-limits";
 import { requireAdmin } from "@/server/auth";
 import { files, portal } from "@/server/container";
 
 const text = (formData: FormData, key: string, max = 200) => String(formData.get(key) ?? "").trim().slice(0, max);
 
 const MAX_FILES = 10;
-// Stays under the server action body limit in next.config.ts.
-const MAX_UPLOAD_BYTES = 11 * 1024 * 1024;
 
 function target(formData: FormData): AttachmentTarget | null {
   const kind = text(formData, "targetKind", 10);
@@ -31,12 +29,12 @@ export async function uploadAttachments(_prev: AttachmentResult, formData: FormD
   if (!to) return { error: "No se encontró dónde adjuntar. Recargá la página." };
   if (picked.length === 0) return { error: "Elegí al menos un archivo." };
   if (picked.length > MAX_FILES) return { error: `Subí hasta ${MAX_FILES} archivos por vez.` };
-  if (picked.reduce((n, f) => n + f.size, 0) > MAX_UPLOAD_BYTES) return { error: "Entre todos pesan más de 11 MB. Subilos en partes." };
+  if (picked.reduce((n, f) => n + f.size, 0) > UPLOAD_REQUEST_MAX_BYTES) return { error: `Entre todos pesan más de ${megabytes(UPLOAD_REQUEST_MAX_BYTES)}. Subilos en partes.` };
 
   const skipped: string[] = [];
   for (const file of picked) {
     if (file.size > MAX_DOCUMENT_BYTES) {
-      skipped.push(`${file.name} (pesa más de 10 MB)`);
+      skipped.push(`${file.name} (pesa más de ${megabytes(MAX_DOCUMENT_BYTES)})`);
       continue;
     }
     let id: string;
@@ -44,7 +42,7 @@ export async function uploadAttachments(_prev: AttachmentResult, formData: FormD
       id = await files.saveDocument(coupleId, new Uint8Array(await file.arrayBuffer()));
     } catch (e) {
       const tooLarge = e instanceof Error && e.message.includes("large");
-      skipped.push(`${file.name} (${tooLarge ? "las imágenes van hasta 5 MB" : "solo PDF, JPG, PNG o WebP"})`);
+      skipped.push(`${file.name} (${tooLarge ? `las imágenes van hasta ${megabytes(MAX_IMAGE_BYTES)}` : "solo PDF, JPG, PNG o WebP"})`);
       continue;
     }
     try {

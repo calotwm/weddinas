@@ -4,11 +4,9 @@
  * opaque error instead of a message. The server still checks the bytes.
  */
 
+import { MAX_DOCUMENT_BYTES, MAX_IMAGE_BYTES, megabytes, UPLOAD_REQUEST_MAX_BYTES } from "./upload-limits";
+
 export const ATTACHMENT_MAX_FILES = 10;
-/** One upload request carries at most this much (next.config.ts allows 12 MB per server action). */
-export const ATTACHMENT_MAX_UPLOAD_BYTES = 11 * 1024 * 1024;
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-const MAX_PDF_BYTES = 10 * 1024 * 1024;
 
 export interface PickedFile {
   name: string;
@@ -35,11 +33,11 @@ export function attachmentPickProblem(files: PickedFile[]): string | null {
     const k = kind(file);
     if (k === null) refused.push(`${file.name} (solo PDF, JPG, PNG o WebP)`);
     else if (k === "heic") refused.push(`${file.name} (foto de iPhone: guardala como JPG)`);
-    else if (k === "image" && file.size > MAX_IMAGE_BYTES) refused.push(`${file.name} (las imágenes van hasta 5 MB)`);
-    else if (k === "pdf" && file.size > MAX_PDF_BYTES) refused.push(`${file.name} (los PDF van hasta 10 MB)`);
+    else if (k === "image" && file.size > MAX_IMAGE_BYTES) refused.push(`${file.name} (las imágenes van hasta ${megabytes(MAX_IMAGE_BYTES)})`);
+    else if (k === "pdf" && file.size > MAX_DOCUMENT_BYTES) refused.push(`${file.name} (los PDF van hasta ${megabytes(MAX_DOCUMENT_BYTES)})`);
   }
   if (refused.length > 0) return `No se pueden subir: ${refused.join(", ")}.`;
 
-  if (picked.reduce((n, f) => n + f.size, 0) > ATTACHMENT_MAX_UPLOAD_BYTES) return "Entre todos pesan más de 11 MB. Subilos en partes.";
+  if (picked.reduce((n, f) => n + f.size, 0) > UPLOAD_REQUEST_MAX_BYTES) return `Entre todos pesan más de ${megabytes(UPLOAD_REQUEST_MAX_BYTES)}. Subilos en partes.`;
   return null;
 }

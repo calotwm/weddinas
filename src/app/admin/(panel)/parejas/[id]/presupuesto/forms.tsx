@@ -7,6 +7,7 @@ import { itemTracksConfirmedGuests } from "@/core/budget";
 import type { BudgetItem } from "@/core/couple";
 import type { Currency } from "@/core/money";
 import { addPayment, saveBudgetItem, type PlannerResult } from "@/app/admin/planner-actions";
+import { MAX_DOCUMENT_BYTES, megabytes } from "@/core/upload-limits";
 
 export interface CategoryOption {
   key: string;
@@ -203,7 +204,7 @@ export function PaymentForm({ coupleId, item, today, arsPerUsd }: { coupleId: st
       <div>
         <label htmlFor={`receipt-${item.id}`} className="label">Comprobante (opcional)</label>
         <input id={`receipt-${item.id}`} name="receipt" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" className="text-sm" />
-        <p className="hint mt-1">PDF o imagen, hasta 10 MB (imágenes hasta 5 MB).</p>
+        <p className="hint mt-1">PDF o imagen, hasta {megabytes(MAX_DOCUMENT_BYTES)} (imágenes hasta 5 MB).</p>
       </div>
       <Feedback state={state} />
       <SubmitButton className="btn-ghost btn-sm" doneText="¡Registrado!">Registrar pago</SubmitButton>

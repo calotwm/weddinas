@@ -5,6 +5,7 @@ import { GUEST_AGES, GUEST_STATUSES, MAX_GUESTS, parseGuestNames } from "@/core/
 import { MAX_AESTHETIC_PHOTOS, MAX_STATIONERY, type AestheticInput, type GuestInput, type NewGuestInput, type TimingInput } from "@/core/portal-service";
 import { MAX_IMAGE_BYTES } from "@/core/uploads";
 import { files, portal } from "@/server/container";
+import { megabytes, UPLOAD_REQUEST_MAX_BYTES } from "@/core/upload-limits";
 
 // Form parsing shared by the couple's and the team's server actions for Estética, Timing and Invitados.
 // Callers authorize first (requireCoupleId / requireAdmin) and pass the couple id they trust.
@@ -12,7 +13,7 @@ import { files, portal } from "@/server/container";
 const text = (formData: FormData, key: string, max: number) => String(formData.get(key) ?? "").trim().slice(0, max);
 
 /** Several photos go up in one request; stays under the server action body limit in next.config.ts. */
-const MAX_UPLOAD_BYTES = 11 * 1024 * 1024;
+const MAX_UPLOAD_BYTES = UPLOAD_REQUEST_MAX_BYTES;
 
 export type UploadResult = { error?: string; ok?: number } | null;
 
@@ -29,7 +30,7 @@ async function uploadImages(
     return { error: room > 0 ? `Se pueden sumar ${room} foto${room === 1 ? "" : "s"} más.` : `Ya hay ${max} fotos: hay que quitar alguna para sumar otra.` };
   }
   if (picked.some((f) => f.size > MAX_IMAGE_BYTES)) return { error: "Cada foto puede pesar hasta 5 MB." };
-  if (picked.reduce((n, f) => n + f.size, 0) > MAX_UPLOAD_BYTES) return { error: "Entre todas pesan más de 11 MB: conviene subirlas en partes." };
+  if (picked.reduce((n, f) => n + f.size, 0) > MAX_UPLOAD_BYTES) return { error: `Entre todas pesan más de ${megabytes(MAX_UPLOAD_BYTES)}: conviene subirlas en partes.` };
 
   for (const file of picked) {
     let photoId: string;

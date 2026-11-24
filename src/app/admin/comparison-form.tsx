@@ -6,9 +6,10 @@ import { ComparisonTableView } from "@/components/planner/comparison-table";
 import { SubmitButton } from "@/components/submit-button";
 import type { ComparisonTable } from "@/core/comparison-table";
 import { addProposal, removeComparison, uploadComparison } from "./actions";
+import { megabytes, UPLOAD_REQUEST_MAX_BYTES } from "@/core/upload-limits";
 
 // Same cap as addProposal on the server; checked here first so a too-heavy pick does not clear the typed form.
-const NEW_PROPOSAL_MAX_BYTES = 11 * 1024 * 1024;
+const NEW_PROPOSAL_MAX_BYTES = UPLOAD_REQUEST_MAX_BYTES;
 const NEW_PROPOSAL_MAX_FILES = 10;
 
 /**
@@ -26,7 +27,7 @@ export function NewProposalForm({ coupleId, children }: { coupleId: string; chil
     const docs = data.getAll("files").filter((f) => f instanceof File && f.size > 0).length;
     let problem: string | null = null;
     if (docs > NEW_PROPOSAL_MAX_FILES) problem = `Subí hasta ${NEW_PROPOSAL_MAX_FILES} archivos por vez.`;
-    else if (picked.reduce((n, f) => n + f.size, 0) > NEW_PROPOSAL_MAX_BYTES) problem = "Entre el cuadro y los archivos pesan más de 11 MB. Sumá el resto desde la propuesta.";
+    else if (picked.reduce((n, f) => n + f.size, 0) > NEW_PROPOSAL_MAX_BYTES) problem = `Entre el cuadro y los archivos pesan más de ${megabytes(NEW_PROPOSAL_MAX_BYTES)}. Sumá el resto desde la propuesta.`;
     setTooHeavy(problem);
     if (problem) e.preventDefault();
   }
@@ -50,7 +51,7 @@ export function NewProposalForm({ coupleId, children }: { coupleId: string; chil
         <div>
           <label htmlFor="p-files" className="label">PDFs e imágenes (opcional)</label>
           <input id="p-files" name="files" type="file" multiple accept="application/pdf,image/jpeg,image/png,image/webp" className="w-full text-sm" />
-          <p className="hint mt-1">Hasta {NEW_PROPOSAL_MAX_FILES} archivos; entre todo, cuadro incluido, hasta 11 MB.</p>
+          <p className="hint mt-1">Hasta {NEW_PROPOSAL_MAX_FILES} archivos; entre todo, cuadro incluido, hasta {megabytes(NEW_PROPOSAL_MAX_BYTES)}.</p>
         </div>
       </div>
       {error && <p role="alert" className="text-sm text-rust">{error}</p>}
