@@ -25,6 +25,8 @@ Segunda tanda (WhatsApp, 2026-11-24)
 - S11. "que en la parte de brief se pueda agregar una columna por default que diga equipo y no sea visible para novios nada de esa columna y que haya un apartado asi como tenemos Parejas Proveedores Pagos Invitados Civil Pendiente donde diga "Comisiones" y traiga lo que dice cada columna por pareja" — pending: what "columna" means here (see L9).
 - S12. "Y no nos lleva a nada el apartado de "Parejas" donde dice: "Propuestas respondidas" o "Propuestas sin responder"".
 
+- S13. "Y en la parte de canciones agregaria que este "Tandas" en el apartado que aparece "Infaltables para la fiesta" y "Prohibidas" — both portals (shared music form).
+
 ## Tasks
 
 - [x] T1 [S1-S6] brief block + ideas autosave (debounced, serialized, never reset), row × / ↑↓, ceremony "Contratado" + Contacto — inline — `88403ab` — Risk: none
@@ -34,6 +36,7 @@ Segunda tanda (WhatsApp, 2026-11-24)
 
 - [x] T5 [S10] "A cargo" select with TEAM_OWNERS (+ legacy value kept as option) — inline — `555eb6a` — Risk: none
 - [x] T6 [S12] /admin/propuestas (?estado=respondidas), counters link there, couple page anchor #propuestas — inline — `07ae170`, RED→GREEN 2 tests — Risk: none
+- [x] T8 [S13] optional `tandas` on Music, textarea in the Infaltables/Prohibidas card, shown in the summary and music download — inline — `3c94529`, RED→GREEN 1 test — Risk: item 1 (new optional persisted field) — independent verifier deferred to feature end (verification timing rule)
 - [ ] T7 [S11] "Equipo" team-only column/row + "Comisiones" section — blocked on L9 question
 
 Route evidence: one parent, inline; no unit has a writer reason (each ≤ ~150 lines, sequential).
@@ -49,3 +52,4 @@ Route evidence: one parent, inline; no unit has a writer reason (each ≤ ~150 l
 - L7 Verifier on 2c5f20e: PASS on backward compatibility, clearing/validation, single count + anchors, other readers; suite 395/395, tsc clean. Advisory: a removed custom main rubro moved into extras was rejected → fixed `3b72371` with test. Pre-existing advisory: sheet refresh (`replaceSheetData`) replaces budget items, dropping app-set extras like any other app edit.
 - L8 Found while typechecking: `2c5f20e` edited `downloads.test.ts` fixtures with a non-BudgetItem key (vitest passed, tsc failed) → fixed `75f016d`.
 - L9 (2026-11-24) Second batch pasted (S10-S12) plus Canela's question "Nosotras podemos ir modificando o esperamos a que terminen ustedes para hacerlo?". S11 asked to the user: whether "columna" means a default team-only field row "Equipo" in every vendor rubro (their word for rows, L2) aggregated per couple in "Comisiones".
+- L10 (2026-11-24) User: "Y en la parte de canciones agregaria que este "Tandas" en el apartado que aparece "Infaltables para la fiesta" y "Prohibidas te sumo lo ultimo". Suite 397/397, tsc + eslint + build OK. S11 question still unanswered.
