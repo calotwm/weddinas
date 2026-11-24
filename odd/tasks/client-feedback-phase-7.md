@@ -38,7 +38,7 @@ Segunda tanda (WhatsApp, 2026-11-24)
 - [x] T6 [S12] /admin/propuestas (?estado=respondidas), counters link there, couple page anchor #propuestas — inline — `07ae170`, RED→GREEN 2 tests — Risk: none
 - [x] T8 [S13] optional `tandas` on Music, textarea in the Infaltables/Prohibidas card, shown in the summary and music download — inline — `3c94529`, RED→GREEN 1 test — Risk: item 1 (new optional persisted field) — independent verifier deferred to feature end (verification timing rule)
 - [x] T7 [S11] TEAM_FIELD "Equipo" row on every vendor rubro (load-time), hidden via `coupleFields` from the couple portal and vendor sheets, /admin/comisiones in the nav; also fixes T1: `withCatalogFields` kept re-sorting/re-adding catalog rows on load, so moves/removals were undone on reload — now stored order is kept and removals are remembered in `removedFields` — inline — `3c74713`, RED→GREEN 5 tests — Risk: items 1 (persisted normalization + new optional field) and 2 (team data hidden from the couple)
-- [ ] T9 final independent verifier (risk items 1, 2) → push, merge to main, deploy to Railway
+- [x] T9 final independent verifier (risk items 1, 2): PASS, no blockers → main fast-forwarded to `8653e59`, pushed, deployed to Railway
 
 Route evidence: one parent, inline; no unit has a writer reason (each ≤ ~150 lines, sequential).
 
@@ -56,3 +56,5 @@ Route evidence: one parent, inline; no unit has a writer reason (each ≤ ~150 l
 - L10 (2026-11-24) User: "Y en la parte de canciones agregaria que este "Tandas" en el apartado que aparece "Infaltables para la fiesta" y "Prohibidas te sumo lo ultimo". Suite 397/397, tsc + eslint + build OK. S11 question still unanswered.
 - L11 (2026-11-24) User: "subi todo lo que falta, hace lo primero y fue" — option 1 for S11, and push/deploy everything.
 - L12 Found while building T7: `withCatalogFields` (load-time) rebuilt catalog rows in catalog order and re-added missing ones, undoing T1's move/remove after reload. Fixed in `3c74713`; two existing tests updated to the kept-order expectation. Suite 402/402, tsc + eslint + build OK.
+- L13 Final verifier on 9330905..8653e59: PASS (old stored shapes load without loss and are idempotent over 3 load/save cycles; row moves/removals survive reload; Equipo never rendered for the couple or vendor sheets, server components only; autosave serialized; new pages behind requireAdmin); 402/402, tsc, eslint clean. Advisories: a brief page left open from before the deploy saves without the Equipo row once and marks it removed (re-add by name); renaming a required row records the old label as removed.
+- L14 (2026-11-24) main fast-forwarded and pushed (9330905..8653e59), `railway up` deploy complete; prod / 200, /admin, /admin/comisiones, /admin/propuestas 307 to login. Not browser-tested logged in.
