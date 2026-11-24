@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Icon } from "@/components/icons";
 import { SubmitButton } from "@/components/submit-button";
+import { attachmentPickProblem } from "@/core/attachment-pick";
 import { uploadAttachments } from "./attachment-actions";
 
 export function AttachmentUploadForm({
@@ -17,10 +18,20 @@ export function AttachmentUploadForm({
   allowInternal?: boolean;
 }) {
   const [state, action] = useActionState(uploadAttachments, null);
+  const [pickProblem, setPickProblem] = useState<string | null>(null);
   const inputId = `files-${kind}-${targetId}`;
+  const error = pickProblem ?? state?.error;
+
+  // Checked before sending: a pick over the upload limit otherwise fails with a generic error and nothing uploads.
+  function check(e: React.FormEvent<HTMLFormElement>) {
+    const picked = new FormData(e.currentTarget).getAll("files").filter((f): f is File => f instanceof File);
+    const problem = attachmentPickProblem(picked);
+    setPickProblem(problem);
+    if (problem) e.preventDefault();
+  }
 
   return (
-    <form action={action} className="space-y-2 rounded-2xl bg-cream/60 p-3 ring-1 ring-forest/5">
+    <form action={action} onSubmit={check} onChange={() => setPickProblem(null)} className="space-y-2 rounded-2xl bg-cream/60 p-3 ring-1 ring-forest/5">
       <input type="hidden" name="coupleId" value={coupleId} />
       <input type="hidden" name="targetKind" value={kind} />
       <input type="hidden" name="targetId" value={targetId} />
@@ -38,7 +49,7 @@ export function AttachmentUploadForm({
           Subir
         </SubmitButton>
       </div>
-      {state?.error && <p role="alert" className="text-xs text-rust">{state.error}</p>}
+      {error && <p role="alert" className="text-xs text-rust">{error}</p>}
     </form>
   );
 }
