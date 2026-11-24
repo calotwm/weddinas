@@ -233,6 +233,8 @@ export interface Music {
   playlistUrl: string;
   mustPlay: string;
   banned: string;
+  /** Party sets ("Tandas"), one per line. Missing on music saved before it existed. */
+  tandas?: string;
   /** Missing on music saved before moments were editable. */
   customMoments?: CustomMoment[];
   /** Keys of default moments the couple or the team removed. */

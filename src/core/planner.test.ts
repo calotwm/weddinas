@@ -277,6 +277,14 @@ describe("planner workspace", () => {
     expect(music).toMatchObject({ playlistUrl: "https://open.spotify.com/playlist/1", mustPlay: "Cumbia", banned: "Reggaeton" });
   });
 
+  it("saves the party sets (tandas) next to the must-play and banned songs, and keeps saving without them", async () => {
+    const base = { songs: [], playlistUrl: "", mustPlay: "Cumbia", banned: "Reggaeton" };
+    await service.saveMusic(coupleId, { ...base, tandas: "  1° tanda: rock nacional\n2° tanda: cumbia  " });
+    expect((await load()).music).toMatchObject({ mustPlay: "Cumbia", banned: "Reggaeton", tandas: "1° tanda: rock nacional\n2° tanda: cumbia" });
+    await service.saveMusic(coupleId, base);
+    expect((await load()).music.tandas).toBe("");
+  });
+
   describe("attachments", () => {
     const file = (id: string) => ({ id: `${id}.pdf`, name: "Pack contratado.pdf", size: 1200, internal: false });
 

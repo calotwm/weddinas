@@ -911,6 +911,7 @@ export class PortalService {
         playlistUrl: music.playlistUrl.trim(),
         mustPlay: music.mustPlay.trim(),
         banned: music.banned.trim(),
+        tandas: (music.tandas ?? "").trim(),
       };
     });
   }
