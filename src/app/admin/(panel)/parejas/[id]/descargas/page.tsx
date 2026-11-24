@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function DownloadsAdminPage({ params }: { params: Promise<{ id: string }> }) {
   const couple = await sheetCouple(params);
   const base = downloadsPath(couple.id);
+  const vendors = couple.brief.filter((b) => b.kind === "vendor" && b.status === "confirmed");
 
   return (
     <div className="space-y-6">
@@ -30,6 +31,25 @@ export default async function DownloadsAdminPage({ params }: { params: Promise<{
           </li>
         ))}
       </ul>
+      {vendors.length > 0 && (
+        <section className="card space-y-3">
+          <div>
+            <h3 className="section-title">Cada proveedor por separado</h3>
+            <p className="hint">La hoja de un solo proveedor confirmado, para mandársela.</p>
+          </div>
+          <ul className="flex flex-wrap gap-2">
+            {vendors.map((block) => (
+              <li key={block.key}>
+                <Link href={`${base}/proveedores?rubro=${encodeURIComponent(block.key)}`} className="btn-ghost btn-sm">
+                  <Icon name="file" className="h-3.5 w-3.5" />
+                  {block.name}
+                  {block.vendor && <span className="text-ink/55">· {block.vendor}</span>}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }
