@@ -3,7 +3,7 @@ import type { BriefBlock } from "@/core/couple";
 
 /** The couple's brief, so custom rubros show the name the team gave them. */
 type RubroNames = ReadonlyArray<Pick<BriefBlock, "key" | "name">>;
-import { dueItems, paidVsPending, splitPaid, summarizeBudget, summarizeItem, type RubroReceipt } from "@/core/budget";
+import { dueItems, itemCategories, itemCategoryName, paidVsPending, splitPaid, summarizeBudget, summarizeItem, type RubroReceipt } from "@/core/budget";
 import type { Budget, BudgetItem, FreightIncluded, Payment, PaymentKind } from "@/core/couple";
 import type { IpcSeries, UsdQuote } from "@/core/money";
 import { addDays, formatDay, formatMoney, formatMonth } from "@/lib/format";
@@ -64,9 +64,10 @@ export function orderedBudgetItems(
   const { owing, paid } = splitPaid(items, ipc);
   return [...owing, ...paid].map((item, i) => {
     const firstPaid = i === owing.length && owing.length > 0 ? true : undefined;
-    if (seen.has(item.category)) return { item, firstPaid };
-    seen.add(item.category);
-    return { item, anchor: categoryAnchor(item.category), firstPaid };
+    const key = itemCategories(item).join("+");
+    if (seen.has(key)) return { item, firstPaid };
+    seen.add(key);
+    return { item, anchor: categoryAnchor(key), firstPaid };
   });
 }
 
@@ -120,8 +121,8 @@ export function DueAlert({ items, ipc, today, brief }: { items: BudgetItem[]; ip
         <ul className="mt-1 space-y-0.5 text-sm text-ink/80">
           {due.map(({ item, pending, overdue }) => (
             <li key={item.id}>
-              <a href={`#${categoryAnchor(item.category)}`} className="font-semibold text-forest underline-offset-4 hover:underline">
-                {item.vendor || categoryName(item.category, brief)}
+              <a href={`#${categoryAnchor(itemCategories(item).join("+"))}`} className="font-semibold text-forest underline-offset-4 hover:underline">
+                {item.vendor || itemCategoryName(item, brief)}
               </a>
               : {formatMoney(pending, item.currency)} · {overdue ? "venció el" : "vence el"} {formatDay(item.dueDate!)}
             </li>
@@ -204,7 +205,7 @@ export function BudgetOverview({ budget, ipc, quote, brief }: { budget: Budget; 
                     <tr key={c.category}>
                       <td className="py-2.5 pr-3">
                         <a href={`#${categoryAnchor(c.category)}`} className="font-semibold text-forest underline-offset-4 hover:underline">
-                          {categoryName(c.category, brief)}
+                          {c.categories.map((k) => categoryName(k, brief)).join(" + ")}
                         </a>
                         <div className="mt-1.5 h-1.5 w-full max-w-40 overflow-hidden rounded-full bg-sand" aria-label={`${pct}% pago`}>
                           <div className="h-full rounded-full bg-teal" style={{ width: `${pct}%` }} />
@@ -255,7 +256,7 @@ export function BudgetItemCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="flex flex-wrap items-center gap-2 text-xs tracking-[0.2em] text-rust uppercase">
-            {categoryName(item.category, brief)}
+            {itemCategoryName(item, brief)}
             {s.pending <= 0 && <span className="chip bg-mint/25 py-0.5 tracking-normal text-forest normal-case">Pago al 100%</span>}
           </p>
           <h3 className="font-display text-2xl text-forest">{item.vendor || "Sin proveedor"}</h3>

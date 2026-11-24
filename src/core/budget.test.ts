@@ -7,6 +7,8 @@ import {
   paidLast,
   paidVsPending,
   rubroReceipts,
+  itemCategories,
+  itemCategoryName,
   splitPaid,
   summarizeBudget,
   summarizeItem,
@@ -201,5 +203,36 @@ describe("confirmed guests rubros", () => {
   it("are Espacio, Catering, Barra and Ambientación only", () => {
     expect(["espacio", "catering", "barra", "ambientacion"].every(tracksConfirmedGuests)).toBe(true);
     expect(["dj", "foto", "custom-fuegos", "evento"].some(tracksConfirmedGuests)).toBe(false);
+  });
+});
+
+describe("items of more than one rubro", () => {
+  const shared = item({ id: "shared", category: "espacio", extraCategories: ["catering"], amount: 5000, payments: [{ ...pay(1000), id: "s", receiptId: "r-s.pdf" }] });
+  const fmt = (n: number, c: string) => `${c} ${n}`;
+
+  it("lists the item's rubros, main one first, and names them together", () => {
+    expect(itemCategories(shared)).toEqual(["espacio", "catering"]);
+    expect(itemCategories(item({}))).toEqual(["catering"]);
+    expect(itemCategoryName(shared)).toBe("Espacio + Catering");
+  });
+
+  it("shows the item's payment in the brief of each of its rubros", () => {
+    expect(briefPaymentLabel([shared], "espacio", null, fmt)).toBe("Pagado ARS 1000 de ARS 5000");
+    expect(briefPaymentLabel([shared], "catering", null, fmt)).toBe("Pagado ARS 1000 de ARS 5000");
+    expect(briefPaymentLabel([shared], "dj", null, fmt)).toBeNull();
+  });
+
+  it("lists the item's receipts in each of its rubros", () => {
+    expect(rubroReceipts([shared], "catering")).toEqual([{ paymentId: "s", date: "2026-06-10", receiptId: "r-s.pdf" }]);
+    expect(rubroReceipts([shared], "espacio")).toHaveLength(1);
+  });
+
+  it("counts the item once in the totals, in a row of its own rubros", () => {
+    const summary = summarizeBudget([shared, item({ id: "solo", category: "espacio", amount: 2000 })], null, null);
+    expect(summary.totalArs).toBe(7000);
+    expect(summary.categories.map((c) => [c.categories, c.totalArs])).toEqual([
+      [["espacio", "catering"], 5000],
+      [["espacio"], 2000],
+    ]);
   });
 });

@@ -33,7 +33,7 @@ export default async function BudgetDownloadPage({ params }: { params: Promise<{
           <tbody className="divide-y divide-forest/10">
             {rows.map((row) => (
               <tr key={row.id}>
-                <td className="py-1.5 pr-3 text-forest">{categoryName(row.category, couple.brief)}</td>
+                <td className="py-1.5 pr-3 text-forest">{row.categories.map((k) => categoryName(k, couple.brief)).join(" + ")}</td>
                 <td className="py-1.5 pr-3">{row.vendor}</td>
                 <td className={cell}>{formatMoney(row.total, row.currency)}</td>
                 <td className={`${cell} text-teal`}>{formatMoney(row.paid, row.currency)}</td>

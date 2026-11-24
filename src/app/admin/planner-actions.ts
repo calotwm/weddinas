@@ -49,6 +49,7 @@ const done = (): PlannerResult => {
 function budgetItemInput(formData: FormData): BudgetItemInput {
   return {
     category: text(formData, "category", 60),
+    extraCategories: formData.getAll("extraCategory").slice(0, 40).map((v) => String(v).trim().slice(0, 60)),
     vendor: text(formData, "vendor", 120),
     concept: text(formData, "concept", 200),
     amount: amount(formData, "amount"),

@@ -4,6 +4,7 @@ import { Icon } from "@/components/icons";
 import { BudgetItemCard, BudgetOverview, DueAlert, orderedBudgetItems, PaidDivider, RatesNote } from "@/components/planner/budget";
 import { SubmitButton } from "@/components/submit-button";
 import { BRIEF_CATALOG, catalogBlock, categoryName } from "@/core/brief-catalog";
+import { itemCategories } from "@/core/budget";
 import { currentMonth, today } from "@/lib/format";
 import { requireAdmin } from "@/server/auth";
 import { portal } from "@/server/container";
@@ -15,8 +16,10 @@ import { BudgetItemForm, PaymentForm } from "./forms";
 export const dynamic = "force-dynamic";
 
 /** Keeps an item's own rubro selectable after it left the brief, so editing never switches it silently. */
-function withRubro(categories: { key: string; name: string }[], key: string, brief: Parameters<typeof categoryName>[1]) {
-  return categories.some((c) => c.key === key) ? categories : [...categories, { key, name: categoryName(key, brief) }];
+/** The rubro options plus the item's own rubros, when one is no longer offered (a removed custom rubro). */
+function withRubro(categories: { key: string; name: string }[], keys: string[], brief: Parameters<typeof categoryName>[1]) {
+  const missing = keys.filter((key) => !categories.some((c) => c.key === key));
+  return [...categories, ...missing.map((key) => ({ key, name: categoryName(key, brief) }))];
 }
 
 export default async function BudgetAdminPage({ params }: { params: Promise<{ id: string }> }) {
@@ -105,7 +108,7 @@ export default async function BudgetAdminPage({ params }: { params: Promise<{ id
                       Editar ítem
                     </summary>
                     <div className="mt-4">
-                      <BudgetItemForm coupleId={couple.id} categories={withRubro(categories, item.category, couple.brief)} defaultMonth={currentMonth()} item={item} />
+                      <BudgetItemForm coupleId={couple.id} categories={withRubro(categories, itemCategories(item), couple.brief)} defaultMonth={currentMonth()} item={item} />
                     </div>
                   </details>
                   <form action={deleteBudgetItem}>

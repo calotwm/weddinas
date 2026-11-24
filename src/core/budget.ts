@@ -1,4 +1,5 @@
-import type { BudgetItem } from "./couple";
+import { categoryName } from "./brief-catalog";
+import type { BriefBlock, BudgetItem } from "./couple";
 import { adjustedAmount, convert, ipcFactor, type Currency, type IpcSeries } from "./money";
 
 export interface ItemSummary {
@@ -13,7 +14,10 @@ export interface ItemSummary {
 }
 
 export interface CategorySummary {
+  /** Row key: the item's rubros joined by "+". */
   category: string;
+  /** The row's rubros, main one first (one item may cover several). */
+  categories: string[];
   totalArs: number | null;
   paidArs: number | null;
   pendingArs: number | null;
@@ -68,6 +72,15 @@ interface Bucket {
 
 const emptyBucket = (): Bucket => ({ total: [0, 0], paid: [0, 0], pending: [0, 0] });
 
+/** The item's rubros, main one first. */
+export const itemCategories = (item: Pick<BudgetItem, "category" | "extraCategories">): string[] => [item.category, ...(item.extraCategories ?? [])];
+
+/** "Espacio + Catering": the names of the item's rubros. */
+export const itemCategoryName = (item: Pick<BudgetItem, "category" | "extraCategories">, brief?: ReadonlyArray<Pick<BriefBlock, "key" | "name">>) =>
+  itemCategories(item).map((c) => categoryName(c, brief)).join(" + ");
+
+const coversCategory = (item: BudgetItem, category: string) => itemCategories(item).includes(category);
+
 export function summarizeBudget(items: BudgetItem[], ipc: IpcSeries | null, arsPerUsd: number | null): BudgetSummary {
   const byCategory = new Map<string, Bucket>();
   const all = emptyBucket();
@@ -77,8 +90,10 @@ export function summarizeBudget(items: BudgetItem[], ipc: IpcSeries | null, arsP
     const s = summarizeItem(item, ipc);
     ipcMonth ??= s.ipcMonth;
     const i = item.currency === "ARS" ? 0 : 1;
-    const bucket = byCategory.get(item.category) ?? emptyBucket();
-    byCategory.set(item.category, bucket);
+    // An item of several rubros is counted once, in a row of its own ("Espacio + Catering").
+    const key = itemCategories(item).join("+");
+    const bucket = byCategory.get(key) ?? emptyBucket();
+    byCategory.set(key, bucket);
     for (const b of [bucket, all]) {
       b.total[i] += s.total;
       b.paid[i] += s.paid;
@@ -89,6 +104,7 @@ export function summarizeBudget(items: BudgetItem[], ipc: IpcSeries | null, arsP
   return {
     categories: [...byCategory].map(([category, b]) => ({
       category,
+      categories: category.split("+"),
       totalArs: sumIn("ARS", ...b.total, arsPerUsd),
       paidArs: sumIn("ARS", ...b.paid, arsPerUsd),
       pendingArs: sumIn("ARS", ...b.pending, arsPerUsd),
@@ -137,7 +153,7 @@ export function briefPaymentLabel(
   ipc: IpcSeries | null,
   format: (amount: number, currency: Currency) => string,
 ): string | null {
-  const own = items.filter((i) => i.category === category);
+  const own = items.filter((i) => coversCategory(i, category));
   if (own.length === 0) return null;
   if (own.every((i) => isFullyPaid(i, ipc))) return "Pago al 100%";
   const totals = new Map<Currency, { paid: number; total: number }>();
@@ -171,7 +187,7 @@ export interface RubroReceipt {
 /** Receipts of every payment of the rubro's budget items, oldest payment first, for the brief block. */
 export function rubroReceipts(items: BudgetItem[], category: string): RubroReceipt[] {
   return items
-    .filter((i) => i.category === category)
+    .filter((i) => coversCategory(i, category))
     .flatMap((i) => i.payments)
     .filter((p) => p.receiptId)
     .map((p) => ({ paymentId: p.id, date: p.date, receiptId: p.receiptId! }))
@@ -182,6 +198,9 @@ export function rubroReceipts(items: BudgetItem[], category: string): RubroRecei
 export const CONFIRMED_GUESTS_RUBROS: readonly string[] = ["espacio", "catering", "barra", "ambientacion"];
 
 export const tracksConfirmedGuests = (category: string) => CONFIRMED_GUESTS_RUBROS.includes(category);
+
+/** Whether any of the item's rubros records confirmed guests. */
+export const itemTracksConfirmedGuests = (item: Pick<BudgetItem, "category" | "extraCategories">) => itemCategories(item).some(tracksConfirmedGuests);
 
 export interface DueItem {
   item: BudgetItem;

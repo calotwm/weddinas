@@ -92,6 +92,22 @@ describe("planner workspace", () => {
       expect((await load()).budget.items).toHaveLength(1);
     });
 
+    it("stores more rubros for one item, without repeats or the main one, and clears them", async () => {
+      const item = await service.addBudgetItem(coupleId, { ...base, extraCategories: ["espacio", "catering", "espacio", "barra"] });
+      expect((await load()).budget.items[0].extraCategories).toEqual(["espacio", "barra"]);
+      await service.updateBudgetItem(coupleId, item.id, { ...base, extraCategories: [] });
+      expect((await load()).budget.items[0].extraCategories).toBeUndefined();
+    });
+
+    it("rejects an extra rubro that is not in the catalog nor the brief", async () => {
+      await expect(service.addBudgetItem(coupleId, { ...base, extraCategories: ["nope"] })).rejects.toThrow("Unknown category");
+    });
+
+    it("takes confirmed guests when any of the item's rubros tracks them", async () => {
+      await service.addBudgetItem(coupleId, { ...base, category: "dj", extraCategories: ["catering"], confirmedGuests: 120 });
+      expect((await load()).budget.items[0].confirmedGuests).toBe(120);
+    });
+
     it("stores the confirmed guests of Espacio, Catering, Barra and Ambientación, and clears them", async () => {
       const item = await service.addBudgetItem(coupleId, { ...base, confirmedGuests: 180 });
       expect((await load()).budget.items[0].confirmedGuests).toBe(180);

@@ -6,7 +6,7 @@ import { byDayTime } from "./timing";
 import { normalizeWhatsapp } from "./whatsapp";
 import { cleanWebSelection, webDressCode } from "./web-options";
 import type { AestheticWeb } from "./couple";
-import { tracksConfirmedGuests } from "./budget";
+import { itemTracksConfirmedGuests } from "./budget";
 import { BRIEF_CATALOG, catalogBlock, categoryName, CUSTOM_BLOCK_NAME_MAX, CUSTOM_BLOCK_PREFIX, defaultBrief, defaultMusic, musicMomentKeys, newBriefBlock, newCustomBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
 import {
   emptyPublicInfo,
@@ -296,10 +296,13 @@ function cleanBudgetItem(input: BudgetItemInput): BudgetItemInput {
   const { confirmedGuests } = input;
   if (confirmedGuests !== undefined) {
     if (!Number.isInteger(confirmedGuests) || confirmedGuests <= 0) throw new Error("Confirmed guests must be a positive whole number");
-    if (!tracksConfirmedGuests(input.category)) throw new Error("Confirmed guests only apply to Espacio, Catering, Barra and Ambientación");
+    if (!itemTracksConfirmedGuests(input)) throw new Error("Confirmed guests only apply to Espacio, Catering, Barra and Ambientación");
   }
+  const extraCategories = [...new Set((input.extraCategories ?? []).map((c) => c.trim()).filter((c) => c && c !== input.category))];
   return {
     category: input.category,
+    // Undefined (not omitted) so an update clears the old ones.
+    extraCategories: extraCategories.length > 0 ? extraCategories : undefined,
     vendor: input.vendor.trim(),
     concept: input.concept.trim(),
     amount: input.amount,
@@ -758,6 +761,7 @@ export class PortalService {
     const item: BudgetItem = { id: randomUUID(), ...cleanBudgetItem(input), payments: [] };
     await this.mutate(coupleId, (c) => {
       checkBudgetCategory(item.category, c.brief);
+      for (const extra of item.extraCategories ?? []) checkBudgetCategory(extra, c.brief);
       c.budget.items.push(item);
     });
     return item;
@@ -769,6 +773,7 @@ export class PortalService {
       const item = c.budget.items.find((i) => i.id === itemId);
       if (!item) throw new Error("Budget item not found");
       checkBudgetCategory(clean.category, c.brief, item.category);
+      for (const extra of clean.extraCategories ?? []) checkBudgetCategory(extra, c.brief, item.extraCategories?.includes(extra) ? extra : undefined);
       // Payments are recorded against the item's currency; switching it would silently drop them from the totals.
       if (clean.currency !== item.currency && item.payments.length > 0) {
         throw new Error("Cannot change the currency of an item with payments");

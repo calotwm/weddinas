@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { Countdown } from "@/components/countdown";
 import { Icon } from "@/components/icons";
-import { categoryName } from "@/core/brief-catalog";
-import { dueItems } from "@/core/budget";
+import { dueItems, itemCategoryName } from "@/core/budget";
 import { GuestSummaryView } from "@/components/planner/guest-summary";
 import { TimingList } from "@/components/planner/timing";
 import { checklistSections, isPresented, publishedTasks } from "@/core/couple";
@@ -107,7 +106,7 @@ export default async function PortalHome() {
             {due.map(({ item, pending: amount, overdue }) => (
               <li key={item.id} className="flex items-start justify-between gap-3 py-2.5">
                 <div className="min-w-0">
-                  <p className="truncate font-semibold text-forest">{item.vendor || categoryName(item.category)}</p>
+                  <p className="truncate font-semibold text-forest">{item.vendor || itemCategoryName(item)}</p>
                   <p className={`text-sm ${overdue ? "font-semibold text-rust" : "text-ink/60"}`}>
                     {overdue ? "Venció el" : "Vence el"} {formatDay(item.dueDate!)}
                   </p>

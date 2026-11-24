@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { SubmitButton } from "@/components/submit-button";
 import { FREIGHT_LABEL, PAYMENT_KIND } from "@/components/planner/budget";
-import { tracksConfirmedGuests } from "@/core/budget";
+import { itemTracksConfirmedGuests } from "@/core/budget";
 import type { BudgetItem } from "@/core/couple";
 import type { Currency } from "@/core/money";
 import { addPayment, saveBudgetItem, type PlannerResult } from "@/app/admin/planner-actions";
@@ -43,10 +43,16 @@ export function BudgetItemForm({
   const [currency, setCurrency] = useState<Currency>(item?.currency ?? "ARS");
   // Drives the "Invitados confirmados" field, which only Espacio, Catering, Barra and Ambientación have.
   const [category, setCategory] = useState(item?.category ?? "espacio");
+  // "También es de": the other rubros the same item covers (one vendor for Espacio + Catering).
+  const [extras, setExtras] = useState<string[]>(item?.extraCategories ?? []);
   const id = item?.id ?? "new";
+  const toggleExtra = (key: string, on: boolean) => setExtras((xs) => (on ? [...xs, key] : xs.filter((x) => x !== key)));
 
   return (
-    <form ref={ref} action={action} onReset={() => setCategory(item?.category ?? "espacio")} className="space-y-4">
+    <form ref={ref} action={action} onReset={() => {
+        setCategory(item?.category ?? "espacio");
+        setExtras(item?.extraCategories ?? []);
+      }} className="space-y-4">
       <input type="hidden" name="coupleId" value={coupleId} />
       {item && <input type="hidden" name="itemId" value={item.id} />}
       <div className="grid gap-4 sm:grid-cols-2">
@@ -57,6 +63,29 @@ export function BudgetItemForm({
               <option key={c.key} value={c.key}>{c.name}</option>
             ))}
           </select>
+          <details className="mt-2 text-sm" open={extras.length > 0 || undefined}>
+            <summary className="cursor-pointer text-teal">
+              También es de otro rubro{extras.filter((x) => x !== category).length > 0 && ` (${extras.filter((x) => x !== category).length})`}
+            </summary>
+            <div className="mt-2 grid max-h-48 gap-1 overflow-y-auto rounded-xl bg-cream/60 p-2 ring-1 ring-forest/5 sm:grid-cols-2">
+              {categories
+                .filter((c) => c.key !== category)
+                .map((c) => (
+                  <label key={c.key} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      name="extraCategory"
+                      value={c.key}
+                      checked={extras.includes(c.key)}
+                      onChange={(e) => toggleExtra(c.key, e.target.checked)}
+                      className="accent-forest"
+                    />
+                    {c.name}
+                  </label>
+                ))}
+            </div>
+            <p className="hint mt-1">El ítem cuenta una sola vez en los totales y su pago aparece en el brief de cada rubro.</p>
+          </details>
         </div>
         <div>
           <label htmlFor={`vendor-${id}`} className="label">Proveedor</label>
@@ -117,7 +146,7 @@ export function BudgetItemForm({
             <option value="no">{FREIGHT_LABEL.no}</option>
           </select>
         </div>
-        {tracksConfirmedGuests(category) && (
+        {itemTracksConfirmedGuests({ category, extraCategories: extras }) && (
           <div>
             <label htmlFor={`guests-${id}`} className="label">Invitados confirmados</label>
             <input

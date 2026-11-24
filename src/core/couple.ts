@@ -115,8 +115,10 @@ export type FreightIncluded = "yes" | "no";
 
 export interface BudgetItem {
   id: string;
-  /** Brief category key (see brief-catalog). */
+  /** Brief category key (see brief-catalog): the item's main rubro. */
   category: string;
+  /** Other rubros the same item covers ("Espacio + Catering"). Optional; never repeats `category`. */
+  extraCategories?: string[];
   vendor: string;
   concept: string;
   amount: number;

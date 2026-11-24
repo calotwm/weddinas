@@ -1,10 +1,12 @@
-import { summarizeItem } from "@/core/budget";
+import { itemCategories, summarizeItem } from "@/core/budget";
 import type { BudgetItem } from "@/core/couple";
 import type { Currency, IpcSeries } from "@/core/money";
 
 export interface BudgetSheetRow {
   id: string;
   category: string;
+  /** The item's rubros, main one first. */
+  categories: string[];
   vendor: string;
   currency: Currency;
   total: number;
@@ -25,7 +27,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 export function budgetSheet(items: BudgetItem[], ipc: IpcSeries | null): { rows: BudgetSheetRow[]; totals: BudgetSheetTotal[] } {
   const rows = items.map((item) => {
     const s = summarizeItem(item, ipc);
-    return { id: item.id, category: item.category, vendor: item.vendor, currency: item.currency, total: s.total, paid: s.paid, pending: s.pending };
+    return { id: item.id, category: item.category, categories: itemCategories(item), vendor: item.vendor, currency: item.currency, total: s.total, paid: s.paid, pending: s.pending };
   });
   const totals: BudgetSheetTotal[] = [];
   for (const currency of ["ARS", "USD"] as const) {

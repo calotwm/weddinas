@@ -1,5 +1,4 @@
-import { dueItems } from "./budget";
-import { categoryName } from "./brief-catalog";
+import { dueItems, itemCategoryName } from "./budget";
 import { coupleNames, isPresented, type Couple } from "./couple";
 import type { Currency, IpcSeries } from "./money";
 import { daysAgo, presentedAt } from "./notifications";
@@ -44,7 +43,7 @@ export function coupleAlerts(couples: AlertCouple[], today: string, now: Date, i
     const base = { coupleId: c.id, names: coupleNames(c) };
 
     for (const { item, pending, overdue } of dueItems(c.budget.items, ipc, today, plusDays(today, PAYMENT_ALERT_DAYS))) {
-      payments.push({ kind: "payment", ...base, id: item.id, title: item.vendor || categoryName(item.category), amount: pending, currency: item.currency, dueDate: item.dueDate!, overdue });
+      payments.push({ kind: "payment", ...base, id: item.id, title: item.vendor || itemCategoryName(item), amount: pending, currency: item.currency, dueDate: item.dueDate!, overdue });
     }
 
     for (const p of c.proposals) {
