@@ -6,7 +6,7 @@ import { byDayTime } from "./timing";
 import { normalizeWhatsapp } from "./whatsapp";
 import { cleanWebSelection, webDressCode } from "./web-options";
 import type { AestheticWeb } from "./couple";
-import { itemTracksConfirmedGuests } from "./budget";
+import { itemCategories, itemTracksConfirmedGuests } from "./budget";
 import { BRIEF_CATALOG, catalogBlock, categoryName, CUSTOM_BLOCK_NAME_MAX, CUSTOM_BLOCK_PREFIX, defaultBrief, defaultMusic, musicMomentKeys, newBriefBlock, newCustomBriefBlock, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
 import {
   emptyPublicInfo,
@@ -773,7 +773,9 @@ export class PortalService {
       const item = c.budget.items.find((i) => i.id === itemId);
       if (!item) throw new Error("Budget item not found");
       checkBudgetCategory(clean.category, c.brief, item.category);
-      for (const extra of clean.extraCategories ?? []) checkBudgetCategory(extra, c.brief, item.extraCategories?.includes(extra) ? extra : undefined);
+      // A rubro the item already had (main or extra) stays valid even if it is no longer offered (a removed custom rubro).
+      const own = itemCategories(item);
+      for (const extra of clean.extraCategories ?? []) checkBudgetCategory(extra, c.brief, own.includes(extra) ? extra : undefined);
       // Payments are recorded against the item's currency; switching it would silently drop them from the totals.
       if (clean.currency !== item.currency && item.payments.length > 0) {
         throw new Error("Cannot change the currency of an item with payments");

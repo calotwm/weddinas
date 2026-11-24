@@ -103,6 +103,14 @@ describe("planner workspace", () => {
       await expect(service.addBudgetItem(coupleId, { ...base, extraCategories: ["nope"] })).rejects.toThrow("Unknown category");
     });
 
+    it("keeps a removed custom rubro when it moves from main rubro to an extra one", async () => {
+      const custom = await service.addCustomBriefBlock(coupleId, "Fotomatón");
+      const item = await service.addBudgetItem(coupleId, { ...base, category: custom });
+      await service.removeBriefBlock(coupleId, custom);
+      await service.updateBudgetItem(coupleId, item.id, { ...base, extraCategories: [custom] });
+      expect((await load()).budget.items[0]).toMatchObject({ category: "catering", extraCategories: [custom] });
+    });
+
     it("takes confirmed guests when any of the item's rubros tracks them", async () => {
       await service.addBudgetItem(coupleId, { ...base, category: "dj", extraCategories: ["catering"], confirmedGuests: 120 });
       expect((await load()).budget.items[0].confirmedGuests).toBe(120);
