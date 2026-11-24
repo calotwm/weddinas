@@ -14,15 +14,21 @@ import { CoupleList, type CoupleRow } from "./couple-list";
 
 export const dynamic = "force-dynamic";
 
-function Stat({ icon, value, label, tone = "text-forest" }: { icon: IconName; value: number; label: string; tone?: string }) {
-  return (
-    <div className="card flex items-center gap-4 p-5 sm:p-5">
+function Stat({ icon, value, label, tone = "text-forest", href }: { icon: IconName; value: number; label: string; tone?: string; href?: string }) {
+  const body = (
+    <>
       <span className="icon-badge"><Icon name={icon} /></span>
       <div>
         <p className={`font-display text-3xl leading-none ${tone}`}>{value}</p>
         <p className="mt-1 text-xs tracking-wide text-ink/55 uppercase">{label}</p>
       </div>
-    </div>
+    </>
+  );
+  // Counters with a list behind them open it.
+  return href ? (
+    <Link href={href} className="card flex items-center gap-4 p-5 transition-shadow hover:shadow-md sm:p-5">{body}</Link>
+  ) : (
+    <div className="card flex items-center gap-4 p-5 sm:p-5">{body}</div>
   );
 }
 
@@ -115,8 +121,8 @@ export default async function AdminHome() {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat icon="users" value={active.length} label="Parejas activas" />
         <Stat icon="calendar" value={soon} label="Se casan en 30 días" tone="text-rust" />
-        <Stat icon="sparkle" value={pendingTotal} label="Propuestas sin responder" />
-        <Stat icon="check" value={answered} label="Propuestas respondidas" tone="text-teal" />
+        <Stat icon="sparkle" value={pendingTotal} label="Propuestas sin responder" href="/admin/propuestas" />
+        <Stat icon="check" value={answered} label="Propuestas respondidas" tone="text-teal" href="/admin/propuestas?estado=respondidas" />
       </div>
 
       <Alerts alerts={alerts} origin={origin} />

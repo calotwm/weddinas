@@ -74,7 +74,7 @@ export default async function CoupleAdminPage({ params }: { params: Promise<{ id
           </NewProposalForm>
         </section>
 
-        <section className="card">
+        <section id="propuestas" className="card scroll-mt-6">
           <h2 className="section-title mb-4">Propuestas <span className="text-ink/40">({couple.proposals.length})</span></h2>
           {couple.proposals.length === 0 && <p className="text-sm text-ink/50">Todavía no publicaste propuestas.</p>}
           <ul className="divide-y divide-forest/8">
