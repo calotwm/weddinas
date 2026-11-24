@@ -22,7 +22,7 @@ Descargas
 
 Segunda tanda (WhatsApp, 2026-11-24)
 - S10. "En la parte de proveedores a cargo estaría bueno que sea un despegable - Weddinas - Cane - Nat - More - Pauli - Belu - Abru".
-- S11. "que en la parte de brief se pueda agregar una columna por default que diga equipo y no sea visible para novios nada de esa columna y que haya un apartado asi como tenemos Parejas Proveedores Pagos Invitados Civil Pendiente donde diga "Comisiones" y traiga lo que dice cada columna por pareja" — pending: what "columna" means here (see L9).
+- S11. "que en la parte de brief se pueda agregar una columna por default que diga equipo y no sea visible para novios nada de esa columna y que haya un apartado asi como tenemos Parejas Proveedores Pagos Invitados Civil Pendiente donde diga "Comisiones" y traiga lo que dice cada columna por pareja" — user chose (L11): a default "Equipo" row in every vendor rubro, team-only, and a "Comisiones" nav section listing it per couple.
 - S12. "Y no nos lleva a nada el apartado de "Parejas" donde dice: "Propuestas respondidas" o "Propuestas sin responder"".
 
 - S13. "Y en la parte de canciones agregaria que este "Tandas" en el apartado que aparece "Infaltables para la fiesta" y "Prohibidas" — both portals (shared music form).
@@ -37,7 +37,8 @@ Segunda tanda (WhatsApp, 2026-11-24)
 - [x] T5 [S10] "A cargo" select with TEAM_OWNERS (+ legacy value kept as option) — inline — `555eb6a` — Risk: none
 - [x] T6 [S12] /admin/propuestas (?estado=respondidas), counters link there, couple page anchor #propuestas — inline — `07ae170`, RED→GREEN 2 tests — Risk: none
 - [x] T8 [S13] optional `tandas` on Music, textarea in the Infaltables/Prohibidas card, shown in the summary and music download — inline — `3c94529`, RED→GREEN 1 test — Risk: item 1 (new optional persisted field) — independent verifier deferred to feature end (verification timing rule)
-- [ ] T7 [S11] "Equipo" team-only column/row + "Comisiones" section — blocked on L9 question
+- [x] T7 [S11] TEAM_FIELD "Equipo" row on every vendor rubro (load-time), hidden via `coupleFields` from the couple portal and vendor sheets, /admin/comisiones in the nav; also fixes T1: `withCatalogFields` kept re-sorting/re-adding catalog rows on load, so moves/removals were undone on reload — now stored order is kept and removals are remembered in `removedFields` — inline — `3c74713`, RED→GREEN 5 tests — Risk: items 1 (persisted normalization + new optional field) and 2 (team data hidden from the couple)
+- [ ] T9 final independent verifier (risk items 1, 2) → push, merge to main, deploy to Railway
 
 Route evidence: one parent, inline; no unit has a writer reason (each ≤ ~150 lines, sequential).
 
@@ -53,3 +54,5 @@ Route evidence: one parent, inline; no unit has a writer reason (each ≤ ~150 l
 - L8 Found while typechecking: `2c5f20e` edited `downloads.test.ts` fixtures with a non-BudgetItem key (vitest passed, tsc failed) → fixed `75f016d`.
 - L9 (2026-11-24) Second batch pasted (S10-S12) plus Canela's question "Nosotras podemos ir modificando o esperamos a que terminen ustedes para hacerlo?". S11 asked to the user: whether "columna" means a default team-only field row "Equipo" in every vendor rubro (their word for rows, L2) aggregated per couple in "Comisiones".
 - L10 (2026-11-24) User: "Y en la parte de canciones agregaria que este "Tandas" en el apartado que aparece "Infaltables para la fiesta" y "Prohibidas te sumo lo ultimo". Suite 397/397, tsc + eslint + build OK. S11 question still unanswered.
+- L11 (2026-11-24) User: "subi todo lo que falta, hace lo primero y fue" — option 1 for S11, and push/deploy everything.
+- L12 Found while building T7: `withCatalogFields` (load-time) rebuilt catalog rows in catalog order and re-added missing ones, undoing T1's move/remove after reload. Fixed in `3c74713`; two existing tests updated to the kept-order expectation. Suite 402/402, tsc + eslint + build OK.
