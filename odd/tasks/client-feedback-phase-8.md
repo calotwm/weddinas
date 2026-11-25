@@ -80,3 +80,4 @@ Integraciones (PDF)
 - L1 (2026-11-25) User: "buenas hay que suamr cosas," + pasted WhatsApp list (Pagos, Generica, Musica, General, Estetica, Timing, Invitados) + "C:\Users\cseifar\Downloads\Cambios Web - Portal Weddinas.pdf" (quoted in Specs).
 - L2 Route: three independent units with disjoint surfaces (brief, music/estética, guests) go to parallel writers in worktrees; the rest inline.
 - L3 Merged T1-T3 cleanly; seam check: vitest 49 files / 443 tests, tsc and eslint clean.
+- L4 Production build OK. Independent verifier: no blockers; S2-S3, S5-S20, S22-S25, S27-S35, S37-S38 PASS; S4 PARTIAL (budget item, timing link keep a button). Advisories: old items with viáticos "No incluido" now read as owing until "Viáticos pagos" is ticked; artist dropped when the title already contains it; printed guest list lost N°/Estado/Llegó. Fixed: first renewal on the first activity after loading (9fa8418).
