@@ -4,6 +4,7 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { Icon } from "../icons";
+import { timingDownloadUrl } from "@/core/timing-sheet";
 import { SubmitButton } from "../submit-button";
 import { photoUrl } from "./family";
 import { MAX_DOCUMENT_BYTES, megabytes } from "@/core/upload-limits";
@@ -230,13 +231,19 @@ export function TimingSheetLinkForm({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="section-title">Excel del timing</h3>
-          <p className="text-sm text-ink/60">El link a tu Excel de timing. Solo lo ve el equipo.</p>
+          <p className="text-sm text-ink/60">El link a tu Excel de timing. La pareja lo descarga desde su portal (compartilo como &quot;cualquiera con el link&quot;).</p>
         </div>
         {url && (
-          <a href={url} target="_blank" rel="noreferrer" className="btn-ghost btn-sm">
-            <Icon name="external" className="h-4 w-4" />
-            Abrir Excel
-          </a>
+          <div className="flex flex-wrap gap-2">
+            <a href={url} target="_blank" rel="noreferrer" className="btn-ghost btn-sm">
+              <Icon name="external" className="h-4 w-4" />
+              Abrir Excel
+            </a>
+            <a href={timingDownloadUrl(url) ?? url} target="_blank" rel="noreferrer" className="btn-ghost btn-sm">
+              <Icon name="download" className="h-4 w-4" />
+              Descargar
+            </a>
+          </div>
         )}
       </div>
       <form action={action} className="flex flex-wrap items-end gap-2">

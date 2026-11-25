@@ -1,9 +1,11 @@
-import { TeamFileCard } from "@/components/planner/team-files";
+import { Icon } from "@/components/icons";
+import { timingDownloadUrl } from "@/core/timing-sheet";
 import { TimingSchedule, VendorTimingTable } from "@/components/planner/timing";
 import { getCurrentCouple } from "../data";
 
 export default async function TimingPage() {
   const couple = await getCurrentCouple();
+  const download = timingDownloadUrl(couple.teamFiles.timingSheetUrl);
 
   return (
     <div className="space-y-6">
@@ -13,8 +15,11 @@ export default async function TimingPage() {
           El cronograma del día, momento a momento. Lo arma el equipo Weddinas con ustedes; si quieren cambiar algo, avísennos.
         </p>
       </div>
-      {couple.teamFiles.timingImageId && (
-        <TeamFileCard title="Timing del día" coupleId={couple.id} fileId={couple.teamFiles.timingImageId} emptyText="" />
+      {download && (
+        <a href={download} target="_blank" rel="noreferrer" className="btn-primary btn-sm w-fit">
+          <Icon name="download" className="h-4 w-4" />
+          Descargar timing (Excel)
+        </a>
       )}
       <TimingSchedule timing={couple.timing} />
       <VendorTimingTable items={couple.vendorTiming} />
