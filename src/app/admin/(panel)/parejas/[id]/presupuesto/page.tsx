@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { AutoSaveForm } from "@/components/auto-save-form";
 import { Fragment } from "react";
 import { Icon } from "@/components/icons";
 import { BudgetItemCard, BudgetOverview, DueAlert, orderedBudgetItems, PaidDivider, RatesNote } from "@/components/planner/budget";
@@ -29,10 +30,10 @@ export default async function BudgetAdminPage({ params }: { params: Promise<{ id
 
   const { budget } = couple;
   const { ipc, quotes, quote } = await loadRates(budget.usdQuote);
-  // Catalog vendor rubros plus the custom ones the team added to this couple's brief.
+  // Catalog vendor rubros plus the custom ones the team added to this couple's brief, under this couple's titles.
   const categories = [...BRIEF_CATALOG, ...couple.brief.filter((b) => !catalogBlock(b.key))]
     .filter((b) => b.kind === "vendor")
-    .map(({ key, name }) => ({ key, name }));
+    .map(({ key }) => ({ key, name: categoryName(key, couple.brief) }));
   const hidden = <input type="hidden" name="coupleId" value={couple.id} />;
 
   return (
@@ -42,7 +43,7 @@ export default async function BudgetAdminPage({ params }: { params: Promise<{ id
           <h2 className="font-display text-3xl text-forest">Presupuesto y pagos</h2>
           <RatesNote ipc={ipc} quote={quote} />
         </div>
-        <form action={saveBudgetSettings} className="flex flex-wrap items-end gap-2">
+        <AutoSaveForm compact save={saveBudgetSettings} className="flex flex-wrap items-end gap-2">
           {hidden}
           <div>
             <label htmlFor="usdQuote" className="label">Dólar de referencia</label>
@@ -56,8 +57,7 @@ export default async function BudgetAdminPage({ params }: { params: Promise<{ id
             <label htmlFor="guests" className="label">Invitados</label>
             <input id="guests" name="guests" type="number" min={0} defaultValue={budget.guests ?? ""} className="field w-28 !py-2" />
           </div>
-          <SubmitButton className="btn-ghost btn-sm mb-1" doneText="¡Listo!">Guardar</SubmitButton>
-        </form>
+        </AutoSaveForm>
       </div>
 
       <DueAlert items={budget.items} ipc={ipc} today={today()} brief={couple.brief} />

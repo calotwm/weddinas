@@ -12,6 +12,7 @@ import { portal } from "@/server/container";
 import { loadRates } from "@/server/rates";
 import { AdminAttachments } from "@/app/admin/admin-attachments";
 import { addBriefBlock, removeBriefBlock } from "@/app/admin/planner-actions";
+import { BriefLinks } from "@/components/planner/brief-links";
 import { BriefBlockForm, CustomBlockForm, IdeasForm } from "./forms";
 
 export const dynamic = "force-dynamic";
@@ -84,6 +85,14 @@ export default async function BriefAdminPage({ params }: { params: Promise<{ id:
                   coupleId={couple.id}
                   block={block}
                   budgetPayment={block.kind === "vendor" ? briefPaymentDetail(couple.budget.items, block.key, ipc, formatMoney) : null}
+                />
+                <BriefLinks
+                  coupleId={couple.id}
+                  blockKey={block.key}
+                  music={couple.music}
+                  stationeryIds={couple.teamFiles.stationeryIds}
+                  musicHref={`/admin/parejas/${couple.id}/musica`}
+                  aestheticHref={`/admin/parejas/${couple.id}/estetica`}
                 />
                 {rubroReceipts(couple.budget.items, block.key).length > 0 && (
                   <div>

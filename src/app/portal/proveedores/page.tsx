@@ -1,5 +1,6 @@
 import { Icon } from "@/components/icons";
 import { BriefBlockSummary } from "@/components/planner/brief";
+import { BriefLinks } from "@/components/planner/brief-links";
 import { LineStateLegend } from "@/components/planner/line-state";
 import { briefPaymentDetail, rubroReceipts } from "@/core/budget";
 import { formatMoney } from "@/lib/format";
@@ -37,13 +38,22 @@ export default async function VendorsPage() {
       )}
       <div className="grid gap-5 lg:grid-cols-2">
         {vendors.map((block) => (
-          <BriefBlockSummary
-            key={block.key}
-            coupleId={couple.id}
-            block={block}
-            payment={payment(block.key)}
-            receipts={rubroReceipts(couple.budget.items, block.key)}
-          />
+          <div key={block.key} className="space-y-3">
+            <BriefBlockSummary
+              coupleId={couple.id}
+              block={block}
+              payment={payment(block.key)}
+              receipts={rubroReceipts(couple.budget.items, block.key)}
+            />
+            <BriefLinks
+              coupleId={couple.id}
+              blockKey={block.key}
+              music={couple.music}
+              stationeryIds={couple.teamFiles.stationeryIds}
+              musicHref="/portal/musica"
+              aestheticHref="/portal/estetica"
+            />
+          </div>
         ))}
       </div>
 

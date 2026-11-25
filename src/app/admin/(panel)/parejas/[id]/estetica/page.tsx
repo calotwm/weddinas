@@ -59,7 +59,6 @@ export default async function AestheticAdminPage({ params }: { params: Promise<{
 
       <h3 className="font-display text-2xl text-forest">Web</h3>
       <WebOptionsForm
-        key={JSON.stringify(web)}
         web={web}
         dressCode={couple.publicInfo.dressCode}
         weddingDate={couple.weddingDate}
