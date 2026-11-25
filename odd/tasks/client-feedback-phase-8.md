@@ -1,0 +1,81 @@
+# Client feedback, phase 8 (Canela: payments, music, guests, timing, brief PDF)
+
+Objective: apply Canela's fifth round (WhatsApp list + "Cambios Web - Portal Weddinas.pdf").
+Branch: `feat/client-feedback-phase-8` (base `f467881`) · Delivery: ask-on-risk · Test runner: `npx vitest run` · UI copy in Spanish ("vos" for the team), code/comments in English.
+
+## Specs
+
+Pagos / presupuesto
+- S1. "Que figure en el presupuesto solo el valor del que tiene precio fijo en nuestro presu viejo. Que NO tome el de la formula." — PENDING DECISION: the app has no formula amount; the only candidate is the sheet import computing a missing currency column from the other one × TC.
+- S2. "Si un pago esta al 100% la propuesta pero faltan viaticos. No tiene que ir para bajo junto con el resto que estan al 100% pago." — assumption: an item with viáticos ("Fletes / viáticos: Sí") gets a "Viáticos pagos" check; until it is ticked the item is not fully paid (stays up, brief does not say "Pago al 100%").
+
+Genérica
+- S3. "Se va cerrando cada poco tiempo la pag. Por que?" — cause: the admin session is a fixed 12 h cookie with no renewal. Fix: sliding session, renewed on activity.
+- S4. "Que los guardar sea automatico" — forms that still have a Guardar button save on their own (estética, web options, guest rows, timing rows, timing link, budget item, budget quote/guests). Create/add forms keep their button.
+
+Música
+- S5. "Hay que sumar el enter en los espacios a completar" — song and note inputs accept Enter (multi-line).
+- S6. "Sacar artista directamente y que sea mas grande el espacio a completar del que queda".
+- S7. "Colores: Verde para elegida y amarillo para pendiente. Borrar el "No aplica"" — stored "na" songs read as pending.
+- S8. "Sumar rayitas de arrastre tambien en la parte de canciones" — drag handles reorder song rows.
+- S9. PDF: "En Canciones (Fiesta), eliminar la sección "Tandas", ya que esa información ya figura más abajo." — remove the phase 7 Tandas textarea from the UI (stored text is kept, not shown).
+
+Estética
+- S10. "Eliminar nombre del color. que solo quede color y numero de color".
+
+Timing
+- S11. "Ya con el link del excel que ponemos arriba queremos que se vaya la foto de abajo pero que se baje todo lo que es timing ahi" — remove the "Imagen del timing" card (admin and portal); the schedule moves up.
+- S12. "Si se puede hacer lo del link que ese sea el que se pueda descargar" — assumption: the Excel link becomes a "Descargar timing" button for the couple (portal timing) and the team (Google Sheets links download as .xlsx).
+
+Invitados
+- S13. "Sacar lo de "pegar una lista"".
+- S14. "Que se pueda filtrar : Sin mesa, sin menu, sin combi, sin telefono y sin edad. Que toda la informacion sea filtrable".
+- S15. "Orden del listado: Apellido, nombre, edad, RSVP, mesa, menu, combi, telefono, notas" — guests get a new "Notas" field.
+- S16. "Sacar relación y poner en mas datos".
+- S17. "No funciona el check de llego poner al lado del numero y falta conteo de cuantos faltan ingresar y cuantos ingresaron".
+- S18. "Orden de nuestro listado para enviar listado: Apellido, nombre, edad, mesa, menu".
+- S19. "Que tambien se sume el invitado aunque no este en la lista cuadno llegue al wordpress" — an RSVP that matches no guest creates the guest.
+- S20. "Sacar el boton de "Cambiar link (el anterior deja de andar)"".
+
+Brief (PDF)
+- S21. "Basarnos en el brief de "Agus y Ventu" para que todos los brief figure lo mismo" — PENDING: needs that couple's production brief.
+- S22. "Permitir arrastrar y soltar filas para reordenarlas, en lugar de moverlas con flechas."
+- S23. "Agregar Ceremonia como un proveedor independiente." — assumption: a new core vendor rubro "Ceremonia" (key `ceremonia-proveedor`), separate from the Ceremonia event block.
+- S24. "Cambiar el proveedor "Combis" por "Autos y Combis"."
+- S25. "Permitir modificar títulos, especialmente en "Show de Ceremonia", ya que en algunos casos corresponde a Ceremonia y Recepción." — every block's title is editable per couple.
+- S26. "Eliminar la fila "Proveedor" de todos los rubros." — PENDING: no row is called "Proveedor"; the only match is the header input with the hired vendor's name, which feeds budget, portal and printed sheets.
+- S27. "Eliminar la fila "Contrato" de todos los proveedores." — also removed from stored briefs.
+- S28. "Eliminar el estado "En búsqueda"." — stored "searching" reads as "Para decidir".
+- S29. "En Invitación, eliminar la opción "Confirmación"." — the "Confirmaciones" row, also from stored briefs.
+- S30. "Aclaraciones: Permitir utilizar Enter para generar saltos de línea y escribir contenido en distintos párrafos."
+- S31. "Fila Equipo: Ocultar el campo de "Aclaraciones". Dejar únicamente el primer campo para completar."
+- S32. "A Cargo (Equipo): Agregar "Novios" como opción dentro del desplegable."
+- S33. "Catering: En Recepción, mostrar las palabras "Fríos" y "Calientes" en negrita tanto en nuestro portal como en el de los novios."
+
+Portal de los novios (PDF)
+- S34. "Invitación: Mostrar únicamente "Save The Date" e "Invitación Digital". Hacer visible el Save The Date. Hacer visible el link de la web." — assumption: the couple sees the Invitaciones block with just those two rows whenever they have content, and links are clickable.
+- S35. "Civil: No figura en el portal de los novios. Revisar su visualización." — cause: event blocks only show once "Confirmado". Fix: event blocks show when they have content.
+
+Comentarios (PDF)
+- S36. "Incorporar comentarios con menciones (@). Que al mencionar a una integrante del equipo le llegue una notificación. Que cada persona pueda identificar fácilmente qué tareas tiene pendientes. Evaluar reemplazar las flechas de desplazamiento por un botón de "Comentarios" que permita realizar menciones específicas." — PENDING DECISION (new feature: in-app vs email notifications).
+
+Integraciones (PDF)
+- S37. "Vincular las selecciones de DJ y Técnica con la solapa Música. Vincular las selecciones de los Shows con la solapa Música." — assumption: the DJ block and the show blocks show the Música choices (read-only, linked to the tab).
+- S38. "Diseños de Papelería y Detalles: Vincularlos con los diseños cargados en la sección Estética." — assumption: the Papelería block shows the stationery designs uploaded in Estética.
+
+## Tasks
+
+- [ ] T1 S22-S25,S27-S35 brief + portal — delegated (parallel writer, worktree)
+- [ ] T2 S5-S10 music + estética — delegated (parallel writer, worktree)
+- [ ] T3 S13-S20 guests — delegated (parallel writer, worktree)
+- [ ] T4 S2 budget viáticos — inline
+- [ ] T5 S3 sliding session — inline (Risk: item 2)
+- [ ] T6 S11-S12 timing — inline
+- [ ] T7 S4 autosave rest — inline after T1-T3
+- [ ] T8 S37-S38 integrations — inline after T1-T2
+- [ ] T9 S1, S21, S26, S36 — pending decision
+
+## Log
+
+- L1 (2026-11-25) User: "buenas hay que suamr cosas," + pasted WhatsApp list (Pagos, Generica, Musica, General, Estetica, Timing, Invitados) + "C:\Users\cseifar\Downloads\Cambios Web - Portal Weddinas.pdf" (quoted in Specs).
+- L2 Route: three independent units with disjoint surfaces (brief, music/estética, guests) go to parallel writers in worktrees; the rest inline.
