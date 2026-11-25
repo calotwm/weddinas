@@ -20,8 +20,8 @@ export default async function AestheticPage() {
       </div>
 
       <h3 className="font-display text-2xl text-forest">General</h3>
-      {/* Keyed by the stored values so a save from the team's side refreshes the editors. */}
-      <AestheticForm key={JSON.stringify([aesthetic.titleFont, aesthetic.bodyFont, aesthetic.ideas, aesthetic.palette])} aesthetic={aesthetic} save={saveAestheticGeneral} />
+      {/* Not keyed by the stored values: it saves itself as the couple types, and a remount would drop what they are typing. */}
+      <AestheticForm aesthetic={aesthetic} save={saveAestheticGeneral} />
       <AestheticPhotos
         coupleId={couple.id}
         photoIds={aesthetic.photoIds}
