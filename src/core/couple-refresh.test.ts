@@ -96,7 +96,7 @@ describe("refreshCoupleFromImport", () => {
     expect(after.vendorTiming.map((t) => t.company)).toEqual(["Deco"]);
     expect(after.brief.find((b) => b.key === "cotillon")).toMatchObject({ vendor: "Mil Matices", status: "confirmed" });
     expect(after.brief.some((b) => b.name === "Fuegos artificiales")).toBe(true);
-    expect(after.music.songs.find((s) => s.moment === "vals")).toMatchObject({ song: "Perfect", status: "chosen" });
+    expect(after.music.songs.find((s) => s.moment === "vals")).toMatchObject({ song: "Perfect — Ed Sheeran", artist: "", status: "chosen" });
     expect(after.budget.guests).toBe(271);
     expect(after.budget.items[0].payments.map((p) => [p.amount, p.receiptId])).toEqual([[1000, RECEIPT], [1500, undefined]]);
     expect(after.family.map((m) => [m.name, m.relation, m.notes, m.photoId])).toEqual([

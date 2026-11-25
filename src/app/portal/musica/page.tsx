@@ -17,7 +17,7 @@ export default async function MusicPage() {
             <div>
               <h2 className="font-display text-3xl text-forest">Elección de canciones</h2>
               <p className="mt-1 max-w-2xl text-sm text-ink/70">
-                Elijan la canción de cada momento. Si todavía no saben, déjenla en &quot;Pendiente&quot;; si un momento no va, márquenlo &quot;No aplica&quot; o quítenlo. Al final pueden sumar momentos propios.
+                Elijan la canción de cada momento (con el artista, si quieren). Si todavía no saben, déjenla en &quot;Pendiente&quot;; si un momento no va, quítenlo. Arrastren ⠿ para cambiar el orden y al final pueden sumar momentos propios.
               </p>
             </div>
             <span className="chip bg-mint/25 text-forest">{chosen} de {total} elegidas</span>

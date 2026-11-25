@@ -48,7 +48,7 @@ describe("importCouple", () => {
     expect(couple.budget).toMatchObject({ usdQuote: "blue", guests: 200 });
     expect(couple.budget.items[0].payments[0]).toMatchObject({ amount: 1826500, arsPerUsd: 1405 });
     expect(couple.brief.find((b) => b.key === "cotillon")).toMatchObject({ vendor: "Mil Matices", status: "confirmed" });
-    expect(couple.music.songs.find((s) => s.moment === "vals")).toMatchObject({ song: "Perfect", status: "chosen" });
+    expect(couple.music.songs.find((s) => s.moment === "vals")).toMatchObject({ song: "Perfect — Ed Sheeran", artist: "", status: "chosen" });
     expect(couple.music.banned).toBe("Gasolina");
     expect(couple.family.map((m) => m.name)).toEqual(["Mercedes"]);
   });
@@ -93,7 +93,7 @@ describe("importCouple", () => {
     expect(couple.vendorTiming).toMatchObject([{ time: "14:00", category: "Ambientación", company: "Deco", contact: "Sole" }]);
     const moment = couple.music.customMoments!.find((m) => m.label === "Lectura especial")!;
     expect(moment.group).toBe("Ceremonia");
-    expect(couple.music.songs.find((s) => s.moment === moment.key)).toMatchObject({ song: "Tema", status: "chosen" });
+    expect(couple.music.songs.find((s) => s.moment === moment.key)).toMatchObject({ song: "Tema — Grupo", artist: "", status: "chosen" });
     expect(couple.music.songs.find((s) => s.moment === "vals")?.song).toBe("Vals");
     expect(couple.family).toMatchObject([{ side: "b", name: "Marta", relation: "Abuela", notes: "Vestido verde" }]);
   });

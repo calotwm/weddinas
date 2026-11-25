@@ -25,9 +25,8 @@ export default async function AestheticAdminPage({ params }: { params: Promise<{
       </div>
 
       <h3 className="font-display text-2xl text-forest">General</h3>
-      {/* Keyed by the stored values so a save from the couple's side refreshes the editors. */}
+      {/* Not keyed by the stored values: it saves itself as the team types, and a remount would drop what they are typing. */}
       <AestheticForm
-        key={JSON.stringify([aesthetic.titleFont, aesthetic.bodyFont, aesthetic.ideas, aesthetic.palette])}
         aesthetic={aesthetic}
         save={saveAestheticGeneral}
         coupleId={couple.id}

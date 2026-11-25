@@ -234,8 +234,11 @@ export interface MusicMoment {
   custom: boolean;
 }
 
-/** Effective song moments: defaults minus hidden ones, plus custom moments in their group (new groups go last). Empty groups are dropped. */
-export function musicMoments(music: Pick<Music, "customMoments" | "hiddenMoments">): Array<{ group: string; moments: MusicMoment[] }> {
+/**
+ * Effective song moments: defaults minus hidden ones, plus custom moments in their group (new groups go last). Empty groups are dropped.
+ * Inside each group, moments follow the dragged `order`; moments not in it keep their place after the ordered ones.
+ */
+export function musicMoments(music: Pick<Music, "customMoments" | "hiddenMoments" | "order">): Array<{ group: string; moments: MusicMoment[] }> {
   const hidden = new Set(music.hiddenMoments ?? []);
   const groups = SONG_MOMENTS.map((g) => ({
     group: g.group,
@@ -246,8 +249,16 @@ export function musicMoments(music: Pick<Music, "customMoments" | "hiddenMoments
     if (!group) groups.push((group = { group: m.group, moments: [] }));
     group.moments.push({ key: m.key, label: m.label, custom: true });
   }
+  const order = music.order ?? [];
+  if (order.length > 0) {
+    const rank = (key: string) => {
+      const i = order.indexOf(key);
+      return i === -1 ? order.length : i;
+    };
+    for (const g of groups) g.moments.sort((a, b) => rank(a.key) - rank(b.key));
+  }
   return groups.filter((g) => g.moments.length > 0);
 }
 
-export const musicMomentKeys = (music: Pick<Music, "customMoments" | "hiddenMoments">) =>
+export const musicMomentKeys = (music: Pick<Music, "customMoments" | "hiddenMoments" | "order">) =>
   musicMoments(music).flatMap((g) => g.moments.map((m) => m.key));

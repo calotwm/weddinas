@@ -1,45 +1,56 @@
 import type { ReactNode } from "react";
 import { musicMomentKeys, musicMoments } from "@/core/brief-catalog";
 import type { Music, SongStatus } from "@/core/couple";
+import { songStatus } from "@/core/music";
 import { safeHttpUrl } from "@/core/url";
-import { AutoSaveForm } from "../auto-save-form";
+import { AutoSaveForm, SortableRows } from "../auto-save-form";
 import { Icon } from "../icons";
 import { SubmitButton } from "../submit-button";
 
 const formText = (formData: FormData, key: string, max: number) => String(formData.get(key) ?? "").trim().slice(0, max);
 
-/** Song choices from MusicEditor's form; the couple's and the team's save actions share it. */
+const SONG_MAX = 300;
+const NOTE_MAX = 500;
+
+/**
+ * Song choices from MusicEditor's form; the couple's and the team's save actions share it.
+ * Rows come in the order they are shown, which is the dragged order. The party sets ("Tandas") are not
+ * in the form any more, so they are left out and the stored text stays.
+ */
 export function musicInput(formData: FormData): Music {
   const moments = formData.getAll("moment").map(String);
-  const songs = formData.getAll("song").map((v) => String(v).slice(0, 200));
-  const artists = formData.getAll("artist").map((v) => String(v).slice(0, 200));
+  const songs = formData.getAll("song").map((v) => String(v).slice(0, SONG_MAX));
   const statuses = formData.getAll("songStatus").map(String);
-  const notes = formData.getAll("songNote").map((v) => String(v).slice(0, 500));
+  const notes = formData.getAll("songNote").map((v) => String(v).slice(0, NOTE_MAX));
   return {
     songs: moments.map((moment, i) => ({
       moment,
       song: songs[i] ?? "",
-      artist: artists[i] ?? "",
-      status: (statuses[i] ?? "pending") as SongStatus,
+      artist: "",
+      status: songStatus(statuses[i]),
       note: notes[i] ?? "",
     })),
+    order: moments,
     playlistUrl: safeHttpUrl(formText(formData, "playlistUrl", 500)),
     mustPlay: formText(formData, "mustPlay", 2000),
     banned: formText(formData, "banned", 2000),
-    tandas: formText(formData, "tandas", 2000),
   };
 }
 
+/** Green for chosen, yellow for pending ("No aplica" was retired). */
 export const SONG_STATUS: Record<SongStatus, { label: string; className: string }> = {
-  chosen: { label: "Elegida", className: "bg-mint/25 text-forest" },
-  pending: { label: "Pendiente", className: "bg-peach text-rust" },
-  na: { label: "No aplica", className: "bg-ink/8 text-ink/50" },
+  chosen: { label: "Elegida", className: "bg-green-100 text-green-800" },
+  pending: { label: "Pendiente", className: "bg-yellow-100 text-yellow-900" },
 };
+
+/** Tints the status select by the option picked, without client code. */
+const STATUS_SELECT_TINT =
+  "has-[option[value=chosen]:checked]:!bg-green-100 has-[option[value=chosen]:checked]:!text-green-800 has-[option[value=pending]:checked]:!bg-yellow-100 has-[option[value=pending]:checked]:!text-yellow-900";
 
 export function musicProgress(music: Music): { chosen: number; total: number } {
   const byMoment = new Map(music.songs.map((s) => [s.moment, s]));
-  const relevant = musicMomentKeys(music).map((key) => byMoment.get(key)?.status ?? "pending").filter((s) => s !== "na");
-  return { chosen: relevant.filter((s) => s === "chosen").length, total: relevant.length };
+  const statuses = musicMomentKeys(music).map((key) => songStatus(byMoment.get(key)?.status));
+  return { chosen: statuses.filter((s) => s === "chosen").length, total: statuses.length };
 }
 
 /** Id of the hidden form that removes a moment; buttons inside other forms point at it with the `form` attribute. */
@@ -68,42 +79,63 @@ export function MusicEditor({ music, save, header, coupleId }: { music: Music; s
       {musicMoments(music).map((group) => (
         <section key={group.group} className="card space-y-4">
           <h3 className="text-xs font-semibold tracking-[0.25em] text-rust uppercase">{group.group}</h3>
-          <div className="divide-y divide-forest/5">
-            {group.moments.map((m) => {
+          <SortableRows
+            className="divide-y divide-forest/5 [&>*]:py-4 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0"
+            rows={group.moments.map((m) => {
               const s = byMoment.get(m.key);
-              return (
-                <fieldset key={m.key} className="grid gap-2 py-4 first:pt-0 last:pb-0 md:grid-cols-[10rem_1fr_1fr_9rem_auto] md:items-center md:gap-3">
-                  <legend className="sr-only">{m.label}</legend>
-                  <input type="hidden" name="moment" value={m.key} />
-                  <span className="font-semibold text-forest" aria-hidden>{m.label}</span>
-                  <input name="song" defaultValue={s?.song} maxLength={200} placeholder="Canción" aria-label={`${m.label}: canción`} className="field !py-2" />
-                  <input name="artist" defaultValue={s?.artist} maxLength={200} placeholder="Artista" aria-label={`${m.label}: artista`} className="field !py-2" />
-                  <select name="songStatus" defaultValue={s?.status ?? "pending"} aria-label={`${m.label}: estado`} className="field !py-2">
-                    {Object.entries(SONG_STATUS).map(([value, { label }]) => (
-                      <option key={value} value={value}>{label}</option>
-                    ))}
-                  </select>
-                  <RemoveMomentButton moment={m} />
-                  <input name="songNote" defaultValue={s?.note} maxLength={500} placeholder="Notas o link (opcional)" aria-label={`${m.label}: notas`} className="field !py-2 md:col-span-3 md:col-start-2" />
-                </fieldset>
-              );
+              return {
+                id: m.key,
+                label: m.label,
+                content: (
+                  <fieldset className="grid gap-2 md:grid-cols-[10rem_1fr_9rem_auto] md:items-start md:gap-3">
+                    <legend className="sr-only">{m.label}</legend>
+                    <input type="hidden" name="moment" value={m.key} />
+                    <span className="font-semibold text-forest md:pt-2.5" aria-hidden>{m.label}</span>
+                    <textarea
+                      name="song"
+                      rows={2}
+                      defaultValue={s?.song}
+                      maxLength={SONG_MAX}
+                      placeholder="Canción (y artista)"
+                      aria-label={`${m.label}: canción`}
+                      className="field field-sizing-content min-h-11 resize-y !py-2"
+                    />
+                    <select
+                      name="songStatus"
+                      defaultValue={songStatus(s?.status)}
+                      aria-label={`${m.label}: estado`}
+                      className={`field !py-2 font-semibold ${STATUS_SELECT_TINT}`}
+                    >
+                      {Object.entries(SONG_STATUS).map(([value, { label }]) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </select>
+                    <RemoveMomentButton moment={m} />
+                    <textarea
+                      name="songNote"
+                      rows={2}
+                      defaultValue={s?.note}
+                      maxLength={NOTE_MAX}
+                      placeholder="Notas o link (opcional)"
+                      aria-label={`${m.label}: notas`}
+                      className="field field-sizing-content min-h-11 resize-y !py-2 md:col-span-2 md:col-start-2"
+                    />
+                  </fieldset>
+                ),
+              };
             })}
-          </div>
+          />
         </section>
       ))}
 
       <section className="card grid gap-4 md:grid-cols-2">
         <div>
           <label htmlFor="mustPlay" className="label">Infaltables para la fiesta</label>
-          <textarea id="mustPlay" name="mustPlay" rows={4} defaultValue={music.mustPlay} placeholder="Tandas, artistas o canciones que no pueden faltar" className="field" />
+          <textarea id="mustPlay" name="mustPlay" rows={4} defaultValue={music.mustPlay} placeholder="Artistas o canciones que no pueden faltar" className="field" />
         </div>
         <div>
           <label htmlFor="banned" className="label">Prohibidas</label>
           <textarea id="banned" name="banned" rows={4} defaultValue={music.banned} placeholder="Lo que no quieren escuchar" className="field" />
-        </div>
-        <div className="md:col-span-2">
-          <label htmlFor="tandas" className="label">Tandas</label>
-          <textarea id="tandas" name="tandas" rows={4} defaultValue={music.tandas} placeholder="Una tanda por línea. Ej: 1° tanda: rock nacional" className="field" />
         </div>
         <div className="md:col-span-2">
           <label htmlFor="playlistUrl" className="label">Link a su playlist</label>
@@ -176,20 +208,13 @@ export function MusicSummary({ music, removable = false }: { music: Music; remov
           <ul className="divide-y divide-forest/5">
             {group.moments.map((m) => {
               const s = byMoment.get(m.key);
-              const status = SONG_STATUS[s?.status ?? "pending"];
+              const status = SONG_STATUS[songStatus(s?.status)];
               return (
                 <li key={m.key} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-6 py-3 text-sm">
                   <span className="w-48 font-semibold text-forest">{m.label}</span>
                   <span className="min-w-0 flex-1">
-                    {s?.song ? (
-                      <>
-                        {s.song}
-                        {s.artist && <span className="text-ink/55"> · {s.artist}</span>}
-                      </>
-                    ) : (
-                      <span className="text-ink/40">—</span>
-                    )}
-                    {s?.note && <span className="block text-xs text-ink/50">{s.note}</span>}
+                    {s?.song ? <span className="whitespace-pre-line">{s.song}</span> : <span className="text-ink/40">—</span>}
+                    {s?.note && <span className="block text-xs whitespace-pre-line text-ink/50">{s.note}</span>}
                   </span>
                   <span className={`chip ${status.className}`}>{status.label}</span>
                   {removable && <RemoveMomentButton moment={m} />}
@@ -199,7 +224,7 @@ export function MusicSummary({ music, removable = false }: { music: Music; remov
           </ul>
         </section>
       ))}
-      <section className="card grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+      <section className="card grid gap-4 text-sm sm:grid-cols-3">
         <div>
           <p className="label">Infaltables</p>
           <p className="whitespace-pre-line">{music.mustPlay || "—"}</p>
@@ -207,10 +232,6 @@ export function MusicSummary({ music, removable = false }: { music: Music; remov
         <div>
           <p className="label">Prohibidas</p>
           <p className="whitespace-pre-line">{music.banned || "—"}</p>
-        </div>
-        <div>
-          <p className="label">Tandas</p>
-          <p className="whitespace-pre-line">{music.tandas || "—"}</p>
         </div>
         <div>
           <p className="label">Playlist</p>

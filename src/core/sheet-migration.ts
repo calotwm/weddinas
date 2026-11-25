@@ -20,6 +20,7 @@ import type { CellValue, GridSheet } from "./comparison-table";
 import type { BlockStatus, BriefField, CustomMoment, FamilySide, Music, PaymentKind, SongChoice, SongStatus } from "./couple";
 import type { CoupleImport } from "./couple-import";
 import { GuestImportError, parseGuestGrid, type ImportedGuest } from "./guest-import";
+import { songWithArtist } from "./music";
 import type { BudgetItemInput, PaymentInput, TimingInput, VendorTimingInput } from "./portal-service";
 import { slugify } from "./slug";
 import { safeHttpUrl } from "./url";
@@ -564,7 +565,8 @@ function splitMomentLabel(label: string): { base: string; extra: string } {
   return { base: base.trim(), extra: joinLines(...extras.map((e) => e.trim())) };
 }
 
-const SONG_STATUSES: Record<string, SongStatus> = { elegida: "chosen", "no aplica": "na" };
+/** Only "Elegida" counts as chosen; "Pendiente" and the retired "No aplica" import as pending. */
+const SONG_STATUSES: Record<string, SongStatus> = { elegida: "chosen" };
 
 function parseMusic(sheets: GridSheet[], warnings: string[]): Music | null {
   for (const sheet of sheets) {
@@ -598,8 +600,9 @@ function parseMusic(sheets: GridSheet[], warnings: string[]): Music | null {
       if (["infaltables", "prohibidos", "link playlist"].includes(kind)) continue;
 
       const choice: Omit<SongChoice, "moment"> = {
-        song: at(sheet, r, song),
-        artist: at(sheet, r, artist),
+        // The app has one song field: the sheet's "Artista" goes into it.
+        song: songWithArtist(at(sheet, r, song), at(sheet, r, artist)),
+        artist: "",
         status: SONG_STATUSES[norm(at(sheet, r, status))] ?? "pending",
         note: joinLines(extra, at(sheet, r, notes)),
       };
@@ -610,7 +613,7 @@ function parseMusic(sheets: GridSheet[], warnings: string[]): Music | null {
         music.songs.push({ moment: found.key, ...choice });
         continue;
       }
-      if (!choice.song && !choice.artist && !choice.note && choice.status !== "chosen") continue;
+      if (!choice.song && !choice.note && choice.status !== "chosen") continue;
       const topBase = splitMomentLabel(top).base;
       const group = subCell ? (SONG_MOMENTS.find((g) => norm(g.group) === norm(topBase))?.group ?? topBase) : lastGroup;
       const key = `import-${custom.length + 1}`;

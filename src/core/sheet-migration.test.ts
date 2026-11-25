@@ -254,10 +254,10 @@ describe("migrateCouple: music", () => {
     ]);
     const music = migrateCouple(couple({ canciones: [canciones] })).data!.music!;
     expect(music.songs).toEqual([
-      { moment: "ingreso-invitados", song: "Tema A", artist: "Grupo A", status: "chosen", note: "Banda\nVersión acústica" },
-      { moment: "cortejo", song: "No aplica", artist: "", status: "na", note: "" },
+      { moment: "ingreso-invitados", song: "Tema A — Grupo A", artist: "", status: "chosen", note: "Banda\nVersión acústica" },
+      { moment: "cortejo", song: "No aplica", artist: "", status: "pending", note: "" },
       { moment: "salida", song: "Tema B", artist: "", status: "pending", note: "" },
-      { moment: "import-1", song: "Tema C", artist: "Grupo C", status: "chosen", note: "" },
+      { moment: "import-1", song: "Tema C — Grupo C", artist: "", status: "chosen", note: "" },
       { moment: "vals", song: "", artist: "", status: "pending", note: "" },
       { moment: "import-2", song: "Tema D", artist: "", status: "chosen", note: "" },
     ]);
