@@ -19,9 +19,15 @@ const LABEL: Record<Status, string> = {
 export function AutoSaveForm({
   save,
   delay = 900,
+  compact = false,
   children,
   ...props
-}: Omit<FormHTMLAttributes<HTMLFormElement>, "action" | "onChange"> & { save: (data: FormData) => Promise<void>; delay?: number }) {
+}: Omit<FormHTMLAttributes<HTMLFormElement>, "action" | "onChange"> & {
+  save: (data: FormData) => Promise<void>;
+  delay?: number;
+  /** For one row among many: a small inline status, shown only while saving or after, instead of the floating pill. */
+  compact?: boolean;
+}) {
   const form = useRef<HTMLFormElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [status, setStatus] = useState<Status>("idle");
@@ -61,14 +67,20 @@ export function AutoSaveForm({
       }}
     >
       {children}
-      <p
-        role="status"
-        className={`sticky bottom-4 z-10 ml-auto w-fit rounded-full px-4 py-2 text-sm shadow-lg ${
-          status === "error" ? "bg-rust text-white" : status === "saved" ? "bg-forest text-cream" : "bg-white text-ink/70"
-        }`}
-      >
-        {LABEL[status]}
-      </p>
+      {compact ? (
+        <p role="status" className={`self-center text-xs whitespace-nowrap ${status === "error" ? "text-rust" : "text-ink/50"}`}>
+          {status === "idle" ? "" : status === "error" ? "No se guardó" : LABEL[status]}
+        </p>
+      ) : (
+        <p
+          role="status"
+          className={`sticky bottom-4 z-10 ml-auto w-fit rounded-full px-4 py-2 text-sm shadow-lg ${
+            status === "error" ? "bg-rust text-white" : status === "saved" ? "bg-forest text-cream" : "bg-white text-ink/70"
+          }`}
+        >
+          {LABEL[status]}
+        </p>
+      )}
     </form>
   );
 }

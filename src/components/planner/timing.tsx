@@ -1,5 +1,6 @@
 import type { TimingItem, VendorTimingItem } from "@/core/couple";
 import { timingDurations } from "@/core/timing";
+import { AutoSaveForm } from "../auto-save-form";
 import { Icon } from "../icons";
 import { SubmitButton } from "../submit-button";
 
@@ -50,17 +51,13 @@ export function TimingEditor({ timing, actions, coupleId }: { timing: TimingItem
             {timing.map((t, i) => (
               <li key={t.id} className="flex flex-wrap items-end gap-2 rounded-2xl p-2 ring-1 ring-forest/5">
                 {durations[i] && <p className="w-full px-1 text-xs text-ink/50">Duración: {durations[i]}</p>}
-                <form action={actions.update} className={`min-w-0 flex-1 ${ROW}`}>
+                <AutoSaveForm compact save={actions.update} className={`min-w-0 flex-1 ${ROW}`}>
                   <CoupleField coupleId={coupleId} />
                   <input type="hidden" name="itemId" value={t.id} />
                   <input name="time" type="time" required defaultValue={t.time} aria-label="Horario" className="field py-2 font-semibold text-forest" />
                   <input name="title" required maxLength={120} defaultValue={t.title} aria-label="Actividad" className="field py-2" />
                   <input name="note" maxLength={500} defaultValue={t.note} aria-label="Descripción" placeholder="Descripción" className="field py-2" />
-                  <SubmitButton className="btn-ghost btn-sm" pendingText="…" doneText="¡Listo!">
-                    <Icon name="check" className="h-3.5 w-3.5" />
-                    Guardar
-                  </SubmitButton>
-                </form>
+                </AutoSaveForm>
                 <form action={actions.remove}>
                   <CoupleField coupleId={coupleId} />
                   <input type="hidden" name="itemId" value={t.id} />
@@ -169,18 +166,14 @@ export function VendorTimingEditor({ items, actions, coupleId }: { items: Vendor
         <ol className="space-y-2">
           {items.map((v) => (
             <li key={v.id} className="flex flex-wrap items-end gap-2 rounded-2xl p-2 ring-1 ring-forest/5">
-              <form action={actions.update} className={`min-w-0 flex-1 ${VENDOR_ROW}`}>
+              <AutoSaveForm compact save={actions.update} className={`min-w-0 flex-1 ${VENDOR_ROW}`}>
                 <CoupleField coupleId={coupleId} />
                 <input type="hidden" name="itemId" value={v.id} />
                 <input name="time" type="time" required defaultValue={v.time} aria-label="Horario" className="field py-2 font-semibold text-forest" />
                 <input name="category" required maxLength={80} defaultValue={v.category} aria-label="Rubro" className="field py-2" />
                 <input name="company" maxLength={120} defaultValue={v.company} aria-label="Empresa" placeholder="Empresa" className="field py-2" />
                 <input name="contact" maxLength={200} defaultValue={v.contact} aria-label="Contacto" placeholder="Contacto" className="field py-2" />
-                <SubmitButton className="btn-ghost btn-sm" pendingText="…" doneText="¡Listo!">
-                  <Icon name="check" className="h-3.5 w-3.5" />
-                  Guardar
-                </SubmitButton>
-              </form>
+              </AutoSaveForm>
               <form action={actions.remove}>
                 <CoupleField coupleId={coupleId} />
                 <input type="hidden" name="itemId" value={v.id} />

@@ -3,8 +3,7 @@
 import { useState } from "react";
 import type { AestheticWeb, WebItemChoice } from "@/core/couple";
 import { MAX_WEB_CUSTOM, WEB_ITEMS, WEB_SAMPLES, formatWebDate } from "@/core/web-options";
-import { Icon } from "../icons";
-import { SubmitButton } from "../submit-button";
+import { AutoSaveForm } from "../auto-save-form";
 
 /** Older couples wrote the dress code as free text: start from the matching preset, or "other" with that text. */
 function initialChoices(web: AestheticWeb, dressCode: string): Record<string, WebItemChoice> {
@@ -37,7 +36,7 @@ export function WebOptionsForm({
     setChoices((all) => ({ ...all, [itemId]: { ...(all[itemId] ?? { choice: "", custom: "" }), ...patch } }));
 
   return (
-    <form action={save} className="space-y-6">
+    <AutoSaveForm save={save} className="space-y-6">
       {coupleId && <input type="hidden" name="coupleId" value={coupleId} />}
       <fieldset className="card space-y-3">
         <legend className="section-title">Opciones de web</legend>
@@ -94,10 +93,6 @@ export function WebOptionsForm({
         })}
       </section>
 
-      <SubmitButton doneText="¡Guardado!">
-        <Icon name="check" className="h-4 w-4" />
-        Guardar web
-      </SubmitButton>
-    </form>
+    </AutoSaveForm>
   );
 }
