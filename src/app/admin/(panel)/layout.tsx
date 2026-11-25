@@ -2,6 +2,7 @@ import Link from "next/link";
 import { TopBar } from "@/components/brand";
 import { Icon } from "@/components/icons";
 import { MadeBy } from "@/components/made-by";
+import { SessionKeepAlive } from "@/components/session-keepalive";
 import { currentTeamUser, requireAdmin } from "@/server/auth";
 import { logout } from "../../actions";
 import { AdminNav } from "./admin-nav";
@@ -26,6 +27,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </button>
         </form>
       </TopBar>
+      <SessionKeepAlive />
       <AdminNav />
       <main className="mx-auto max-w-6xl px-4 pt-8 pb-10 sm:px-6">{children}</main>
       <MadeBy light={false} className="pb-8" />

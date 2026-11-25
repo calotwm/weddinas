@@ -92,6 +92,14 @@ export async function startAdminSession(user?: string): Promise<void> {
   await setSessionCookie(user ? { role: "admin", key, user } : { role: "admin", key }, ADMIN_TTL);
 }
 
+/** Re-signs a still-valid team session with a fresh expiry (sliding session); false when there is none to renew. */
+export async function renewAdminSession(): Promise<boolean> {
+  const session = await getSession();
+  if (session?.role !== "admin" || !(await isAdminSession(session))) return false;
+  await setSessionCookie(session, ADMIN_TTL);
+  return true;
+}
+
 export async function startCoupleSession(coupleId: string): Promise<void> {
   const fingerprint = await portal.credentialFingerprint(coupleId);
   if (!fingerprint) return;

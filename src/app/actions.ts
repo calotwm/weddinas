@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { allowLoginAttempt, endSession, startCoupleSession } from "@/server/auth";
+import { allowLoginAttempt, endSession, renewAdminSession, startCoupleSession } from "@/server/auth";
 import { ensureDemoData, portal } from "@/server/container";
 
 export type LoginState = { error: string } | null;
@@ -17,6 +17,11 @@ export async function loginWithCode(_prev: LoginState, formData: FormData): Prom
 
   await startCoupleSession(couple.id);
   redirect("/portal");
+}
+
+/** Called by the team panel while it is in use, so the session ends only after inactivity. */
+export async function keepAdminSessionAlive(): Promise<boolean> {
+  return renewAdminSession();
 }
 
 export async function logout(): Promise<void> {
