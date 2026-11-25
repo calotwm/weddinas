@@ -39,7 +39,7 @@ export function RsvpInbox({
     <section className="card space-y-4">
       <div>
         <h3 className="font-display text-2xl text-forest">Respuestas de la web</h3>
-        <p className="hint">Lo que confirman en la invitación. Si el nombre coincide con uno de la lista, se actualiza solo.</p>
+        <p className="hint">Lo que confirman en la invitación. Si el nombre coincide con uno de la lista, se actualiza solo; si no está, se suma a la lista. Si coincide con varios, elegí a cuál corresponde.</p>
       </div>
       {pending.length > 0 && (
         <div className="space-y-3">

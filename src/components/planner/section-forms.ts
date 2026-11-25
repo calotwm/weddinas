@@ -1,7 +1,7 @@
 import "server-only";
 import type { GuestAge, GuestStatus } from "@/core/couple";
 import { GUEST_IMPORT_LIMITS, GuestImportError, parseGuestFile } from "@/core/guest-import";
-import { GUEST_AGES, GUEST_STATUSES, MAX_GUESTS, parseGuestNames } from "@/core/guests";
+import { GUEST_AGES, GUEST_STATUSES, MAX_GUEST_NOTES, MAX_GUESTS, parseGuestNames } from "@/core/guests";
 import { MAX_AESTHETIC_PHOTOS, MAX_STATIONERY, type AestheticInput, type GuestInput, type NewGuestInput, type TimingInput } from "@/core/portal-service";
 import { MAX_IMAGE_BYTES } from "@/core/uploads";
 import { files, portal } from "@/server/container";
@@ -129,6 +129,7 @@ export function guestInput(formData: FormData): GuestInput {
     side: text(formData, "side", 80),
     transport: text(formData, "transport", 80),
     phone: text(formData, "phone", 40),
+    notes: text(formData, "notes", MAX_GUEST_NOTES),
     ...(GUEST_AGES.includes(age) ? { age } : {}),
     ...(travels === "yes" ? { travels: true } : travels === "no" ? { travels: false } : {}),
   };

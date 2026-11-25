@@ -77,9 +77,10 @@ describe("RSVP answers from the invitation web", () => {
     expect((await load()).guests[0]).toMatchObject({ status: "pending", restriction: "" });
   });
 
-  it("keeps unmatched answers for manual assignment, then applies them to the chosen guest", async () => {
+  it("keeps answers that name several guests for manual assignment, then applies them to the chosen guest", async () => {
+    await service.addGuests(coupleId, [{ name: "Luz", lastName: "Díaz", group: "Amigos" }]);
     const token = await service.rsvpToken(coupleId);
-    expect(await service.receiveRsvp(coupleId, token, answer("Juancho", { menu: "Vegetariano" }))).toBe("unmatched");
+    expect(await service.receiveRsvp(coupleId, token, answer("Luz Díaz", { menu: "Vegetariano" }))).toBe("unmatched");
     let couple = await load();
     const [entry] = couple.rsvpInbox;
     expect(entry.guestId).toBeNull();

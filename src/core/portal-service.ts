@@ -43,7 +43,7 @@ import {
   type TimingItem,
   type VendorTimingItem,
 } from "./couple";
-import { GUEST_AGES, GUEST_STATUSES, MAX_GUESTS } from "./guests";
+import { GUEST_AGES, GUEST_STATUSES, MAX_GUEST_NOTES, MAX_GUESTS, splitFullName } from "./guests";
 import type { CoupleRepository } from "./ports";
 import { slugify } from "./slug";
 import { isFileId } from "./uploads";
@@ -140,6 +140,8 @@ function cleanGuest(input: NewGuestInput): GuestInput {
     const value = (input[key] ?? "").trim();
     if (value) guest[key] = value;
   }
+  const notes = (input.notes ?? "").trim().slice(0, MAX_GUEST_NOTES).trim();
+  if (notes) guest.notes = notes;
   if (input.age) guest.age = input.age;
   if (typeof input.travels === "boolean") guest.travels = input.travels;
   return guest;
@@ -1239,14 +1241,30 @@ export class PortalService {
     return token;
   }
 
-  /** Logs an answer from the invitation web and applies it to the guest it names, when exactly one matches. */
-  async receiveRsvp(coupleId: string, token: string, answer: RsvpAnswer): Promise<"matched" | "unmatched"> {
-    let result: "matched" | "unmatched" = "unmatched";
+  /**
+   * Logs an answer from the invitation web and applies it to the guest it names, when exactly one matches.
+   * An answer that names nobody on the list adds that person as a new guest ("created"), so a repeated answer then
+   * matches them instead of adding them twice. Answers that name several guests, or arrive with the list full,
+   * wait in the log for the team or the couple to assign ("unmatched").
+   */
+  async receiveRsvp(coupleId: string, token: string, answer: RsvpAnswer): Promise<"matched" | "created" | "unmatched"> {
+    let result: "matched" | "created" | "unmatched" = "unmatched";
     await this.mutate(coupleId, (c) => {
       if (!c.rsvpToken || !sameSecret(token, c.rsvpToken)) throw new Error("Invalid RSVP token");
-      const guest = matchGuest(c.guests, answer.name);
-      if (guest) applyRsvp(guest, answer);
-      result = guest ? "matched" : "unmatched";
+      let guest = matchGuest(c.guests, answer.name);
+      if (guest) {
+        applyRsvp(guest, answer);
+        result = "matched";
+      }
+      else if (!c.guests.some((g) => matchGuest([g], answer.name)) && c.guests.length < MAX_GUESTS) {
+        const [created] = newGuests([splitFullName(answer.name)]);
+        if (created) {
+          applyRsvp(created, answer);
+          c.guests.push(created);
+          guest = created;
+          result = "created";
+        }
+      }
       c.rsvpInbox.push({ id: randomUUID(), receivedAt: new Date().toISOString(), ...answer, guestId: guest?.id ?? null });
       if (c.rsvpInbox.length > MAX_RSVP_INBOX) c.rsvpInbox.splice(0, c.rsvpInbox.length - MAX_RSVP_INBOX);
     });
