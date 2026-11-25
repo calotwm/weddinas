@@ -4,7 +4,7 @@ import { LineStateLegend } from "@/components/planner/line-state";
 import { briefPaymentDetail, rubroReceipts } from "@/core/budget";
 import { formatMoney } from "@/lib/format";
 import { loadRates } from "@/server/rates";
-import { coupleFields } from "@/core/brief-catalog";
+import { coupleEventBlocks, coupleFields } from "@/core/brief-catalog";
 import { getCurrentCouple } from "../data";
 
 export default async function VendorsPage() {
@@ -14,7 +14,8 @@ export default async function VendorsPage() {
   const { ipc } = await loadRates(couple.budget.usdQuote);
   // Every vendor block's "Pago" comes from the budget ("Sin pagos cargados" when the rubro has no item).
   const payment = (key: string) => briefPaymentDetail(couple.budget.items, key, ipc, formatMoney);
-  const event = couple.brief.filter((b) => b.kind === "event" && b.status === "confirmed" && (b.fields.some((f) => f.detail) || (b.attachments ?? []).some((x) => !x.internal)));
+  // Event blocks (Civil, Ceremonia…) show as soon as they have content, whatever their status.
+  const event = coupleEventBlocks(couple.brief);
 
   return (
     <div className="space-y-8">
