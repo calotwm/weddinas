@@ -4,6 +4,7 @@ import { accessCodeFor, hashAccessCode } from "./access-code";
 import type { ComparisonTable } from "./comparison-table";
 import { byDayTime } from "./timing";
 import { normalizeWhatsapp } from "./whatsapp";
+import { normalizeSongChoice } from "./music";
 import { cleanWebSelection, webDressCode } from "./web-options";
 import type { AestheticWeb } from "./couple";
 import { itemCategories, itemTracksConfirmedGuests } from "./budget";
@@ -39,7 +40,6 @@ import {
   type PublicInfo,
   type PublicPage,
   type Report,
-  type SongStatus,
   type TimingItem,
   type VendorTimingItem,
 } from "./couple";
@@ -174,7 +174,6 @@ function attachmentsOf(couple: Couple, target: AttachmentTarget): Attachment[] {
 }
 
 const BLOCK_STATUSES: BlockStatus[] = ["searching", "deciding", "confirmed", "na"];
-const SONG_STATUSES: SongStatus[] = ["chosen", "pending", "na"];
 const PAYMENT_KINDS: PaymentKind[] = ["sena", "saldo", "adicional", "iva", "intermedio"];
 const BRIEF_ORDER = BRIEF_CATALOG.map((b) => b.key);
 const COMMENT_AUTHORS: CommentAuthor[] = ["couple", "team"];
@@ -262,6 +261,7 @@ function withPlannerDefaults(couple: Couple): LoadedCouple {
   couple.music ??= defaultMusic();
   couple.music.customMoments ??= [];
   couple.music.hiddenMoments ??= [];
+  couple.music.songs = couple.music.songs.map(normalizeSongChoice);
   couple.family ??= [];
   for (const member of couple.family) member.notes ??= "";
   couple.aesthetic ??= { fonts: "", palette: [], photoIds: [] };
@@ -902,26 +902,26 @@ export class PortalService {
     });
   }
 
-  /** Keeps only songs of the current moments, so a save racing a removal cannot bring a removed moment back. */
+  /**
+   * Keeps only songs of the current moments, so a save racing a removal cannot bring a removed moment back.
+   * `order` and `tandas` are kept as stored when not given (the form no longer edits the party sets).
+   */
   async saveMusic(coupleId: string, music: Music): Promise<void> {
     await this.mutate(coupleId, (c) => {
-      c.music = {
+      const current = new Set(musicMomentKeys(c.music));
+      const next: Music = {
         ...c.music,
-        songs: musicMomentKeys(c.music).map((moment) => {
-          const given = music.songs.find((s) => s.moment === moment);
-          return {
-            moment,
-            song: given?.song.trim() ?? "",
-            artist: given?.artist.trim() ?? "",
-            status: given && SONG_STATUSES.includes(given.status) ? given.status : "pending",
-            note: given?.note.trim() ?? "",
-          };
-        }),
         playlistUrl: music.playlistUrl.trim(),
         mustPlay: music.mustPlay.trim(),
         banned: music.banned.trim(),
-        tandas: (music.tandas ?? "").trim(),
       };
+      if (music.order) next.order = [...new Set(music.order)].filter((key) => current.has(key));
+      if (music.tandas !== undefined) next.tandas = music.tandas.trim();
+      next.songs = musicMomentKeys(next).map((moment) => {
+        const given = music.songs.find((s) => s.moment === moment);
+        return normalizeSongChoice({ moment, song: given?.song ?? "", artist: given?.artist ?? "", status: given?.status ?? "pending", note: given?.note ?? "" });
+      });
+      c.music = next;
     });
   }
 

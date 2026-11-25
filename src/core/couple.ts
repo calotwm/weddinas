@@ -213,11 +213,14 @@ export interface BriefBlock {
   confirmedAt?: string | null;
 }
 
-export type SongStatus = "chosen" | "pending" | "na";
+/** Stored "na" ("No aplica", retired) reads as "pending". */
+export type SongStatus = "chosen" | "pending";
 
 export interface SongChoice {
   moment: string;
+  /** May span several lines. */
   song: string;
+  /** Retired: older artists are folded into `song` on load and on save, so this is always "". */
   artist: string;
   status: SongStatus;
   note: string;
@@ -235,8 +238,10 @@ export interface Music {
   playlistUrl: string;
   mustPlay: string;
   banned: string;
-  /** Party sets ("Tandas"), one per line. Missing on music saved before it existed. */
+  /** Party sets ("Tandas"), one per line. No longer edited or shown; kept as stored. */
   tandas?: string;
+  /** Moment keys in the order they were dragged to; moments missing here keep their default place after them. */
+  order?: string[];
   /** Missing on music saved before moments were editable. */
   customMoments?: CustomMoment[];
   /** Keys of default moments the couple or the team removed. */
