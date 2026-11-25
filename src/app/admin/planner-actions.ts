@@ -5,7 +5,6 @@ import {
   aestheticInput,
   guestInput,
   importGuestList,
-  pastedGuests,
   type GuestImportResult,
   removeAestheticPhoto as dropPhoto,
   timingInput,
@@ -346,22 +345,17 @@ export async function addGuest(formData: FormData): Promise<void> {
   refresh();
 }
 
-export async function addGuestList(formData: FormData): Promise<void> {
-  await requireAdmin();
-  await portal.addGuests(coupleOf(formData), pastedGuests(formData)).catch(() => undefined);
-  refresh();
-}
-
+/** Called by the row's autosave: a failed save throws so the row shows "No se pudo guardar". */
 export async function updateGuest(formData: FormData): Promise<void> {
   await requireAdmin();
-  await portal.updateGuest(coupleOf(formData), text(formData, "guestId", 100), guestInput(formData)).catch(() => undefined);
+  await portal.updateGuest(coupleOf(formData), text(formData, "guestId", 100), guestInput(formData));
   refresh();
 }
 
-/** The "Llegó" tick on the day: team only, the couple's portal has no such action. */
+/** The "Llegó" tick on the day: team only, the couple's portal has no such action. Throws on failure so the tick reverts. */
 export async function setGuestArrived(formData: FormData): Promise<void> {
   await requireAdmin();
-  await portal.setGuestArrived(coupleOf(formData), text(formData, "guestId", 100), text(formData, "arrived", 3) === "yes").catch(() => undefined);
+  await portal.setGuestArrived(coupleOf(formData), text(formData, "guestId", 100), text(formData, "arrived", 3) === "yes");
   refresh();
 }
 
@@ -383,12 +377,6 @@ export async function importGuests(_prev: GuestImportResult, formData: FormData)
 export async function createRsvpLink(formData: FormData): Promise<void> {
   await requireAdmin();
   await portal.rsvpToken(coupleOf(formData));
-  refresh();
-}
-
-export async function rotateRsvpLink(formData: FormData): Promise<void> {
-  await requireAdmin();
-  await portal.rotateRsvpToken(coupleOf(formData));
   refresh();
 }
 

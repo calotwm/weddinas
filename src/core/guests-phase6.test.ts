@@ -4,8 +4,6 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { JsonCoupleRepository } from "@/infra/json-couple-repository";
 import { guestInput } from "@/components/planner/section-forms";
-import type { Guest } from "./couple";
-import { guestFormKey } from "./guests";
 import { PortalService } from "./portal-service";
 
 // section-forms is server code that wires the real container; the parser under test needs neither.
@@ -92,15 +90,5 @@ describe("guest attendance (team only)", () => {
     expect((await guests())[0]).not.toHaveProperty("arrived");
     await service.updateGuest(coupleId, ana.id, { name: "Ana", group: "", status: "confirmed", table: "", restriction: "", arrived: true });
     expect((await guests())[0]).not.toHaveProperty("arrived");
-  });
-});
-
-describe("guestFormKey", () => {
-  const guest = (over: Partial<Guest>): Guest => ({ id: "g1", name: "Ana", group: "", status: "pending", table: "", restriction: "", ...over });
-
-  it("changes when a saved value changes, so the row form remounts with it", () => {
-    expect(guestFormKey(guest({ status: "confirmed" }))).not.toBe(guestFormKey(guest({ status: "pending" })));
-    expect(guestFormKey(guest({ age: "child" }))).not.toBe(guestFormKey(guest({})));
-    expect(guestFormKey(guest({}))).toBe(guestFormKey(guest({})));
   });
 });

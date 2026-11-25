@@ -2,7 +2,7 @@ import { GuestSummaryView } from "@/components/planner/guest-summary";
 import { GuestManager } from "@/components/planner/guests";
 import { guestSummary } from "@/core/guests";
 import { RsvpInbox } from "@/components/planner/rsvp-inbox";
-import { addGuest, addGuestList, assignRsvp, deleteGuest, dismissRsvp, importGuests, updateGuest } from "../actions";
+import { addGuest, assignRsvp, deleteGuest, dismissRsvp, importGuests, updateGuest } from "../actions";
 import { getCurrentCouple } from "../data";
 
 export default async function GuestsPage() {
@@ -20,7 +20,7 @@ export default async function GuestsPage() {
         <GuestSummaryView summary={guestSummary(couple.guests)} />
       </section>
       <RsvpInbox entries={couple.rsvpInbox} guests={couple.guests} actions={{ assign: assignRsvp, dismiss: dismissRsvp }} />
-      <GuestManager guests={couple.guests} actions={{ add: addGuest, addList: addGuestList, update: updateGuest, remove: deleteGuest, importList: importGuests }} />
+      <GuestManager guests={couple.guests} actions={{ add: addGuest, update: updateGuest, remove: deleteGuest, importList: importGuests }} />
     </div>
   );
 }

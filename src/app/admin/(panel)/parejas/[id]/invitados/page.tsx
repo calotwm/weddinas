@@ -4,7 +4,7 @@ import { Icon } from "@/components/icons";
 import { GuestSummaryView } from "@/components/planner/guest-summary";
 import { GuestManager } from "@/components/planner/guests";
 import { guestSummary } from "@/core/guests";
-import { addGuest, addGuestList, assignRsvp, createRsvpLink, deleteGuest, dismissRsvp, importGuests, rotateRsvpLink, setGuestArrived, updateGuest } from "@/app/admin/planner-actions";
+import { addGuest, assignRsvp, createRsvpLink, deleteGuest, dismissRsvp, importGuests, setGuestArrived, updateGuest } from "@/app/admin/planner-actions";
 import { CopyButton } from "@/components/copy-button";
 import { RsvpInbox } from "@/components/planner/rsvp-inbox";
 import { siteOrigin } from "@/server/site-url";
@@ -41,20 +41,14 @@ export default async function GuestsAdminPage({ params }: { params: Promise<{ id
         <div>
           <h3 className="font-display text-2xl text-forest">Conexión con la invitación web</h3>
           <p className="hint">
-            En WordPress, en el formulario de confirmación: Acciones después del envío → Webhook, y pegá este link. Cada respuesta llega acá y, si el
-            nombre coincide con un invitado, actualiza su confirmación y su menú.
+            En WordPress, en el formulario de confirmación: Acciones después del envío → Webhook, y pegá este link. Cada respuesta llega acá: si el
+            nombre coincide con un invitado, actualiza su confirmación y su menú; si no está en la lista, lo suma.
           </p>
         </div>
         {webhook ? (
           <div className="space-y-2">
             <p className="break-all rounded-lg bg-forest/5 px-3 py-2 font-mono text-xs text-ink/80">{webhook}</p>
-            <div className="flex flex-wrap items-center gap-2">
-              <CopyButton text={webhook} label="Copiar link" />
-              <form action={rotateRsvpLink}>
-                <input type="hidden" name="coupleId" value={couple.id} />
-                <button className="btn-ghost btn-sm">Cambiar link (el anterior deja de andar)</button>
-              </form>
-            </div>
+            <CopyButton text={webhook} label="Copiar link" />
           </div>
         ) : (
           <form action={createRsvpLink}>
@@ -67,7 +61,7 @@ export default async function GuestsAdminPage({ params }: { params: Promise<{ id
       <GuestManager
         guests={couple.guests}
         coupleId={couple.id}
-        actions={{ add: addGuest, addList: addGuestList, update: updateGuest, remove: deleteGuest, importList: importGuests, setArrived: setGuestArrived }}
+        actions={{ add: addGuest, update: updateGuest, remove: deleteGuest, importList: importGuests, setArrived: setGuestArrived }}
       />
     </div>
   );

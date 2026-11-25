@@ -3,8 +3,9 @@ import { RateLimiter } from "@/core/rate-limit";
 import { portal } from "@/server/container";
 
 // Webhook for the agency's Elementor invitation forms ("Form invitación asistencia" → Acciones después del envío → Webhook).
-// The URL carries the couple id and its secret; answers that name exactly one guest update that guest, the rest wait
-// in the couple's list for the team to assign. A wrong secret looks like a missing page.
+// The URL carries the couple id and its secret; answers that name exactly one guest update that guest, answers that
+// name nobody add that person to the list, and answers that name several guests wait in the couple's list for the
+// team to assign. A wrong secret looks like a missing page.
 
 const MAX_BYTES = 32 * 1024;
 const perCouple = new RateLimiter(120, 60 * 60 * 1000);
@@ -27,7 +28,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ coupleI
   if (!answer) return Response.json({ ok: true, stored: false });
   try {
     const result = await portal.receiveRsvp(coupleId, token, answer);
-    return Response.json({ ok: true, stored: true, matched: result === "matched" });
+    return Response.json({ ok: true, stored: true, matched: result === "matched", created: result === "created" });
   } catch {
     return notFound();
   }

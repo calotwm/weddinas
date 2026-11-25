@@ -31,19 +31,19 @@ describe("downloads", () => {
     for (const { slug } of DOWNLOAD_SHEETS) expect(existsSync(path.join(base, slug, "page.tsx")), slug).toBe(true);
   });
 
-  describe("S16 guest attendance sheet", () => {
+  describe("S16 guest sheet (phase 8 S18: the list to send)", () => {
     const guest = (over: Partial<Guest>): Guest => ({ id: over.name ?? "x", name: "", group: "", status: "pending", table: "", restriction: "", ...over });
 
-    it("numbers the guests 1, 2, 3 in the team list order (last name, then name) with their columns", () => {
+    it("lists the guests in the team list order (last name, then name) with their columns", () => {
       const { rows } = guestSheet([
-        guest({ name: "Zoe", lastName: "Pérez", table: "3", restriction: "Celíaco", status: "confirmed" }),
+        guest({ name: "Zoe", lastName: "Pérez", table: "3", restriction: "Celíaco", status: "confirmed", age: "adult" }),
         guest({ name: "Ana", lastName: "Álvarez", table: "1" }),
         guest({ name: "Bruno" }),
       ]);
       expect(rows).toEqual([
-        { n: 1, id: "Ana", lastName: "Álvarez", name: "Ana", table: "1", menu: "", status: "Pendiente" },
-        { n: 2, id: "Bruno", lastName: "", name: "Bruno", table: "", menu: "", status: "Pendiente" },
-        { n: 3, id: "Zoe", lastName: "Pérez", name: "Zoe", table: "3", menu: "Celíaco", status: "Confirmado" },
+        { id: "Ana", lastName: "Álvarez", name: "Ana", age: "", table: "1", menu: "" },
+        { id: "Bruno", lastName: "", name: "Bruno", age: "", table: "", menu: "" },
+        { id: "Zoe", lastName: "Pérez", name: "Zoe", age: "Adulto", table: "3", menu: "Celíaco" },
       ]);
     });
 

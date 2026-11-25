@@ -3,6 +3,8 @@ import type { Guest, GuestAge, GuestStatus } from "./couple";
 export const GUEST_STATUSES: GuestStatus[] = ["confirmed", "pending", "sent", "declined"];
 export const GUEST_AGES: GuestAge[] = ["adult", "teen", "child", "baby"];
 export const MAX_GUESTS = 1000;
+/** Longest "Notas" text stored on a guest. */
+export const MAX_GUEST_NOTES = 500;
 const MAX_PASTED = 500;
 const MAX_NAME = 120;
 
@@ -97,16 +99,6 @@ export function parseGuestNames(pasted: string): string[] {
     .slice(0, MAX_PASTED);
 }
 
-/**
- * A key built from the saved values of a guest's row form. React 19 resets a form after its action, and an
- * uncontrolled <select> resets to the option it mounted with (React never updates it when defaultValue changes),
- * so the row would show the old status and save it back. Keying the form by this remounts it with the saved values.
- */
-export function guestFormKey(guest: Guest): string {
-  const { id, name, lastName, group, status, table, restriction, age, side, transport, phone, travels } = guest;
-  return JSON.stringify([id, name, lastName, group, status, table, restriction, age, side, transport, phone, travels]);
-}
-
 export const GUEST_STATUS_LABEL: Record<GuestStatus, string> = {
   confirmed: "Confirmado",
   pending: "Pendiente",
@@ -120,3 +112,70 @@ export const GUEST_AGE_LABEL: Record<GuestAge, string> = {
   child: "Niño",
   baby: "Bebé",
 };
+
+/** Fields the list can filter by being empty, with the chip labels. */
+export type MissingField = "table" | "restriction" | "transport" | "phone" | "age";
+
+export const MISSING_FIELD_LABEL: Record<MissingField, string> = {
+  table: "Sin mesa",
+  restriction: "Sin menú",
+  transport: "Sin combi",
+  phone: "Sin teléfono",
+  age: "Sin edad",
+};
+
+export const MISSING_FIELDS = Object.keys(MISSING_FIELD_LABEL) as MissingField[];
+
+export function isMissing(guest: Guest, field: MissingField): boolean {
+  if (field === "age") return !guest.age || !GUEST_AGES.includes(guest.age);
+  return !(guest[field] ?? "").trim();
+}
+
+export interface GuestFilter {
+  /** "all" or absent keeps every status. */
+  status?: GuestStatus | "all";
+  /** A table name; empty or absent keeps every table. */
+  table?: string;
+  /** Guests must have every one of these fields empty. */
+  missing?: MissingField[];
+  /** Free text matched against every text field of the guest, ignoring case and accents. */
+  query?: string;
+}
+
+const fold = (value: string) => value.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+
+/** Everything the list shows about a guest, as one searchable string (both name orders, so "Pérez Ana" finds her too). */
+function searchable(guest: Guest): string {
+  const { name, group, table, restriction, side, transport, phone, notes, age, status } = guest;
+  const lastName = guest.lastName ?? "";
+  const fields = [`${name} ${lastName}`, `${lastName} ${name}`, group, table, restriction, side, transport, phone, notes, age && GUEST_AGE_LABEL[age], GUEST_STATUS_LABEL[status]];
+  return fields.map((f) => fold(f ?? "")).join(" | ");
+}
+
+/** The guests that pass every given filter; the order is kept. */
+export function filterGuests<T extends Guest>(guests: T[], filter: GuestFilter): T[] {
+  const { status = "all", table = "", missing = [], query = "" } = filter;
+  const wanted = fold(query);
+  return guests.filter(
+    (g) =>
+      (status === "all" || g.status === status) &&
+      (!table || g.table.trim() === table) &&
+      missing.every((field) => isMissing(g, field)) &&
+      (!wanted || searchable(g).includes(wanted)),
+  );
+}
+
+/** "Ingresaron": guests ticked as arrived; "Faltan ingresar": confirmed guests not ticked yet. */
+export function arrivalCounts(guests: Guest[]): { arrived: number; missing: number } {
+  return {
+    arrived: guests.filter((g) => g.arrived).length,
+    missing: guests.filter((g) => g.status === "confirmed" && !g.arrived).length,
+  };
+}
+
+/** A full name typed in the invitation web: the last word is the last name ("Ana María Pérez" → "Ana María" + "Pérez"). */
+export function splitFullName(full: string): { name: string; lastName: string } {
+  const words = full.trim().split(/\s+/).filter(Boolean);
+  if (words.length < 2) return { name: words.join(""), lastName: "" };
+  return { name: words.slice(0, -1).join(" "), lastName: words[words.length - 1] };
+}
