@@ -1,26 +1,45 @@
 import Link from "next/link";
 import { useId } from "react";
-import type { BlockStatus, BriefBlock } from "@/core/couple";
+import { normalizeBlockStatus, type BlockStatus, type BriefBlock, type OfferedBlockStatus } from "@/core/couple";
 import type { RubroReceipt } from "@/core/budget";
 import { AttachmentList } from "@/components/attachments";
 import { ReceiptLinks } from "@/components/planner/budget";
 import { LINE_STATE_DOT, LineStateChip } from "@/components/planner/line-state";
 import { Icon } from "@/components/icons";
-import { noteLines, type NoteLine } from "@/core/notes";
+import { noteLines, noteSegments, type NoteLine } from "@/core/notes";
 import { coupleFields } from "@/core/brief-catalog";
 
 const PREVIEW_LINES = 3;
+
+/** One line of a note: "Fríos" / "Calientes" leads in bold, and web addresses open in a new tab. */
+function LineText({ text }: { text: string }) {
+  return (
+    <>
+      {noteSegments(text).map((s, i) =>
+        s.href ? (
+          <a key={i} href={s.href} target="_blank" rel="noopener noreferrer" className="break-all text-teal underline underline-offset-2">
+            {s.text}
+          </a>
+        ) : s.bold ? (
+          <strong key={i} className="font-semibold text-forest">{s.text}</strong>
+        ) : (
+          s.text
+        ),
+      )}
+    </>
+  );
+}
 
 function NoteLines({ lines }: { lines: NoteLine[] }) {
   return (
     <ul className="space-y-1">
       {lines.map((line, i) =>
         line.kind === "heading" ? (
-          <li key={i} className="pt-2 font-semibold text-forest first:pt-0">{line.text}</li>
+          <li key={i} className="pt-2 font-semibold text-forest first:pt-0"><LineText text={line.text} /></li>
         ) : (
           <li key={i} className="flex gap-2">
             <span aria-hidden className="mt-2.5 h-1 w-1 shrink-0 rounded-full bg-ink/40" />
-            <span>{line.text}</span>
+            <span><LineText text={line.text} /></span>
           </li>
         ),
       )}
@@ -35,7 +54,7 @@ function NoteLines({ lines }: { lines: NoteLine[] }) {
 export function NoteText({ text, collapse = false }: { text: string; collapse?: boolean }) {
   const id = useId();
   const lines = noteLines(text);
-  if (lines.length <= 1) return <>{lines[0]?.text}</>;
+  if (lines.length <= 1) return lines[0] ? <LineText text={lines[0].text} /> : null;
   if (!collapse || lines.length <= PREVIEW_LINES + 1) return <NoteLines lines={lines} />;
   const toggle = "mt-1 inline-block cursor-pointer text-sm font-semibold text-teal peer-focus-visible:underline";
   return (
@@ -51,15 +70,15 @@ export function NoteText({ text, collapse = false }: { text: string; collapse?: 
   );
 }
 
-export const BLOCK_STATUS: Record<BlockStatus, { label: string; className: string }> = {
-  searching: { label: "En búsqueda", className: "bg-sand text-ink/70" },
+/** The statuses the team picks from; the retired "En búsqueda" shows as "Para decidir". */
+export const BLOCK_STATUS: Record<OfferedBlockStatus, { label: string; className: string }> = {
   deciding: { label: "Para decidir", className: "bg-peach text-rust" },
   confirmed: { label: "Confirmado", className: "bg-mint/25 text-forest" },
   na: { label: "No aplica", className: "bg-ink/8 text-ink/50" },
 };
 
 export function StatusChip({ status }: { status: BlockStatus }) {
-  const s = BLOCK_STATUS[status];
+  const s = BLOCK_STATUS[normalizeBlockStatus(status)];
   return <span className={`chip ${s.className}`}>{s.label}</span>;
 }
 

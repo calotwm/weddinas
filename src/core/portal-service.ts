@@ -12,6 +12,7 @@ import {
   emptyPublicInfo,
   emptyTeamFiles,
   isLineState,
+  normalizeBlockStatus,
   isPresented,
   PLAN_SLOTS,
   type Attachment,
@@ -72,6 +73,8 @@ export interface BriefBlockUpdate {
   status: BlockStatus;
   owner: string;
   fields: BriefField[];
+  /** The block's title for this couple; blank goes back to the catalog name, missing leaves it as it is. */
+  name?: string;
 }
 
 export interface AestheticInput {
@@ -866,12 +869,16 @@ export class PortalService {
 
   async updateBriefBlock(coupleId: string, key: string, update: BriefBlockUpdate): Promise<void> {
     if (!BLOCK_STATUSES.includes(update.status)) throw new Error("Unknown status");
+    const name = update.name?.trim().replace(/\s+/g, " ");
+    if (name && name.length > CUSTOM_BLOCK_NAME_MAX) throw new Error("Brief block name is too long");
     await this.mutate(coupleId, (c) => {
       const block = c.brief.find((b) => b.key === key);
       if (!block) throw new Error("Brief block not found");
+      // A blank title goes back to the catalog name; custom rubros, with no catalog name, keep theirs.
+      if (name !== undefined) block.name = name || catalogBlock(key)?.name || block.name;
       block.vendor = update.vendor.trim();
       block.contact = update.contact.trim();
-      setBlockStatus(block, update.status);
+      setBlockStatus(block, normalizeBlockStatus(update.status));
       block.owner = update.owner.trim();
       const fields = update.fields
         .map((f) => ({ label: f.label.trim(), detail: f.detail.trim(), note: f.note.trim(), ...(isLineState(f.state) && { state: f.state }) }))

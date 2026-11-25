@@ -5,7 +5,7 @@ import { Icon } from "@/components/icons";
 import { SubmitButton } from "@/components/submit-button";
 import { LINE_STATE_CHIP, LINE_STATE_DOT } from "@/components/planner/line-state";
 import { CUSTOM_BLOCK_NAME_MAX, TEAM_FIELD, TEAM_OWNERS } from "@/core/brief-catalog";
-import { isLineState, LINE_STATES, type BriefBlock, type LineState } from "@/core/couple";
+import { isLineState, LINE_STATES, normalizeBlockStatus, type BriefBlock, type LineState } from "@/core/couple";
 import { addCustomBriefBlock } from "@/app/admin/actions";
 import { saveBriefBlock, saveIdeas } from "@/app/admin/planner-actions";
 import { BLOCK_STATUS } from "@/components/planner/brief";
@@ -80,17 +80,23 @@ const SAVE_LABEL: Record<SaveState, string> = {
 
 type Row = BriefBlock["fields"][number] & { rowId: number; isNew?: boolean };
 
+/** Drag data type of a brief row, so dropping a row on a text box never types into it. */
+const ROW_DRAG_TYPE = "application/x-weddinas-brief-row";
+
 /**
- * One brief block, saved as the team types (no "Guardar" button). Field rows can be removed and moved; their order
- * is the order sent. `budgetPayment` is what the budget says about the rubro; it replaces typing the "Pago" detail.
- * The selects stay uncontrolled but the form is never reset, so they keep what was chosen (the old action-form reset
- * put them back on their first value while the header already showed the saved status).
+ * One brief block, saved as the team types (no "Guardar" button). Field rows can be removed and reordered by
+ * dragging their handle (or with the arrow keys on it); their order is the order sent. `budgetPayment` is what the
+ * budget says about the rubro; it replaces typing the "Pago" detail. The selects stay uncontrolled but the form is
+ * never reset, so they keep what was chosen (the old action-form reset put them back on their first value while the
+ * header already showed the saved status).
  */
 export function BriefBlockForm({ coupleId, block, budgetPayment }: { coupleId: string; block: BriefBlock; budgetPayment?: string | null }) {
   const formRef = useRef<HTMLFormElement>(null);
   const { status, error, schedule, flushPending } = useAutosave(formRef, saveBriefBlock);
   const nextId = useRef(block.fields.length);
   const [rows, setRows] = useState<Row[]>(() => block.fields.map((f, i) => ({ ...f, rowId: i })));
+  const dragFrom = useRef<number | null>(null);
+  const [dropAt, setDropAt] = useState<number | null>(null);
   const id = block.key;
   const hasVendor = block.kind === "vendor" || block.key === "ceremonia";
 
@@ -99,14 +105,18 @@ export function BriefBlockForm({ coupleId, block, budgetPayment }: { coupleId: s
     setRows(next);
     schedule();
   };
-  const move = (index: number, by: -1 | 1) =>
+  const moveTo = (from: number, to: number) =>
     changeRows((rs) => {
-      const to = index + by;
-      if (to < 0 || to >= rs.length) return rs;
+      if (from === to || to < 0 || to >= rs.length) return rs;
       const copy = [...rs];
-      [copy[index], copy[to]] = [copy[to], copy[index]];
+      const [row] = copy.splice(from, 1);
+      copy.splice(to, 0, row);
       return copy;
     });
+  const endDrag = () => {
+    dragFrom.current = null;
+    setDropAt(null);
+  };
   const remove = (index: number) => changeRows((rs) => rs.filter((_, i) => i !== index));
   const add = () => setRows((rs) => [...rs, { label: "", detail: "", note: "", rowId: nextId.current++, isNew: true }]);
 
@@ -114,7 +124,11 @@ export function BriefBlockForm({ coupleId, block, budgetPayment }: { coupleId: s
     <form ref={formRef} onChange={schedule} onBlur={flushPending} onSubmit={(e) => e.preventDefault()} className="space-y-4">
       <input type="hidden" name="coupleId" value={coupleId} />
       <input type="hidden" name="key" value={block.key} />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className={`grid gap-3 sm:grid-cols-2 ${hasVendor ? "lg:grid-cols-5" : "lg:grid-cols-3"}`}>
+        <div>
+          <label htmlFor={`n-${id}`} className="label">Título</label>
+          <input id={`n-${id}`} name="name" defaultValue={block.name} maxLength={CUSTOM_BLOCK_NAME_MAX} className="field" placeholder="Vacío vuelve al nombre del rubro" />
+        </div>
         {hasVendor && (
           <>
             <div>
@@ -129,7 +143,7 @@ export function BriefBlockForm({ coupleId, block, budgetPayment }: { coupleId: s
         )}
         <div>
           <label htmlFor={`s-${id}`} className="label">Estado</label>
-          <select id={`s-${id}`} name="status" defaultValue={block.status} className="field">
+          <select id={`s-${id}`} name="status" defaultValue={normalizeBlockStatus(block.status)}className="field">
             {Object.entries(BLOCK_STATUS).map(([value, { label }]) => (
               <option key={value} value={value}>{label}</option>
             ))}
@@ -149,16 +163,54 @@ export function BriefBlockForm({ coupleId, block, budgetPayment }: { coupleId: s
       </div>
 
       <div className="overflow-hidden rounded-2xl ring-1 ring-forest/10">
-        <div className="hidden grid-cols-[minmax(8rem,1fr)_2fr_2fr_10rem_5.5rem] gap-3 bg-sand/60 px-4 py-2 text-xs font-semibold tracking-wider text-ink/60 uppercase sm:grid">
+        <div className="hidden grid-cols-[1.75rem_minmax(8rem,1fr)_2fr_2fr_10rem_2.5rem] gap-3 bg-sand/60 px-4 py-2 text-xs font-semibold tracking-wider text-ink/60 uppercase sm:grid">
+          <span className="sr-only">Arrastrar</span>
           <span>Campo</span>
           <span>Detalle</span>
           <span>Aclaraciones (solo equipo)</span>
           <span>Estado</span>
-          <span className="sr-only">Mover o quitar</span>
+          <span className="sr-only">Quitar</span>
         </div>
         <div className="divide-y divide-forest/5">
           {rows.map((f, i) => (
-            <div key={f.rowId} className="grid gap-2 px-4 py-3 sm:grid-cols-[minmax(8rem,1fr)_2fr_2fr_10rem_5.5rem] sm:items-center sm:gap-3">
+            <div
+              key={f.rowId}
+              onDragOver={(e) => {
+                if (dragFrom.current === null) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                if (dropAt !== i) setDropAt(i);
+              }}
+              onDrop={(e) => {
+                if (dragFrom.current === null) return;
+                e.preventDefault();
+                moveTo(dragFrom.current, i);
+                endDrag();
+              }}
+              className={`grid gap-2 px-4 py-3 sm:grid-cols-[1.75rem_minmax(8rem,1fr)_2fr_2fr_10rem_2.5rem] sm:items-center sm:gap-3 ${dropAt === i && dragFrom.current !== i ? "bg-peach-soft/60" : ""}`}
+            >
+              <button
+                type="button"
+                draggable
+                onDragStart={(e) => {
+                  dragFrom.current = i;
+                  e.dataTransfer.effectAllowed = "move";
+                  e.dataTransfer.setData(ROW_DRAG_TYPE, String(i));
+                  const row = e.currentTarget.parentElement;
+                  if (row) e.dataTransfer.setDragImage(row, 16, 16);
+                }}
+                onDragEnd={endDrag}
+                onKeyDown={(e) => {
+                  if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+                  e.preventDefault();
+                  moveTo(i, e.key === "ArrowUp" ? i - 1 : i + 1);
+                }}
+                aria-label={`Mover ${f.label || "campo"}: arrastrá, o usá las flechas ↑ ↓`}
+                title="Arrastrá para reordenar"
+                className="btn-icon cursor-grab text-lg leading-none text-ink/45 select-none hover:bg-sand active:cursor-grabbing"
+              >
+                ⠿
+              </button>
               {f.isNew ? (
                 <input name="label" maxLength={120} aria-label="Nombre del nuevo campo" placeholder="Nombre del campo" autoFocus className="field !py-2 text-sm font-semibold" />
               ) : (
@@ -180,15 +232,26 @@ export function BriefBlockForm({ coupleId, block, budgetPayment }: { coupleId: s
               ) : (
                 <NoteField name="detail" defaultValue={f.detail} aria-label={`${f.label}: detalle`} placeholder="Detalle" className="field !py-2" />
               )}
-              <input name="fieldNote" defaultValue={f.note} aria-label={`${f.label}: aclaraciones`} placeholder="Aclaraciones" className="field !py-2" />
-              <LineStateSelect label={f.label} defaultValue={f.state} />
+              {f.label === TEAM_FIELD && !f.isNew ? (
+                // The Equipo row only takes its detail; what it already had stays as it is (the form sends one value per row).
+                <div aria-hidden className="hidden sm:col-span-2 sm:block">
+                  <input type="hidden" name="fieldNote" value={f.note} />
+                  <input type="hidden" name="fieldState" value={f.state ?? ""} />
+                </div>
+              ) : (
+                <>
+                  <textarea
+                    name="fieldNote"
+                    rows={1}
+                    defaultValue={f.note}
+                    aria-label={`${f.label}: aclaraciones`}
+                    placeholder="Aclaraciones"
+                    className="field field-sizing-content !py-2"
+                  />
+                  <LineStateSelect label={f.label} defaultValue={f.state} />
+                </>
+              )}
               <div className="flex items-center justify-end gap-1">
-                <button type="button" onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Subir ${f.label || "campo"}`} title="Subir" className="btn-icon text-ink/60 hover:bg-sand disabled:opacity-30">
-                  <Icon name="arrowRight" className="h-3.5 w-3.5 -rotate-90" />
-                </button>
-                <button type="button" onClick={() => move(i, 1)} disabled={i === rows.length - 1} aria-label={`Bajar ${f.label || "campo"}`} title="Bajar" className="btn-icon text-ink/60 hover:bg-sand disabled:opacity-30">
-                  <Icon name="arrowRight" className="h-3.5 w-3.5 rotate-90" />
-                </button>
                 <button
                   type="button"
                   onClick={() => (f.isNew || confirm(`¿Quitar "${f.label}"? Se pierde lo cargado en esa fila.`)) && remove(i)}

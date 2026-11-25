@@ -178,6 +178,8 @@ export async function saveBriefBlock(_prev: PlannerResult, formData: FormData): 
       status: text(formData, "status", 12) as BlockStatus,
       owner: text(formData, "owner", 60),
       fields,
+      // Blank goes back to the catalog name; a form without the title leaves it as it is.
+      ...(formData.has("name") && { name: text(formData, "name", 60) }),
     });
   } catch {
     return { error: "No se pudo guardar este bloque." };

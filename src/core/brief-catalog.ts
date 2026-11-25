@@ -1,4 +1,4 @@
-import type { BriefBlock, Music, SongChoice } from "./couple";
+import { normalizeBlockStatus, type BriefBlock, type Music, type SongChoice } from "./couple";
 import { slugify } from "./slug";
 
 export interface CatalogBlock {
@@ -18,7 +18,6 @@ export const VENDOR_COMMON_FIELDS = [
   "Servicio",
   "Fletes",
   "Depósito de garantía",
-  "Contrato",
   "Detalle del servicio",
 ];
 
@@ -38,10 +37,11 @@ const vendor = (fields: string[]) => [
 /** Sections of Weddinas' Excel brief ("INTERNO - Brief"), with their field labels. */
 export const BRIEF_CATALOG: CatalogBlock[] = [
   { key: "evento", name: "Información del evento", kind: "event", core: true, fields: ["Fecha", "Hora", "Lugar", "Cantidad de invitados", "Tipo de boda", "Previa ella", "Previa él"] },
-  { key: "invitaciones", name: "Invitaciones", kind: "event", core: true, fields: ["Save the Date", "Invitación digital", "Confirmaciones"] },
+  { key: "invitaciones", name: "Invitaciones", kind: "event", core: true, fields: ["Save the Date", "Invitación digital"] },
   { key: "civil", name: "Civil", kind: "event", core: true, fields: ["Fecha", "Horario", "Registro civil", "Tirada civil", "Post civil", "Previa"] },
   { key: "ceremonia", name: "Ceremonia", kind: "event", core: true, fields: ["Oficia", "Música", "Reservados", "Damas de honor", "Caballeros de honor", "Testigos", "Votos", "Discursos", "Entrada novio", "Cortejo", "Entrada novia", "Anillos"] },
   { key: "espacio", name: "Espacio", kind: "vendor", core: true, fields: vendor(["Mobiliario", "Impuestos musicales", "Canon"]) },
+  { key: "ceremonia-proveedor", name: "Ceremonia", kind: "vendor", core: true, fields: vendor(["Oficiante", "Horario servicio", "Horario llegada", "Requerimientos"]) },
   { key: "catering", name: "Catering", kind: "vendor", core: true, fields: vendor(["Recepción", "Bocaditos fríos y calientes", "Islas", "Plato principal", "Postre", "Mesa dulce", "Torta de bodas", "Café", "Fin de fiesta gastronómico", "Mantelería", "Vinos y champagne", "Adicionales", "Aclaraciones", "Vianda proveedores", "Degustación", "Precoctel", "Menú celíaco", "Menú niños", "Menú vegetariano"]) },
   { key: "barra", name: "Barra de tragos", kind: "vendor", core: true, fields: vendor(["Pago", "Degustación", "Precoctel", "Servicio", "Pax confirmados", "Tragos de autor", "Tragos clásicos", "Etiquetas", "Personal", "Cervezas", "Módulos recepción", "Módulos fiesta"]) },
   { key: "dj", name: "DJ y técnica", kind: "vendor", core: true, fields: vendor(["Pago", "DJ", "Reunión musical", "Ceremonia", "Recepción", "Salón principal", "Pista de baile", "Efectos", "Requerimientos proveedores", "Requerimiento show", "Grupo electrógeno", "Visuales"]) },
@@ -61,7 +61,7 @@ export const BRIEF_CATALOG: CatalogBlock[] = [
   { key: "look-novia", name: "Look novia", kind: "vendor", fields: vendor(["Vestido", "Zapatos", "Accesorios", "Segundo vestido", "Look civil"]) },
   { key: "look-novio", name: "Look novio", kind: "vendor", fields: vendor(["Traje", "Zapatos", "Accesorios"]) },
   { key: "alianzas", name: "Alianzas", kind: "vendor", fields: vendor(["Pago", "Envío"]) },
-  { key: "combis", name: "Combis", kind: "vendor", fields: vendor(["Pago", "Recorrido", "Cantidad de pasajeros", "Lugar salida", "Horario salida", "Lugar destino", "Horario destino"]) },
+  { key: "combis", name: "Autos y Combis", kind: "vendor", fields: vendor(["Pago", "Recorrido", "Cantidad de pasajeros", "Lugar salida", "Horario salida", "Lugar destino", "Horario destino"]) },
   { key: "auto", name: "Auto", kind: "vendor", fields: vendor(["Pago", "Recorrido", "Lugar salida", "Horario salida", "Lugar destino", "Horario destino"]) },
   { key: "torta", name: "Torta", kind: "vendor", fields: vendor(["Pago", "Diseño", "Sabores", "Retiro"]) },
   { key: "glitter", name: "Glitter / tatuajes", kind: "vendor", fields: vendor(["Pago", "Tatuajes incluidos", "Horario servicio"]) },
@@ -76,16 +76,16 @@ export const CUSTOM_BLOCK_PREFIX = "custom-";
 export const CUSTOM_BLOCK_NAME_MAX = 60;
 
 /** Who can be in charge of a brief rubro ("A cargo"): the agency or one of the team. */
-export const TEAM_OWNERS = ["Weddinas", "Cane", "Nat", "More", "Pauli", "Belu", "Abru"] as const;
+export const TEAM_OWNERS = ["Weddinas", "Cane", "Nat", "More", "Pauli", "Belu", "Abru", "Novios"] as const;
 /** Forms send block keys capped at 60 characters. */
 const CUSTOM_BLOCK_KEY_MAX = 60;
 
 export const customBlockKey = (name: string) =>
   `${CUSTOM_BLOCK_PREFIX}${slugify(name).slice(0, CUSTOM_BLOCK_KEY_MAX - CUSTOM_BLOCK_PREFIX.length).replace(/-+$/, "")}`;
 
-/** Catalog name, else the couple's stored block name (custom rubros), else a readable form of a custom key. */
+/** The couple's stored block name (the team may retitle any block), else the catalog name, else a readable form of a custom key. */
 export function categoryName(key: string, brief?: ReadonlyArray<Pick<BriefBlock, "key" | "name">>): string {
-  const name = catalogBlock(key)?.name ?? brief?.find((b) => b.key === key)?.name;
+  const name = brief?.find((b) => b.key === key)?.name || catalogBlock(key)?.name;
   if (name) return name;
   if (!key.startsWith(CUSTOM_BLOCK_PREFIX)) return key;
   const words = key.slice(CUSTOM_BLOCK_PREFIX.length).replace(/-/g, " ");
@@ -103,7 +103,7 @@ export function newBriefBlock(entry: CatalogBlock): BriefBlock {
     kind: entry.kind,
     vendor: "",
     contact: "",
-    status: entry.kind === "event" ? "deciding" : "searching",
+    status: "deciding",
     owner: "",
     fields: entry.fields.map((label) => ({ label, detail: "", note: "" })),
   };
@@ -115,17 +115,70 @@ export const TEAM_FIELD = "Equipo";
 /** The rows the couple (and the printed vendor sheet) may see. */
 export const coupleFields = <F extends { label: string }>(fields: F[]): F[] => fields.filter((f) => f.label !== TEAM_FIELD);
 
+/** Rows of the Invitaciones block the couple sees; the rest stay with the team. */
+const COUPLE_INVITATION_FIELDS = ["Save the Date", "Invitación digital"];
+
+/**
+ * Event blocks the couple sees ("Su casamiento"): every one with something to show, whatever its status but "No
+ * aplica". Invitaciones only shows its Save the Date and Invitación digital rows.
+ */
+export function coupleEventBlocks(brief: BriefBlock[]): BriefBlock[] {
+  return brief
+    .filter((b) => b.kind === "event" && b.status !== "na")
+    .map((b) => (b.key === "invitaciones" ? { ...b, fields: b.fields.filter((f) => COUPLE_INVITATION_FIELDS.includes(f.label)) } : b))
+    .filter((b) => coupleFields(b.fields).some((f) => f.detail) || (b.attachments ?? []).some((a) => !a.internal));
+}
+
 /** Rows a block always has unless the team removed them: its catalog fields, plus "Equipo" on vendor rubros. */
 export function requiredFields(block: Pick<BriefBlock, "key" | "kind">): string[] {
   const fields = catalogBlock(block.key)?.fields ?? [];
   return block.kind === "vendor" && !fields.includes(TEAM_FIELD) ? [...fields, TEAM_FIELD] : fields;
 }
 
+/** Catalog names a block had before, so couples that still store them get the current one (a retitled block keeps its own). */
+const RENAMED_BLOCKS: Record<string, string[]> = {
+  combis: ["Combis"],
+};
+
+/** Rows taken out of the catalog, from every block `from` applies to; what they said moves to the end of the `into` row. */
+const DROPPED_FIELDS: Array<{ label: string; into: string; from: (block: Pick<BriefBlock, "key" | "kind">) => boolean }> = [
+  { label: "Contrato", into: "Detalle del servicio", from: (b) => b.kind === "vendor" },
+  { label: "Confirmaciones", into: "Invitación digital", from: (b) => b.key === "invitaciones" },
+];
+
+const joinText = (...parts: string[]) => parts.filter(Boolean).join("\n");
+
+function dropRetiredFields(block: BriefBlock): void {
+  for (const drop of DROPPED_FIELDS) {
+    if (!drop.from(block)) continue;
+    const gone = block.fields.filter((f) => f.label === drop.label);
+    if (gone.length === 0) continue;
+    block.fields = block.fields.filter((f) => f.label !== drop.label);
+    const detail = joinText(...gone.map((f) => (f.detail ? `${drop.label}: ${f.detail}` : "")));
+    const note = joinText(...gone.map((f) => (f.note ? `${drop.label}: ${f.note}` : "")));
+    if (!detail && !note) continue;
+    let into = block.fields.find((f) => f.label === drop.into);
+    if (!into) block.fields.push((into = { label: drop.into, detail: "", note: "" }));
+    into.detail = joinText(into.detail, detail);
+    into.note = joinText(into.note, note);
+  }
+  if (block.removedFields) {
+    const kept = block.removedFields.filter((label) => !DROPPED_FIELDS.some((d) => d.label === label && d.from(block)));
+    block.removedFields = kept.length > 0 ? kept : undefined;
+  }
+}
+
 /**
- * Brings a stored block up to its catalog: renamed labels keep their detail, and required rows it lacks are added at the
- * end. The stored order is kept (the team reorders rows) and rows the team removed stay out.
+ * Brings a stored block up to its catalog: an old catalog title becomes the current one, the retired "En búsqueda"
+ * status reads as "Para decidir", rows taken out of the catalog go (their text moves to another row), renamed labels
+ * keep their detail, and required rows it lacks are added at the end. The stored order is kept (the team reorders
+ * rows) and rows the team removed stay out.
  */
 export function withCatalogFields(block: BriefBlock): BriefBlock {
+  const current = catalogBlock(block.key)?.name;
+  if (current && RENAMED_BLOCKS[block.key]?.includes(block.name)) block.name = current;
+  block.status = normalizeBlockStatus(block.status);
+  dropRetiredFields(block);
   const required = requiredFields(block);
   if (required.length === 0) return block;
   block.fields = block.fields.map((f) => ({ ...f, label: RENAMED_FIELDS[f.label] ?? f.label }));
