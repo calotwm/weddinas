@@ -38,7 +38,7 @@ Invitados
 - S20. "Sacar el boton de "Cambiar link (el anterior deja de andar)"".
 
 Brief (PDF)
-- S21. "Basarnos en el brief de "Agus y Ventu" para que todos los brief figure lo mismo" — PENDING: needs that couple's production brief.
+- S21. "Basarnos en el brief de "Agus y Ventu" para que todos los brief figure lo mismo" — the catalog rubros take that brief's rows and order (from the production backup); every stored brief is reshaped once (TEMPLATE_VERSION): written rows kept, empty rows outside the template dropped.
 - S22. "Permitir arrastrar y soltar filas para reordenarlas, en lugar de moverlas con flechas."
 - S23. "Agregar Ceremonia como un proveedor independiente." — assumption: a new core vendor rubro "Ceremonia" (key `ceremonia-proveedor`), separate from the Ceremonia event block.
 - S24. "Cambiar el proveedor "Combis" por "Autos y Combis"."
@@ -73,7 +73,8 @@ Integraciones (PDF)
 - [x] T6 S11-S12 timing — inline · 09477e9
 - [~] T7 S4 autosave — timing rows, web options, budget dollar/guests (a5054b4, ab95607); guests rows (T2/T3); estética (T2). Still with a button: budget item edit, timing sheet link, proposals, welcome message, WhatsApp, portal family/public page.
 - [x] T8 S37-S38 integrations — inline (assumption: show-intervención ↔ Comidas, show-fiesta ↔ Fiesta) · ab95607
-- [ ] T9 S1, S21, S26, S36 — pending decision
+- [x] T10 S21 template — inline · 9bf46dc (probe on a production backup copy: 23 couples, 602 blocks, 0 texts lost, idempotent; 1339 empty rows dropped)
+- [ ] T9 S1, S26, S36 — pending decision
 
 ## Log
 
@@ -81,3 +82,4 @@ Integraciones (PDF)
 - L2 Route: three independent units with disjoint surfaces (brief, music/estética, guests) go to parallel writers in worktrees; the rest inline.
 - L3 Merged T1-T3 cleanly; seam check: vitest 49 files / 443 tests, tsc and eslint clean.
 - L4 Production build OK. Independent verifier: no blockers; S2-S3, S5-S20, S22-S25, S27-S35, S37-S38 PASS; S4 PARTIAL (budget item, timing link keep a button). Advisories: old items with viáticos "No incluido" now read as owing until "Viáticos pagos" is ticked; artist dropped when the title already contains it; printed guest list lost N°/Estado/Llegó. Fixed: first renewal on the first activity after loading (9fa8418).
+- L5 (2026-11-25) User: "vos mandale ya fue" / "proba de vuelta, vos tenes los usuarios maestro los hiciste vos fijate si estan localmente o subidos". Railway SSH timed out; backup fetched from /admin/backup with a team session signed with the production SESSION_SECRET (read only).
