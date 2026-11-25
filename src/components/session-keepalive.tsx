@@ -9,7 +9,8 @@ export function SessionKeepAlive() {
   const last = useRef(0);
 
   useEffect(() => {
-    last.current = Date.now();
+    // The first activity after loading renews at once, so a reload near the expiry does not log out.
+    last.current = 0;
     const ping = () => {
       const now = Date.now();
       if (!keepAliveDue(last.current, now)) return;
