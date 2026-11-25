@@ -56,13 +56,6 @@ const STATUS_FIELD_TONE: Record<GuestStatus, string> = {
 /** Apellido, Nombre, Edad, RSVP, Mesa, Menú, Combi, Teléfono, Notas; wraps in two or three columns on smaller screens. */
 const ROW = "grid gap-2 grid-cols-2 sm:grid-cols-3 xl:grid-cols-[1fr_1fr_8rem_9rem_5rem_1fr_1fr_8rem_1fr] xl:items-center";
 
-/**
- * AutoSaveForm's status line is a floating pill meant for one form per page. In a row it sits under the fields,
- * small, and only shows "¡Guardado!" or the error (the idle and saving states share the white background).
- */
-const ROW_STATUS =
-  "[&>p:last-child]:static [&>p:last-child]:col-span-full [&>p:last-child]:px-2 [&>p:last-child]:py-0.5 [&>p:last-child]:text-xs [&>p:last-child]:shadow-none [&>p:last-child.bg-white]:hidden";
-
 /** Tinted with the color of the picked status, following the user's choice and the form's reset after saving. */
 function StatusSelect({ id, defaultValue }: { id?: string; defaultValue: GuestStatus }) {
   const [status, setStatus] = useState(defaultValue);
@@ -191,7 +184,7 @@ function GuestRow({ guest, number, actions, coupleId }: { guest: Guest; number: 
         </span>
         {actions.setArrived && <ArrivedToggle guest={guest} coupleId={coupleId} action={actions.setArrived} />}
       </div>
-      <AutoSaveForm save={actions.update} className={`min-w-0 flex-1 ${ROW} ${ROW_STATUS}`}>
+      <AutoSaveForm compact save={actions.update} className={`min-w-0 flex-1 ${ROW}`}>
         <CoupleField coupleId={coupleId} />
         <input type="hidden" name="guestId" value={guest.id} />
         <input name="lastName" maxLength={80} defaultValue={guest.lastName} aria-label="Apellido" placeholder="Apellido" className="field py-2 font-semibold text-forest" />

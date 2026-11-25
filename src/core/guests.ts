@@ -5,8 +5,6 @@ export const GUEST_AGES: GuestAge[] = ["adult", "teen", "child", "baby"];
 export const MAX_GUESTS = 1000;
 /** Longest "Notas" text stored on a guest. */
 export const MAX_GUEST_NOTES = 500;
-const MAX_PASTED = 500;
-const MAX_NAME = 120;
 
 export interface Tally {
   name: string;
@@ -88,15 +86,6 @@ export function guestDisplayName(guest: Pick<Guest, "name" | "lastName">): strin
 export function sortGuests<T extends Pick<Guest, "name" | "lastName">>(guests: T[]): T[] {
   const key = (g: T) => g.lastName?.trim() || g.name;
   return [...guests].sort((a, b) => collator.compare(key(a), key(b)) || collator.compare(a.name, b.name));
-}
-
-/** One guest per pasted line; drops blank lines and list bullets or numbering ("- ", "• ", "2. "). */
-export function parseGuestNames(pasted: string): string[] {
-  return pasted
-    .split(/\r?\n/)
-    .map((line) => line.replace(/^\s*(?:[-*•·]|\d+[.)])\s*/, "").trim().slice(0, MAX_NAME).trim())
-    .filter(Boolean)
-    .slice(0, MAX_PASTED);
 }
 
 export const GUEST_STATUS_LABEL: Record<GuestStatus, string> = {

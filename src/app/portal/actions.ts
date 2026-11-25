@@ -6,7 +6,6 @@ import {
   clearCoverPhoto,
   guestInput,
   importGuestList,
-  pastedGuests,
   type GuestImportResult,
   removeAestheticPhoto as dropPhoto,
   replaceCoverPhoto,
@@ -187,12 +186,6 @@ export async function removeAestheticPhoto(formData: FormData): Promise<void> {
 export async function addGuest(formData: FormData): Promise<void> {
   const coupleId = await requireCoupleId();
   await portal.addGuests(coupleId, [guestInput(formData)]).catch(() => undefined);
-  revalidatePath("/", "layout");
-}
-
-export async function addGuestList(formData: FormData): Promise<void> {
-  const coupleId = await requireCoupleId();
-  await portal.addGuests(coupleId, pastedGuests(formData)).catch(() => undefined);
   revalidatePath("/", "layout");
 }
 

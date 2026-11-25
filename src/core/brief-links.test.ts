@@ -14,9 +14,9 @@ const music: Music = {
 
 describe("brief links to Música and Estética", () => {
   it("shows the DJ every moment with a song, by group, and each show only its own group", () => {
-    const dj = linkedSongs("dj", music);
+    const dj = linkedSongs("dj", music) ?? [];
     expect(dj.flatMap((g) => g.songs.map((s) => [g.group, s.song, s.status]))).toEqual([["Ceremonia", "Canon — Pachelbel", "chosen"]]);
-    expect(linkedSongs("show-ceremonia", music).map((g) => g.group)).toEqual(["Ceremonia"]);
+    expect(linkedSongs("show-ceremonia", music)?.map((g) => g.group)).toEqual(["Ceremonia"]);
     expect(linkedSongs("show-fiesta", music)).toEqual([]);
     expect(linkedSongs("catering", music)).toBeNull();
   });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Guest } from "./couple";
-import { guestDisplayName, guestSummary, parseGuestNames, sortGuests } from "./guests";
+import { guestDisplayName, guestSummary, sortGuests } from "./guests";
 
 const guest = (over: Partial<Guest>): Guest => ({ id: "x", name: "N", group: "", status: "pending", table: "", restriction: "", ...over });
 
@@ -94,14 +94,3 @@ describe("guest names", () => {
   });
 });
 
-describe("pasted guest names", () => {
-  it("takes one name per line, trimming and skipping blank lines and list bullets", () => {
-    expect(parseGuestNames("  Ana Pérez \n\n- Juan\r\n• Sofi\n2. Tomás\n   ")).toEqual(["Ana Pérez", "Juan", "Sofi", "Tomás"]);
-  });
-
-  it("caps each name and the number of lines", () => {
-    const names = parseGuestNames(Array.from({ length: 600 }, (_, i) => `G${i}`).join("\n") + "\n" + "x".repeat(300));
-    expect(names).toHaveLength(500);
-    expect(parseGuestNames("y".repeat(300))[0]).toHaveLength(120);
-  });
-});

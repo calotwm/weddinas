@@ -1,8 +1,8 @@
 import "server-only";
 import type { GuestAge, GuestStatus } from "@/core/couple";
 import { GUEST_IMPORT_LIMITS, GuestImportError, parseGuestFile } from "@/core/guest-import";
-import { GUEST_AGES, GUEST_STATUSES, MAX_GUEST_NOTES, MAX_GUESTS, parseGuestNames } from "@/core/guests";
-import { MAX_AESTHETIC_PHOTOS, MAX_STATIONERY, type AestheticInput, type GuestInput, type NewGuestInput, type TimingInput } from "@/core/portal-service";
+import { GUEST_AGES, GUEST_STATUSES, MAX_GUEST_NOTES, MAX_GUESTS } from "@/core/guests";
+import { MAX_AESTHETIC_PHOTOS, MAX_STATIONERY, type AestheticInput, type GuestInput, type TimingInput } from "@/core/portal-service";
 import { MAX_IMAGE_BYTES } from "@/core/uploads";
 import { files, portal } from "@/server/container";
 import { megabytes, UPLOAD_REQUEST_MAX_BYTES } from "@/core/upload-limits";
@@ -163,8 +163,3 @@ export async function importGuestList(coupleId: string, formData: FormData): Pro
   }
 }
 
-/** The bulk paste box: one name per line, all in the same group. */
-export function pastedGuests(formData: FormData): NewGuestInput[] {
-  const group = text(formData, "group", 80);
-  return parseGuestNames(String(formData.get("names") ?? "").slice(0, 60_000)).map((name) => ({ name, group }));
-}
