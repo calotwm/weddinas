@@ -116,6 +116,16 @@ describe("isFullyPaid", () => {
     expect(isFullyPaid(item({}), null)).toBe(false);
     expect(isFullyPaid(item({ payments: [{ id: "p", date: "2026-06-10", amount: 1000, currency: "ARS", arsPerUsd: null, kind: "saldo", note: "" }] }), null)).toBe(true);
   });
+
+  it("keeps a paid proposal up while its separate viáticos are not marked paid", () => {
+    const paid = [{ id: "p", date: "2026-06-10", amount: 1000, currency: "ARS" as const, arsPerUsd: null, kind: "saldo" as const, note: "" }];
+    const owing = item({ id: "v", payments: paid, freight: "no" });
+    expect(isFullyPaid(owing, null)).toBe(false);
+    expect(isFullyPaid({ ...owing, freightPaid: true }, null)).toBe(true);
+    expect(isFullyPaid(item({ payments: paid, freight: "yes" }), null)).toBe(true);
+    expect(splitPaid([owing, item({ id: "x", payments: paid })], null).owing.map((i) => i.id)).toEqual(["v"]);
+    expect(briefPaymentLabel([owing], "catering", null, (n) => `$${n}`)).toBe("Pagado $1000 de $1000 · faltan viáticos");
+  });
 });
 
 describe("paidLast", () => {

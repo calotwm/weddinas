@@ -146,6 +146,10 @@ export function BudgetItemForm({
             <option value="yes">{FREIGHT_LABEL.yes}</option>
             <option value="no">{FREIGHT_LABEL.no}</option>
           </select>
+          <label className="mt-2 flex items-center gap-2 text-sm text-ink/80">
+            <input type="checkbox" name="freightPaid" defaultChecked={item?.freightPaid ?? false} />
+            Viáticos pagos (si no están incluidos)
+          </label>
         </div>
         {itemTracksConfirmedGuests({ category, extraCategories: extras }) && (
           <div>

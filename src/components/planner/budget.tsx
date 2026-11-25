@@ -294,6 +294,7 @@ export function BudgetItemCard({
       )}
       <p className="text-sm text-ink/70">
         <span className="font-semibold text-forest">Flete/Viáticos:</span> {FREIGHT_LABEL[item.freight ?? "unknown"]}
+        {item.freight === "no" && (item.freightPaid ? " · pagos" : <span className="font-medium text-rust"> · faltan pagar</span>)}
       </p>
       {item.confirmedGuests !== undefined && (
         <p className="flex items-center gap-2 text-sm text-ink/70">

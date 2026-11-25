@@ -164,6 +164,15 @@ describe("planner workspace", () => {
       await expect(service.addBudgetItem(coupleId, { ...base, freight: "maybe" as never })).rejects.toThrow("freight");
     });
 
+    it("stores viáticos as paid only while they are charged apart", async () => {
+      const item = await service.addBudgetItem(coupleId, { ...base, freight: "no", freightPaid: true });
+      expect((await load()).budget.items[0].freightPaid).toBe(true);
+      await service.updateBudgetItem(coupleId, item.id, { ...base, freight: "yes", freightPaid: true });
+      expect((await load()).budget.items[0].freightPaid).toBeUndefined();
+      await service.updateBudgetItem(coupleId, item.id, { ...base, freight: "no" });
+      expect((await load()).budget.items[0].freightPaid).toBeUndefined();
+    });
+
     it("attaches a receipt file to a payment and returns the files to delete", async () => {
       const item = await service.addBudgetItem(coupleId, base);
       const payment = await service.addPayment(coupleId, item.id, { date: "2026-10-30", amount: 100, currency: "ARS", arsPerUsd: null, kind: "sena", note: "", receiptId: "a1b2c3d4-0000-4000-8000-000000000001.pdf" });

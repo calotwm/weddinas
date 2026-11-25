@@ -122,7 +122,10 @@ export function summarizeBudget(items: BudgetItem[], ipc: IpcSeries | null, arsP
   };
 }
 
-export const isFullyPaid = (item: BudgetItem, ipc: IpcSeries | null) => summarizeItem(item, ipc).pending <= 0;
+/** Viáticos charged apart from the price (freight "no") that nobody marked as paid yet. */
+export const owesFreight = (item: Pick<BudgetItem, "freight" | "freightPaid">) => item.freight === "no" && !item.freightPaid;
+
+export const isFullyPaid = (item: BudgetItem, ipc: IpcSeries | null) => summarizeItem(item, ipc).pending <= 0 && !owesFreight(item);
 
 /** Items still being paid first, fully paid ones last; each group keeps its order. */
 export const paidLast = (items: BudgetItem[], ipc: IpcSeries | null) =>
@@ -162,7 +165,9 @@ export function briefPaymentLabel(
     const t = totals.get(item.currency) ?? { paid: 0, total: 0 };
     totals.set(item.currency, { paid: round2(t.paid + s.paid), total: round2(t.total + s.total) });
   }
-  return [...totals].map(([currency, t]) => `Pagado ${format(t.paid, currency)} de ${format(t.total, currency)}`).join(" · ");
+  const lines = [...totals].map(([currency, t]) => `Pagado ${format(t.paid, currency)} de ${format(t.total, currency)}`);
+  if (own.some(owesFreight)) lines.push("faltan viáticos");
+  return lines.join(" · ");
 }
 
 export const NO_PAYMENTS_LABEL = "Sin pagos cargados";

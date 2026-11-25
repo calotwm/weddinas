@@ -59,6 +59,7 @@ function budgetItemInput(formData: FormData): BudgetItemInput {
     note: text(formData, "note", 500),
     dueDate: text(formData, "dueDate", 10),
     freight: ["yes", "no"].includes(text(formData, "freight", 3)) ? (text(formData, "freight", 3) as "yes" | "no") : undefined,
+    freightPaid: formData.get("freightPaid") === "on",
     // Empty clears it; anything else must be a positive whole number (the service validates it and its rubro).
     confirmedGuests: text(formData, "confirmedGuests", 10) ? Number(text(formData, "confirmedGuests", 10)) : undefined,
   };

@@ -312,6 +312,8 @@ function cleanBudgetItem(input: BudgetItemInput): BudgetItemInput {
     note: input.note.trim(),
     dueDate,
     freight: input.freight,
+    // Only meaningful while viáticos are charged apart.
+    freightPaid: input.freight === "no" && input.freightPaid === true ? true : undefined,
     confirmedGuests,
   };
 }
