@@ -65,17 +65,18 @@ Integraciones (PDF)
 
 ## Tasks
 
-- [ ] T1 S22-S25,S27-S35 brief + portal — delegated (parallel writer, worktree)
-- [ ] T2 S5-S10 music + estética — delegated (parallel writer, worktree)
-- [ ] T3 S13-S20 guests — delegated (parallel writer, worktree)
-- [ ] T4 S2 budget viáticos — inline
-- [ ] T5 S3 sliding session — inline (Risk: item 2)
-- [ ] T6 S11-S12 timing — inline
-- [ ] T7 S4 autosave rest — inline after T1-T3
-- [ ] T8 S37-S38 integrations — inline after T1-T2
+- [x] T1 S22-S25,S27-S35 brief + portal — delegated (parallel writer, worktree) · b9e51b8, 5549c2f
+- [x] T2 S5-S10 music + estética — delegated (parallel writer, worktree) · 6c1ff16, ac634c4
+- [x] T3 S13-S20 guests — delegated (parallel writer, worktree) · 8d5fcbc, 0049923
+- [x] T4 S2 budget viáticos — inline · 499bec5
+- [x] T5 S3 sliding session — inline (Risk: item 2) · 4b17ec8
+- [x] T6 S11-S12 timing — inline · 09477e9
+- [~] T7 S4 autosave — timing rows, web options, budget dollar/guests (a5054b4, ab95607); guests rows (T2/T3); estética (T2). Still with a button: budget item edit, timing sheet link, proposals, welcome message, WhatsApp, portal family/public page.
+- [x] T8 S37-S38 integrations — inline (assumption: show-intervención ↔ Comidas, show-fiesta ↔ Fiesta) · ab95607
 - [ ] T9 S1, S21, S26, S36 — pending decision
 
 ## Log
 
 - L1 (2026-11-25) User: "buenas hay que suamr cosas," + pasted WhatsApp list (Pagos, Generica, Musica, General, Estetica, Timing, Invitados) + "C:\Users\cseifar\Downloads\Cambios Web - Portal Weddinas.pdf" (quoted in Specs).
 - L2 Route: three independent units with disjoint surfaces (brief, music/estética, guests) go to parallel writers in worktrees; the rest inline.
+- L3 Merged T1-T3 cleanly; seam check: vitest 49 files / 443 tests, tsc and eslint clean.
