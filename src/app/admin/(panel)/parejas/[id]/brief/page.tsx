@@ -4,6 +4,7 @@ import { StatusChip } from "@/components/planner/brief";
 import { LineStateLegend } from "@/components/planner/line-state";
 import { SubmitButton } from "@/components/submit-button";
 import { BRIEF_CATALOG } from "@/core/brief-catalog";
+import { briefSearchText } from "@/core/brief-search";
 import { briefPaymentDetail, rubroReceipts } from "@/core/budget";
 import { ReceiptLinks } from "@/components/planner/budget";
 import { formatMoney } from "@/lib/format";
@@ -13,6 +14,7 @@ import { loadRates } from "@/server/rates";
 import { AdminAttachments } from "@/app/admin/admin-attachments";
 import { addBriefBlock, removeBriefBlock } from "@/app/admin/planner-actions";
 import { BriefLinks } from "@/components/planner/brief-links";
+import { BriefSearch } from "./brief-search";
 import { BriefBlockForm, CustomBlockForm, IdeasForm } from "./forms";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +43,8 @@ export default async function BriefAdminPage({ params }: { params: Promise<{ id:
         </div>
       </div>
 
+      <BriefSearch />
+
       <section className="card space-y-3">
         <h3 className="section-title">Ideas generales</h3>
         <IdeasForm coupleId={couple.id} ideas={couple.ideas} />
@@ -68,7 +72,7 @@ export default async function BriefAdminPage({ params }: { params: Promise<{ id:
             {group.kind === "vendor" && <CustomBlockForm coupleId={couple.id} />}
           </div>
           {group.blocks.map((block) => (
-            <details key={block.key} className="card group !p-0">
+            <details key={block.key} data-brief-search={briefSearchText(block)} className="card group !p-0">
               <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 px-6 py-5">
                 <Icon name="arrowRight" className="h-4 w-4 text-teal transition-transform group-open:rotate-90" />
                 <span className="font-display text-2xl text-forest">{block.name}</span>
