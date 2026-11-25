@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { noteLines } from "./notes";
+import { noteLines, noteSegments } from "./notes";
 
 describe("noteLines", () => {
   it("turns each line into an item, dropping the dash people type", () => {
@@ -21,5 +21,24 @@ describe("noteLines", () => {
   it("keeps a single line as one item", () => {
     expect(noteLines("  30%  ")).toEqual([{ kind: "item", text: "30%" }]);
     expect(noteLines("")).toEqual([]);
+  });
+});
+
+describe("noteSegments", () => {
+  it("bolds Fríos and Calientes at the start of a line, with or without a colon", () => {
+    expect(noteSegments("Fríos: tartaletas")).toEqual([{ text: "Fríos:", bold: true }, { text: " tartaletas" }]);
+    expect(noteSegments("calientes empanadas")).toEqual([{ text: "calientes", bold: true }, { text: " empanadas" }]);
+    expect(noteSegments("Bocaditos fríos")).toEqual([{ text: "Bocaditos fríos" }]);
+  });
+
+  it("turns web addresses into links, leaving trailing punctuation out", () => {
+    expect(noteSegments("Web: https://ana-y-fran.com/rsvp, y www.canva.com.")).toEqual([
+      { text: "Web: " },
+      { text: "https://ana-y-fran.com/rsvp", href: "https://ana-y-fran.com/rsvp" },
+      { text: ", y " },
+      { text: "www.canva.com", href: "https://www.canva.com" },
+      { text: "." },
+    ]);
+    expect(noteSegments("")).toEqual([]);
   });
 });

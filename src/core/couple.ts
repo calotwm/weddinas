@@ -143,7 +143,13 @@ export interface Budget {
   items: BudgetItem[];
 }
 
+/** "searching" ("En búsqueda") is retired: only older data and imports still carry it, and it reads as "deciding". */
 export type BlockStatus = "searching" | "deciding" | "confirmed" | "na";
+
+/** The statuses the team can pick for a brief block. */
+export type OfferedBlockStatus = Exclude<BlockStatus, "searching">;
+
+export const normalizeBlockStatus = (status: BlockStatus): OfferedBlockStatus => (status === "searching" ? "deciding" : status);
 
 /** Who a brief line is waiting on, as the agency colors it: violet, yellow, orange, green. */
 export type LineState = "weddinas" | "couple" | "vendor" | "confirmed";

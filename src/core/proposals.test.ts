@@ -80,7 +80,7 @@ describe("proposals: rubro, comments, views and vendor notifications", () => {
     it("does not confirm the brief when the proposal is rejected", async () => {
       const p = await service.addProposal(coupleId, { title: "Foto", description: "", category: "foto" });
       await service.respondToProposal(coupleId, p.id, "rejected", "");
-      expect((await block("foto"))?.status).toBe("searching");
+      expect((await block("foto"))?.status).toBe("deciding");
     });
 
     it("the couple cannot answer a discarded proposal", async () => {

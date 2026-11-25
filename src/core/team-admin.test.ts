@@ -27,7 +27,7 @@ describe("team admin: custom rubros and proposal edits", () => {
       expect(key).toBe("custom-fuegos-artificiales");
       const brief = (await load()).brief;
       const block = brief.find((b) => b.key === key)!;
-      expect(block).toMatchObject({ name: "Fuegos artificiales", kind: "vendor", vendor: "", status: "searching" });
+      expect(block).toMatchObject({ name: "Fuegos artificiales", kind: "vendor", vendor: "", status: "deciding" });
       expect(block.fields.map((f) => f.label)).toEqual([...VENDOR_COMMON_FIELDS, TEAM_FIELD]);
       expect(brief.at(-1)!.key).toBe(key);
 
