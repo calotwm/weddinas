@@ -216,6 +216,8 @@ export interface BriefBlock {
   fields: BriefField[];
   /** Catalog (or "Equipo") rows the team removed, so loading does not bring them back. Missing until one is removed. */
   removedFields?: string[];
+  /** Catalog template version this block was last reshaped to (brief-catalog TEMPLATE_VERSION). Missing on older data. */
+  templateVersion?: number;
   attachments?: Attachment[];
   /** When the block last became "confirmed"; drives the couple's vendor notification. Unset while not confirmed. */
   confirmedAt?: string | null;

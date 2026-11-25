@@ -34,40 +34,46 @@ const vendor = (fields: string[]) => [
   ...new Set([...VENDOR_COMMON_FIELDS, ...fields.map((f) => RENAMED_FIELDS[f] ?? f)]),
 ];
 
-/** Sections of Weddinas' Excel brief ("INTERNO - Brief"), with their field labels. */
+/**
+ * Sections of Weddinas' Excel brief ("INTERNO - Brief"), with their field labels. The rubros the team shaped in the
+ * "Agus y Ventu" brief use exactly its rows and order (TEMPLATE_VERSION); the rest keep the common vendor rows.
+ */
 export const BRIEF_CATALOG: CatalogBlock[] = [
-  { key: "evento", name: "Información del evento", kind: "event", core: true, fields: ["Fecha", "Hora", "Lugar", "Cantidad de invitados", "Tipo de boda", "Previa ella", "Previa él"] },
-  { key: "invitaciones", name: "Invitaciones", kind: "event", core: true, fields: ["Save the Date", "Invitación digital"] },
-  { key: "civil", name: "Civil", kind: "event", core: true, fields: ["Fecha", "Horario", "Registro civil", "Tirada civil", "Post civil", "Previa"] },
-  { key: "ceremonia", name: "Ceremonia", kind: "event", core: true, fields: ["Oficia", "Música", "Reservados", "Damas de honor", "Caballeros de honor", "Testigos", "Votos", "Discursos", "Entrada novio", "Cortejo", "Entrada novia", "Anillos"] },
-  { key: "espacio", name: "Espacio", kind: "vendor", core: true, fields: vendor(["Mobiliario", "Impuestos musicales", "Canon"]) },
+  { key: "evento", name: "Información del evento", kind: "event", core: true, fields: ["Fecha",  "Hora",  "Lugar",  "Cantidad de invitados",  "Tipo de boda",  "Previa ella",  "Previa él"] },
+  { key: "invitaciones", name: "Invitaciones", kind: "event", core: true, fields: ["Save the Date",  "Invitación digital"] },
+  { key: "civil", name: "Civil", kind: "event", core: true, fields: ["Fecha",  "Horario",  "Registro civil",  "Tirada civil",  "Post civil",  "Previa"] },
+  { key: "ceremonia", name: "Ceremonia", kind: "event", core: true, fields: ["Música",  "Reservados",  "Damas de honor",  "Caballeros de honor",  "Testigos",  "Votos",  "Discursos",  "Entrada novio",  "Cortejo",  "Entrada novia",  "Anillos",  "Tirada"] },
+  { key: "espacio", name: "Espacio", kind: "vendor", core: true, fields: ["Pago",  "Cantidad de horas",  "Cantidad de personas confirmadas",  "Servicio",  "Fletes",  "Depósito de garantía",  "Impuestos musicales",  "Canon",  "Detalle del servicio",  "Mobiliario",  "Adicionales"] },
   { key: "ceremonia-proveedor", name: "Ceremonia", kind: "vendor", core: true, fields: vendor(["Oficiante", "Horario servicio", "Horario llegada", "Requerimientos"]) },
-  { key: "catering", name: "Catering", kind: "vendor", core: true, fields: vendor(["Recepción", "Bocaditos fríos y calientes", "Islas", "Plato principal", "Postre", "Mesa dulce", "Torta de bodas", "Café", "Fin de fiesta gastronómico", "Mantelería", "Vinos y champagne", "Adicionales", "Aclaraciones", "Vianda proveedores", "Degustación", "Precoctel", "Menú celíaco", "Menú niños", "Menú vegetariano"]) },
-  { key: "barra", name: "Barra de tragos", kind: "vendor", core: true, fields: vendor(["Pago", "Degustación", "Precoctel", "Servicio", "Pax confirmados", "Tragos de autor", "Tragos clásicos", "Etiquetas", "Personal", "Cervezas", "Módulos recepción", "Módulos fiesta"]) },
-  { key: "dj", name: "DJ y técnica", kind: "vendor", core: true, fields: vendor(["Pago", "DJ", "Reunión musical", "Ceremonia", "Recepción", "Salón principal", "Pista de baile", "Efectos", "Requerimientos proveedores", "Requerimiento show", "Grupo electrógeno", "Visuales"]) },
-  { key: "ambientacion", name: "Ambientación", kind: "vendor", core: true, fields: vendor(["Pago", "Depósito", "Fletes", "Paleta de colores / flores", "Sector de ingreso", "Ceremonia", "Recepción", "Sector principal", "Adicionales", "Plan A", "Plan B"]) },
-  { key: "foto", name: "Foto", kind: "vendor", core: true, fields: vendor(["Pago", "Viáticos", "Cobertura", "Civil", "Preboda", "Post boda", "Horario llegada", "Fotos infaltables", "Entrega"]) },
-  { key: "video", name: "Video", kind: "vendor", core: true, fields: vendor(["Pago", "Viáticos", "Cobertura", "Civil", "Racconto", "Horario llegada", "Entrega"]) },
-  { key: "show-ceremonia", name: "Show ceremonia", kind: "vendor", fields: vendor(["Pago", "Viáticos", "Servicio", "Horario servicio", "Horario llegada", "Canciones elegidas", "Repertorio", "Rider", "Requerimientos"]) },
-  { key: "show-intervencion", name: "Show intervención", kind: "vendor", fields: vendor(["Pago", "Viáticos", "Servicio", "Horario servicio", "Horario llegada", "Repertorio", "Rider", "Requerimientos"]) },
-  { key: "show-fiesta", name: "Show fiesta", kind: "vendor", fields: vendor(["Pago", "Servicio", "Horario servicio", "Cantidad de personas", "Requerimientos"]) },
-  { key: "fotoiman", name: "Fotoimán / cabina", kind: "vendor", fields: vendor(["Pago", "Viáticos", "Servicio", "Cantidad de horas", "Horario servicio", "Horario llegada", "Diseño tirita", "Requerimientos"]) },
+  { key: "catering", name: "Catering", kind: "vendor", core: true, fields: ["Pago",  "Servicio",  "Cantidad de horas",  "Cantidad de personas confirmadas",  "Fletes",  "Depósito de garantía",  "Degustación",  "Precoctel",  "Recepción",  "Islas",  "Plato principal",  "Menú niños",  "Menú vegetariano",  "Menú celíaco",  "Postre",  "Mesa dulce",  "Torta de bodas",  "Café",  "Fin de fiesta gastronómico",  "Mantelería",  "Vinos y champagne",  "Adicionales",  "Aclaraciones",  "Vianda proveedores"] },
+  { key: "barra", name: "Barra de tragos", kind: "vendor", core: true, fields: ["Pago",  "Servicio",  "Cantidad de horas",  "Cantidad de personas confirmadas",  "Fletes",  "Depósito de garantía",  "Degustación",  "Precoctel",  "Trago de la novia",  "Trago del novio",  "Tragos de autor",  "Tragos clásicos",  "Etiquetas",  "Personal",  "Cervezas",  "Cervezas sin alcohol",  "Módulos recepción",  "Módulos fiesta",  "Esquinero",  "Adicionales",  "Aclaraciones"] },
+  { key: "dj", name: "DJ y técnica", kind: "vendor", core: true, fields: ["Pago",  "Cantidad de horas",  "Fletes",  "Depósito de garantía",  "DJ",  "Reunión musical",  "Ceremonia",  "Recepción",  "Salón principal",  "Pista de baile",  "Sector dj",  "Efectos",  "Requerimientos proveedores",  "Visuales",  "Grupo electrógeno",  "Aclaraciones"] },
+  { key: "ambientacion", name: "Ambientación", kind: "vendor", core: true, fields: ["Pago",  "Cantidad de personas confirmadas",  "Fletes",  "Depósito de garantía",  "Paleta de colores / flores",  "Sector de ingreso",  "Ceremonia",  "Recepción",  "Sector principal",  "Adicionales",  "Aclaraciones",  "Plan A",  "Plan B"] },
+  { key: "foto", name: "Foto", kind: "vendor", core: true, fields: ["Pago",  "Cantidad de horas",  "Viáticos",  "Cobertura",  "Civil",  "Preboda",  "Post boda",  "Horario llegada",  "Fotos infaltables",  "Entrega",  "Adicionales"] },
+  { key: "video", name: "Video", kind: "vendor", core: true, fields: ["Pago",  "Cantidad de horas",  "Viáticos",  "Cobertura",  "Civil",  "Racconto",  "Horario llegada",  "Entrega",  "Aclaraciones"] },
+  { key: "show-ceremonia", name: "Show ceremonia", kind: "vendor", fields: ["Pago",  "Servicio",  "Viáticos",  "Horario llegada",  "Horario servicio",  "Canciones elegidas",  "Repertorio",  "Rider",  "Requerimientos"] },
+  { key: "show-intervencion", name: "Show intervención", kind: "vendor", fields: ["Pago",  "Servicio",  "Viáticos",  "Horario llegada",  "Horario servicio",  "Canciones elegidas",  "Repertorio",  "Rider",  "Requerimientos"] },
+  { key: "show-fiesta", name: "Show fiesta", kind: "vendor", fields: ["Pago",  "Servicio",  "Horario llegada",  "Horario servicio",  "Canciones elegidas",  "Repertorio",  "Requerimientos"] },
+  { key: "fotoiman", name: "Fotoimán / cabina", kind: "vendor", fields: ["Pago",  "Servicio",  "Cantidad de horas",  "Viáticos",  "Horario llegada",  "Horario servicio",  "Diseño tirita",  "Requerimientos"] },
   { key: "arte-en-vivo", name: "Arte en vivo", kind: "vendor", fields: vendor(["Pago", "Viáticos", "Servicio", "Cantidad de horas", "Horario servicio", "Requerimientos"]) },
-  { key: "papeleria", name: "Papelería y detalles", kind: "vendor", fields: vendor(["Pago", "Retiro", "Diseños", "Tirada civil", "Tirada ceremonia", "Reservados ceremonia", "Seating plan", "Menús", "Números de mesa", "Cartas de tragos", "Kits de baño"]) },
-  { key: "cotillon", name: "Cotillón", kind: "vendor", fields: vendor(["Pago", "Envío", "Novia", "Novio", "Especiales", "Entrada a la pista", "Extras"]) },
-  { key: "souvenir", name: "Souvenir", kind: "vendor", fields: vendor(["Pago", "Envío", "Producto", "Requerimientos"]) },
-  { key: "ramo", name: "Ramo y boutonniere", kind: "vendor", fields: vendor(["Pago", "Envío / dirección", "Civil", "Ceremonia", "Boutonniere", "Tirada"]) },
-  { key: "maquillaje", name: "Maquillaje y peinado", kind: "vendor", fields: vendor(["Pago", "Viáticos", "Novia", "Acompañantes", "Prueba", "Civil", "Horario ceremonia"]) },
-  { key: "look-novia", name: "Look novia", kind: "vendor", fields: vendor(["Vestido", "Zapatos", "Accesorios", "Segundo vestido", "Look civil"]) },
-  { key: "look-novio", name: "Look novio", kind: "vendor", fields: vendor(["Traje", "Zapatos", "Accesorios"]) },
+  { key: "papeleria", name: "Papelería y detalles", kind: "vendor", fields: ["Pago",  "Retiro",  "Diseños",  "Tirada civil",  "Tirada ceremonia",  "Reservados ceremonia",  "Seating plan",  "Menús",  "Números de mesa",  "Cartas de tragos",  "Kits de baño"] },
+  { key: "cotillon", name: "Cotillón", kind: "vendor", fields: ["Pago",  "Temática",  "Envío",  "Novia",  "Novio",  "Especiales",  "Entrada a la pista",  "Cabeza",  "Anteojos",  "Extras"] },
+  { key: "souvenir", name: "Souvenir", kind: "vendor", fields: ["Pago",  "Envío",  "Producto"] },
+  { key: "ramo", name: "Ramo y boutonniere", kind: "vendor", fields: ["Pago",  "Envío / dirección",  "Civil",  "Ceremonia",  "Boutonniere",  "Tirada"] },
+  { key: "maquillaje", name: "Maquillaje y peinado", kind: "vendor", fields: ["Pago",  "Viáticos",  "Novia",  "Acompañantes",  "Prueba",  "Civil",  "Lugar civil",  "Horarios civil",  "Horario ceremonia",  "Lugar ceremonia"] },
+  { key: "look-novia", name: "Look novia", kind: "vendor", fields: ["Pago",  "Cantidad de horas",  "Cantidad de personas confirmadas",  "Servicio",  "Fletes",  "Depósito de garantía",  "Detalle del servicio",  "Vestido",  "Zapatos",  "Accesorios",  "Segundo vestido",  "Look civil"] },
+  { key: "look-novio", name: "Look novio", kind: "vendor", fields: ["Pago",  "Cantidad de horas",  "Cantidad de personas confirmadas",  "Servicio",  "Fletes",  "Depósito de garantía",  "Detalle del servicio",  "Traje",  "Zapatos",  "Accesorios"] },
   { key: "alianzas", name: "Alianzas", kind: "vendor", fields: vendor(["Pago", "Envío"]) },
-  { key: "combis", name: "Autos y Combis", kind: "vendor", fields: vendor(["Pago", "Recorrido", "Cantidad de pasajeros", "Lugar salida", "Horario salida", "Lugar destino", "Horario destino"]) },
+  { key: "combis", name: "Autos y Combis", kind: "vendor", fields: ["Pago",  "Servicio"] },
   { key: "auto", name: "Auto", kind: "vendor", fields: vendor(["Pago", "Recorrido", "Lugar salida", "Horario salida", "Lugar destino", "Horario destino"]) },
   { key: "torta", name: "Torta", kind: "vendor", fields: vendor(["Pago", "Diseño", "Sabores", "Retiro"]) },
-  { key: "glitter", name: "Glitter / tatuajes", kind: "vendor", fields: vendor(["Pago", "Tatuajes incluidos", "Horario servicio"]) },
-  { key: "juegos", name: "Juegos", kind: "vendor", fields: vendor(["Pago", "Retiro"]) },
+  { key: "glitter", name: "Glitter / tatuajes", kind: "vendor", fields: ["Pago",  "Servicio",  "Diseño tatuajes",  "Horario llegada",  "Horario servicio"] },
+  { key: "juegos", name: "Juegos", kind: "vendor", fields: ["Pago",  "Servicio",  "Fletes",  "Horario llegada",  "Horario servicio"] },
   { key: "noche-de-bodas", name: "Noche de bodas / hospedaje", kind: "vendor", fields: vendor(["Pago", "Paquete", "Check in", "Check out"]) },
 ];
+
+/** Bump when the catalog rows change so every stored brief is reshaped to them once (see withCatalogFields). */
+export const TEMPLATE_VERSION = 1;
 
 export const catalogBlock = (key: string) => BRIEF_CATALOG.find((b) => b.key === key);
 
@@ -106,6 +112,7 @@ export function newBriefBlock(entry: CatalogBlock): BriefBlock {
     status: "deciding",
     owner: "",
     fields: entry.fields.map((label) => ({ label, detail: "", note: "" })),
+    templateVersion: TEMPLATE_VERSION,
   };
 }
 
@@ -174,6 +181,25 @@ function dropRetiredFields(block: BriefBlock): void {
  * keep their detail, and required rows it lacks are added at the end. The stored order is kept (the team reorders
  * rows) and rows the team removed stay out.
  */
+/**
+ * Once per TEMPLATE_VERSION, a catalog block takes the template's rows in its order: rows it already had keep their
+ * text, rows outside the template stay (after it) only when something is written in them, and earlier removals reset.
+ * After that the team's own order and removals are kept as usual.
+ */
+function reshapeToTemplate(block: BriefBlock, required: string[]) {
+  const pool = [...block.fields];
+  const take = (label: string) => {
+    const i = pool.findIndex((f) => f.label === label);
+    return i === -1 ? { label, detail: "", note: "" } : pool.splice(i, 1)[0];
+  };
+  const team = required.includes(TEAM_FIELD) ? take(TEAM_FIELD) : null;
+  const rows = required.filter((label) => label !== TEAM_FIELD).map(take);
+  const written = pool.filter((f) => f.detail.trim() || f.note.trim() || f.state);
+  block.fields = [...rows, ...written, ...(team ? [team] : [])];
+  block.removedFields = undefined;
+  block.templateVersion = TEMPLATE_VERSION;
+}
+
 export function withCatalogFields(block: BriefBlock): BriefBlock {
   const current = catalogBlock(block.key)?.name;
   if (current && RENAMED_BLOCKS[block.key]?.includes(block.name)) block.name = current;
@@ -182,6 +208,7 @@ export function withCatalogFields(block: BriefBlock): BriefBlock {
   const required = requiredFields(block);
   if (required.length === 0) return block;
   block.fields = block.fields.map((f) => ({ ...f, label: RENAMED_FIELDS[f.label] ?? f.label }));
+  if ((block.templateVersion ?? 0) < TEMPLATE_VERSION) reshapeToTemplate(block, required);
   const have = new Set(block.fields.map((f) => f.label));
   const removed = new Set(block.removedFields ?? []);
   const missing = required.filter((label) => !have.has(label) && !removed.has(label));

@@ -75,17 +75,17 @@ describe("brief, client feedback phase 8", () => {
     await storeRaw((c) => {
       for (const b of c.brief!) {
         if (b.kind !== "vendor") continue;
-        b.fields.push({ label: "Contrato", detail: b.key === "foto" ? "Firmado el 3/5" : "", note: "" });
+        b.fields.push({ label: "Contrato", detail: b.key === "espacio" ? "Firmado el 3/5" : "", note: "" });
       }
-      const foto = c.brief!.find((b) => b.key === "foto")!;
+      const foto = c.brief!.find((b) => b.key === "espacio")!;
       foto.fields.find((f) => f.label === "Detalle del servicio")!.detail = "Cobertura completa";
     });
     for (const b of (await load()).brief) expect(labels(b)).not.toContain("Contrato");
-    expect((await block("foto")).fields.find((f) => f.label === "Detalle del servicio")?.detail).toBe("Cobertura completa\nContrato: Firmado el 3/5");
+    expect((await block("espacio")).fields.find((f) => f.label === "Detalle del servicio")?.detail).toBe("Cobertura completa\nContrato: Firmado el 3/5");
     expect(labels(await block(key))).not.toContain("Contrato");
     // The catalog does not bring it back on later loads either.
-    await save(await block("foto"));
-    expect(labels(await block("foto"))).not.toContain("Contrato");
+    await save(await block("espacio"));
+    expect(labels(await block("espacio"))).not.toContain("Contrato");
   });
 
   it("S28: drops En búsqueda; stored and new vendor blocks read as Para decidir", async () => {
