@@ -11,5 +11,6 @@ export const getCurrentCouple = cache(async () => {
     await endSession();
     redirect("/");
   }
-  return couple;
+  // The team's comments are internal: they never reach the couple's pages.
+  return { ...couple, teamComments: [] };
 });

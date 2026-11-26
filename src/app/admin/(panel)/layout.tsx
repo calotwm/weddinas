@@ -2,6 +2,7 @@ import Link from "next/link";
 import { TopBar } from "@/components/brand";
 import { Icon } from "@/components/icons";
 import { MadeBy } from "@/components/made-by";
+import { MentionBell } from "@/components/mention-bell";
 import { SessionKeepAlive } from "@/components/session-keepalive";
 import { currentTeamUser, requireAdmin } from "@/server/auth";
 import { logout } from "../../actions";
@@ -14,6 +15,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="min-h-screen bg-sand/40">
       <TopBar label="Panel del equipo">
+        {user && <MentionBell />}
         {user && (
           <Link href="/admin/cuenta" className="btn-light btn-sm" aria-label="Mi cuenta">
             <Icon name="key" className="h-3.5 w-3.5" />

@@ -8,13 +8,15 @@ import { briefSearchText } from "@/core/brief-search";
 import { briefPaymentDetail, rubroReceipts } from "@/core/budget";
 import { ReceiptLinks } from "@/components/planner/budget";
 import { formatMoney } from "@/lib/format";
-import { requireAdmin } from "@/server/auth";
+import { memberName } from "@/core/team-comments";
+import { currentTeamUser, requireAdmin, teamMembers } from "@/server/auth";
 import { portal } from "@/server/container";
 import { loadRates } from "@/server/rates";
 import { AdminAttachments } from "@/app/admin/admin-attachments";
 import { addBriefBlock, removeBriefBlock } from "@/app/admin/planner-actions";
 import { BriefLinks } from "@/components/planner/brief-links";
 import { BriefSearch } from "./brief-search";
+import { BriefComments } from "./comments";
 import { BriefBlockForm, CustomBlockForm, IdeasForm } from "./forms";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +27,9 @@ export default async function BriefAdminPage({ params }: { params: Promise<{ id:
   if (!couple) notFound();
 
   const { ipc } = await loadRates(couple.budget.usdQuote);
+  const me = await currentTeamUser();
+  const members = teamMembers().map((email) => ({ email, name: memberName(email) }));
+  const commentsOf = (key: string) => couple.teamComments.filter((c) => c.blockKey === key);
   const present = new Set(couple.brief.map((b) => b.key));
   const missing = BRIEF_CATALOG.filter((b) => !present.has(b.key));
   const hidden = <input type="hidden" name="coupleId" value={couple.id} />;
@@ -72,12 +77,17 @@ export default async function BriefAdminPage({ params }: { params: Promise<{ id:
             {group.kind === "vendor" && <CustomBlockForm coupleId={couple.id} />}
           </div>
           {group.blocks.map((block) => (
-            <details key={block.key} data-brief-search={briefSearchText(block)} className="card group !p-0">
+            <details key={block.key} id={`rubro-${block.key}`} data-brief-search={briefSearchText(block)} className="card group !p-0">
               <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 px-6 py-5">
                 <Icon name="arrowRight" className="h-4 w-4 text-teal transition-transform group-open:rotate-90" />
                 <span className="font-display text-2xl text-forest">{block.name}</span>
                 {block.vendor && <span className="text-sm text-ink/60">· {block.vendor}</span>}
                 {(block.attachments?.length ?? 0) > 0 && <span className="text-xs text-ink/50">· {block.attachments!.length} archivo{block.attachments!.length === 1 ? "" : "s"}</span>}
+                {commentsOf(block.key).length > 0 && (
+                  <span className="flex items-center gap-1 text-xs text-ink/50">
+                    · <Icon name="chat" className="h-3.5 w-3.5" /> {commentsOf(block.key).length}
+                  </span>
+                )}
                 <span className="ml-auto flex items-center gap-2">
                   {block.owner && <span className="chip bg-white text-ink/60 ring-1 ring-forest/10">{block.owner}</span>}
                   <StatusChip status={block.status} />
@@ -106,6 +116,7 @@ export default async function BriefAdminPage({ params }: { params: Promise<{ id:
                   </div>
                 )}
                 <AdminAttachments coupleId={couple.id} kind="brief" targetId={block.key} attachments={block.attachments} allowInternal />
+                <BriefComments coupleId={couple.id} blockKey={block.key} comments={commentsOf(block.key)} members={members} me={me} />
                 <form action={removeBriefBlock} className="text-right">
                   {hidden}
                   <input type="hidden" name="key" value={block.key} />

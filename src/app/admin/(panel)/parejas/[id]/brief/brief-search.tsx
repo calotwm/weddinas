@@ -13,8 +13,17 @@ export function BriefSearch() {
   const [shown, setShown] = useState<number | null>(null);
   const opened = useRef(new Set<HTMLDetailsElement>());
 
+  // A link to "#rubro-<key>" (from the mentions page) opens that rubro and scrolls to its comments.
   useEffect(() => {
-    const blocks = [...document.querySelectorAll<HTMLDetailsElement>("details[data-brief-search]")];
+    const key = decodeURIComponent(window.location.hash).match(/^#rubro-(.+)$/)?.[1];
+    const el = key ? document.getElementById(`rubro-${key}`) : null;
+    if (!(el instanceof HTMLDetailsElement)) return;
+    el.open = true;
+    (document.getElementById(`comentarios-${key}`) ?? el).scrollIntoView({ block: "center" });
+  }, []);
+
+  useEffect(() => {
+    const blocks =[...document.querySelectorAll<HTMLDetailsElement>("details[data-brief-search]")];
     const searching = query.trim() !== "";
     let count = 0;
     for (const el of blocks) {

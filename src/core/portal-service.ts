@@ -9,6 +9,7 @@ import { cleanWebSelection, webDressCode } from "./web-options";
 import type { AestheticWeb } from "./couple";
 import { itemCategories, itemTracksConfirmedGuests } from "./budget";
 import { correctItem, type BudgetCorrection, type CorrectionResult } from "./budget-corrections";
+import { parseMentions, TEAM_COMMENT_MAX, TeamCommentError } from "./team-comments";
 import { BRIEF_CATALOG, catalogBlock, categoryName, CUSTOM_BLOCK_NAME_MAX, CUSTOM_BLOCK_PREFIX, defaultBrief, defaultMusic, musicMomentKeys, newBriefBlock, newCustomBriefBlock, requiredFields, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
 import {
   emptyPublicInfo,
@@ -22,6 +23,7 @@ import {
   type BriefBlock,
   type BriefField,
   type BudgetItem,
+  type TeamComment,
   type ChecklistTask,
   type CommentAuthor,
   type Couple,
@@ -281,6 +283,7 @@ function withPlannerDefaults(couple: Couple): LoadedCouple {
   couple.rsvpInbox ??= [];
   couple.teamFiles ??= emptyTeamFiles();
   couple.teamFiles.plans = { ...emptyTeamFiles().plans, ...couple.teamFiles.plans };
+  couple.teamComments ??= [];
   couple.brief.forEach(withCatalogFields);
   return couple as LoadedCouple;
 }
@@ -790,6 +793,51 @@ export class PortalService {
       }
       Object.assign(item, clean);
     });
+  }
+
+  /** Adds a team comment on a brief rubro; `@Name` mentions among `members` (team emails) notify them. */
+  async addTeamComment(coupleId: string, blockKey: string, author: string, text: string, members: string[]): Promise<TeamComment> {
+    const clean = text.trim();
+    if (!clean) throw new TeamCommentError("Escribí el comentario.");
+    if (clean.length > TEAM_COMMENT_MAX) throw new TeamCommentError(`El comentario puede tener hasta ${TEAM_COMMENT_MAX} caracteres.`);
+    // A member does not notify themself.
+    const mentions = parseMentions(clean, members).filter((email) => email !== author);
+    const comment: TeamComment = { id: randomUUID(), blockKey, author, text: clean, mentions, at: new Date().toISOString(), seenBy: [], doneBy: [] };
+    await this.mutate(coupleId, (c) => {
+      if (!c.brief.some((b) => b.key === blockKey)) throw new TeamCommentError("Ese rubro ya no está en el brief.");
+      c.teamComments.push(comment);
+    });
+    return comment;
+  }
+
+  async deleteTeamComment(coupleId: string, commentId: string, member: string): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      const comment = c.teamComments.find((m) => m.id === commentId);
+      if (!comment) return;
+      if (comment.author !== member) throw new TeamCommentError("Solo quien escribió el comentario puede borrarlo.");
+      c.teamComments = c.teamComments.filter((m) => m !== comment);
+    });
+  }
+
+  /** Marks (or unmarks) a mention as done for the mentioned member. */
+  async setMentionDone(coupleId: string, commentId: string, member: string, done: boolean): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      const comment = c.teamComments.find((m) => m.id === commentId);
+      if (!comment?.mentions.includes(member)) return;
+      comment.doneBy = comment.doneBy.filter((m) => m !== member);
+      if (done) comment.doneBy.push(member);
+      if (!comment.seenBy.includes(member)) comment.seenBy.push(member);
+    });
+  }
+
+  /** Marks every mention of the member as seen, so the bell stops counting them. */
+  async markMentionsSeen(member: string): Promise<void> {
+    for (const couple of await this.repo.list()) {
+      if (!(couple.teamComments ?? []).some((m) => m.mentions.includes(member) && !m.seenBy.includes(member))) continue;
+      await this.mutate(couple.id, (c) => {
+        for (const comment of c.teamComments) if (comment.mentions.includes(member) && !comment.seenBy.includes(member)) comment.seenBy.push(member);
+      });
+    }
   }
 
   /** Applies one-off corrections to imported items, skipping items edited since the import (see budget-corrections). */

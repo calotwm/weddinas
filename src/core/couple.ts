@@ -404,6 +404,25 @@ export interface Couple {
   rsvpInbox?: RsvpEntry[];
   /** Papelería, timing image and link, Planos. Missing on couples stored before they existed. */
   teamFiles?: TeamFiles;
+  /** The team's comments on brief rubros, oldest first; never shown to the couple. */
+  teamComments?: TeamComment[];
+}
+
+/** A team comment on a brief rubro; `@name` mentions notify those team members in the panel. */
+export interface TeamComment {
+  id: string;
+  blockKey: string;
+  /** Team member's email ("" with the shared team code). */
+  author: string;
+  text: string;
+  /** Emails of the mentioned team members. */
+  mentions: string[];
+  /** ISO time. */
+  at: string;
+  /** Mentioned members who already saw it (the bell stops counting it). */
+  seenBy: string[];
+  /** Mentioned members who marked it done. */
+  doneBy: string[];
 }
 
 /** One RSVP answer from the invitation web; guestId is null until it is matched to a guest. */
@@ -422,7 +441,7 @@ export interface RsvpEntry {
 export type CoupleView = Omit<Couple, "accessCodeHash" | "rsvpToken"> & Required<Pick<Couple, CoupleSection>>;
 
 /** Optional in storage, always present once loaded through the service. */
-export type CoupleSection = "aesthetic" | "timing" | "guests" | "vendorTiming" | "rsvpInbox" | "teamFiles";
+export type CoupleSection = "aesthetic" | "timing" | "guests" | "vendorTiming" | "rsvpInbox" | "teamFiles" | "teamComments";
 
 export const emptyTeamFiles = (): TeamFiles => ({
   stationeryIds: [],

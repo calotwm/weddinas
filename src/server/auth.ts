@@ -29,6 +29,9 @@ async function teamUsers(): Promise<Map<string, string>> {
 
 export const teamLoginUsesEmail = () => envTeamUsers().size > 0;
 
+/** Team members' emails (ADMIN_USERS), the people a comment can @mention; empty with the shared team code. */
+export const teamMembers = () => [...envTeamUsers().keys()];
+
 /** The member's email for valid credentials, or null; only meaningful when teamLoginUsesEmail(). */
 export const checkTeamUser = async (email: string, password: string) => authenticateTeamUser(await teamUsers(), email, password);
 
