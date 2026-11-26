@@ -46,7 +46,7 @@ Portada
 - [x] T4 S9-S11 inline · d3b4f0a
 - [x] T5 S2-S5 inline · b56e3cc (+ new download "Mesas")
 - [x] T6 S6-S8 inline · 4bcea83
-- [ ] T7 S13-S15 inline · 1c2b0d2 covers S13, S14; S15 open (L4)
+- [x] T7 S13-S15 inline · 1c2b0d2 (S13, S14) + S15 see L7
 - [x] T8 S17 inline · 6a41db1
 
 Route evidence: no Writer trigger (units depend on shared couple model/service; worked inline in order).
@@ -59,3 +59,4 @@ Route evidence: no Writer trigger (units depend on shared couple model/service; 
 - L4 S15 "Que se pueda elegir al costado también en las distintas opciones" is ambiguous: today each option has its "Elegir" button under its name at the top of the table. Question sent to the user; not implemented.
 - L5 Assumptions taken: S3 list B is left out of the summary counts and listed apart (also in the Invitados download); S5 ignores "sin restricciones"-like answers and declined guests; S9 "Estimado" = item without vendor; S11 charges are in the item's currency; S12 stored "na" keeps hiding event blocks from the couple until the block is saved; S6 the add row proposes the next Horario from the last moment's duration (existing times are not shifted); team columns and team-only moments show in the team's Timing download.
 - L6 Checks: vitest 59 files / 485 tests, tsc, eslint clean, next build OK. Not deployed. Independent verifier not run.
+- L7 (2026-11-26) user: "hace uno al lado de cada fila y fue". S15 done as a side panel next to the couple's comparison table (below it on phones): one row per option with its Elegir button.

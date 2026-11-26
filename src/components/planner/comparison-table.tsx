@@ -23,7 +23,7 @@ function SheetTable({ sheet, chosen, renderChoose }: { sheet: ComparisonSheet } 
   const rows = labels.map((label, i) => ({ label, cells: sheet.vendors.map((v) => cellOf(v, i)) })).filter((row) => row.cells.some(Boolean));
   const tint = (vendor: ComparisonVendor) => (vendor.name === chosen ? "bg-peach-soft" : "bg-white");
 
-  return (
+  const table = (
     // Scrolls both ways inside its own box, so the vendor row and the label column stay fixed while reading.
     // `isolate` keeps the sticky cells' z-index inside the table, below the portal's sticky top bar.
     <div className="isolate max-h-[75vh] overflow-auto overscroll-contain rounded-xl ring-1 ring-forest/20">
@@ -65,6 +65,31 @@ function SheetTable({ sheet, chosen, renderChoose }: { sheet: ComparisonSheet } 
           ))}
         </tbody>
       </table>
+    </div>
+  );
+  if (!renderChoose) return table;
+  // The same choice at the side, one row per option, so it can be made without scrolling back to the top.
+  return (
+    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_15rem] lg:items-start">
+      {table}
+      <aside className="space-y-2 rounded-xl bg-sand/60 p-3 ring-1 ring-forest/10 lg:sticky lg:top-24" aria-label="Elegir opción">
+        <p className="text-xs font-semibold tracking-wider text-forest uppercase">Elegir opción</p>
+        <ul className="space-y-2">
+          {sheet.vendors.map((vendor, v) => (
+            <li key={v} className={`flex items-center justify-between gap-2 rounded-lg px-3 py-2 ${vendor.name === chosen ? "bg-peach-soft" : "bg-white"}`}>
+              <span className="min-w-0 text-sm font-semibold text-forest">{vendor.name}</span>
+              {vendor.name === chosen ? (
+                <span className="chip shrink-0 bg-peach text-rust">
+                  <Icon name="check" className="h-3 w-3" />
+                  Elegida
+                </span>
+              ) : (
+                <span className="shrink-0">{renderChoose(vendor.name)}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </aside>
     </div>
   );
 }
