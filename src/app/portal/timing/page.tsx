@@ -21,7 +21,7 @@ export default async function TimingPage() {
           Descargar timing (Excel)
         </a>
       )}
-      <TimingSchedule timing={couple.timing} />
+      <TimingSchedule timing={couple.timing} showHoursMinutes={couple.timingSettings.showHoursMinutes} />
       <VendorTimingTable items={couple.vendorTiming} />
     </div>
   );

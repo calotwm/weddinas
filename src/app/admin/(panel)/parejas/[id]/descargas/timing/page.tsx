@@ -10,7 +10,7 @@ export default async function TimingDownloadPage({ params }: { params: Promise<{
   const couple = await sheetCouple(params);
   return (
     <PrintSheet couple={couple} title="Timing" back={downloadsPath(couple.id)}>
-      <TimingSchedule timing={couple.timing} />
+      <TimingSchedule timing={couple.timing} showHoursMinutes={couple.timingSettings.showHoursMinutes} columns={couple.timingSettings.columns} />
       <VendorTimingTable items={couple.vendorTiming} />
     </PrintSheet>
   );

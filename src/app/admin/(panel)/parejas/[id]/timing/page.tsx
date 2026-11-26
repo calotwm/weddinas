@@ -2,7 +2,15 @@ import { notFound } from "next/navigation";
 import { TimingSheetLinkForm } from "@/components/planner/team-files";
 import { TimingEditor, VendorTimingEditor } from "@/components/planner/timing";
 import { addTimingItem, deleteTimingItem, updateTimingItem } from "@/app/admin/planner-actions";
-import { addVendorTimingItem, deleteVendorTimingItem, updateVendorTimingItem } from "@/app/admin/timing-actions";
+import {
+  addTimingColumn,
+  addVendorTimingItem,
+  deleteTimingColumn,
+  deleteVendorTimingItem,
+  renameTimingColumn,
+  setTimingHoursMinutesShown,
+  updateVendorTimingItem,
+} from "@/app/admin/timing-actions";
 import { saveTimingSheetUrl } from "@/app/admin/team-file-actions";
 import { requireAdmin } from "@/server/auth";
 import { portal } from "@/server/container";
@@ -23,8 +31,10 @@ export default async function TimingAdminPage({ params }: { params: Promise<{ id
       <TimingSheetLinkForm key={couple.teamFiles.timingSheetUrl} coupleId={couple.id} url={couple.teamFiles.timingSheetUrl} save={saveTimingSheetUrl} />
       <TimingEditor
         timing={couple.timing}
+        settings={couple.timingSettings}
         coupleId={couple.id}
         actions={{ add: addTimingItem, update: updateTimingItem, remove: deleteTimingItem }}
+        columnActions={{ add: addTimingColumn, rename: renameTimingColumn, remove: deleteTimingColumn, showHoursMinutes: setTimingHoursMinutesShown }}
       />
       <VendorTimingEditor
         items={couple.vendorTiming}

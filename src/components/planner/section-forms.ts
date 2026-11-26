@@ -3,6 +3,7 @@ import type { GuestAge, GuestStatus } from "@/core/couple";
 import { GUEST_IMPORT_LIMITS, GuestImportError, parseGuestFile } from "@/core/guest-import";
 import { GUEST_AGES, GUEST_STATUSES, MAX_GUEST_NOTES, MAX_GUESTS } from "@/core/guests";
 import { MAX_AESTHETIC_PHOTOS, MAX_STATIONERY, type AestheticInput, type GuestInput, type TimingInput } from "@/core/portal-service";
+import { normalizeClock } from "@/core/timing";
 import { MAX_IMAGE_BYTES } from "@/core/uploads";
 import { files, portal } from "@/server/container";
 import { megabytes, UPLOAD_REQUEST_MAX_BYTES } from "@/core/upload-limits";
@@ -110,9 +111,26 @@ export function aestheticInput(formData: FormData): AestheticInput {
 }
 
 /** Null when the browser sent something the time and title inputs would not allow. */
+/** A timing row as the sheet has it: Horario (24 h), Horas + Minutos, Actividad, Descripción, plus the team-only fields. */
 export function timingInput(formData: FormData): TimingInput | null {
-  const input = { time: text(formData, "time", 5), title: text(formData, "title", 120), note: text(formData, "note", 500) };
-  return /^([01]\d|2[0-3]):[0-5]\d$/.test(input.time) && input.title ? input : null;
+  const time = normalizeClock(text(formData, "time", 8));
+  const title = text(formData, "title", 120);
+  if (!time || !title) return null;
+  const hours = text(formData, "hours", 3);
+  const minutes = text(formData, "minutes", 3);
+  const durationMin = hours || minutes ? (Number(hours) || 0) * 60 + (Number(minutes) || 0) : undefined;
+  const team: Record<string, string> = {};
+  for (const [key, value] of formData) {
+    if (key.startsWith("col:") && typeof value === "string" && value.trim()) team[key.slice(4, 104)] = value.trim().slice(0, 500);
+  }
+  return {
+    time,
+    ...(durationMin !== undefined && Number.isFinite(durationMin) ? { durationMin } : {}),
+    title,
+    note: text(formData, "note", 500),
+    ...(formData.get("teamOnly") === "on" ? { teamOnly: true } : {}),
+    ...(Object.keys(team).length ? { team } : {}),
+  };
 }
 
 export function guestInput(formData: FormData): GuestInput {

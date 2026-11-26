@@ -45,7 +45,9 @@ import {
   type PublicInfo,
   type PublicPage,
   type Report,
+  type TimingColumn,
   type TimingItem,
+  type TimingSettings,
   type VendorTimingItem,
 } from "./couple";
 import { GUEST_AGES, GUEST_STATUSES, MAX_GUEST_NOTES, MAX_GUESTS, splitFullName } from "./guests";
@@ -122,8 +124,33 @@ function cleanTiming(input: TimingInput): TimingInput {
   if (!HHMM.test(input.time)) throw new Error("Time must be HH:MM");
   const title = input.title.trim();
   if (!title) throw new Error("Title is required");
-  return { time: input.time, title, note: input.note.trim() };
+  const clean: TimingInput = { time: input.time, title, note: input.note.trim() };
+  if (input.durationMin !== undefined) {
+    if (!Number.isInteger(input.durationMin) || input.durationMin < 0 || input.durationMin > 24 * 60) throw new Error("Invalid duration");
+    clean.durationMin = input.durationMin;
+  }
+  if (input.teamOnly) clean.teamOnly = true;
+  return clean;
 }
+
+/** The team column values whose column exists, trimmed; undefined when none is left. */
+function cleanTeamValues(values: Record<string, string> | undefined, columns: TimingColumn[]): Record<string, string> | undefined {
+  const kept = Object.fromEntries(
+    columns.flatMap((col) => (values?.[col.id]?.trim() ? [[col.id, values[col.id].trim().slice(0, 500)]] : [])),
+  );
+  return Object.keys(kept).length ? kept : undefined;
+}
+
+/**
+ * The timing of a couple until the team changes it: Horas/Minutos shown and four team-only columns. Fixed ids, so the
+ * defaults filled on every load of a couple stored without settings stay the same until they are saved.
+ */
+const defaultTimingSettings = (): TimingSettings => ({
+  showHoursMinutes: true,
+  columns: [1, 2, 3, 4].map((n) => ({ id: `c${n}`, name: `Equipo ${n}` })),
+});
+
+const MAX_TIMING_COLUMNS = 12;
 
 function cleanVendorTiming(input: VendorTimingInput): VendorTimingInput {
   if (!HHMM.test(input.time)) throw new Error("Time must be HH:MM");
@@ -290,6 +317,7 @@ function withPlannerDefaults(couple: Couple): LoadedCouple {
   couple.teamFiles ??= emptyTeamFiles();
   couple.teamFiles.plans = { ...emptyTeamFiles().plans, ...couple.teamFiles.plans };
   couple.teamComments ??= [];
+  couple.timingSettings ??= defaultTimingSettings();
   couple.brief.forEach(withCatalogFields);
   return couple as LoadedCouple;
 }
@@ -1236,6 +1264,8 @@ export class PortalService {
     const item: TimingItem = { id: randomUUID(), ...cleanTiming(input) };
     await this.mutate(coupleId, (c) => {
       if (c.timing.length >= MAX_TIMING) throw new Error("Too many timing moments");
+      const team = cleanTeamValues(input.team, c.timingSettings.columns);
+      if (team) item.team = team;
       c.timing.push(item);
       c.timing.sort(byDayTime);
     });
@@ -1245,10 +1275,49 @@ export class PortalService {
   async updateTimingItem(coupleId: string, itemId: string, input: TimingInput): Promise<void> {
     const clean = cleanTiming(input);
     await this.mutate(coupleId, (c) => {
-      const item = c.timing.find((t) => t.id === itemId);
-      if (!item) throw new Error("Timing moment not found");
-      Object.assign(item, clean);
+      const index = c.timing.findIndex((t) => t.id === itemId);
+      if (index === -1) throw new Error("Timing moment not found");
+      // Replaced, so a cleared duration, team-only tick or team value goes away.
+      const team = cleanTeamValues(input.team, c.timingSettings.columns);
+      c.timing[index] = { id: itemId, ...clean, ...(team ? { team } : {}) };
       c.timing.sort(byDayTime);
+    });
+  }
+
+  async addTimingColumn(coupleId: string, name: string): Promise<void> {
+    const clean = name.trim().slice(0, 40);
+    if (!clean) throw new Error("Column name is required");
+    await this.mutate(coupleId, (c) => {
+      if (c.timingSettings.columns.length >= MAX_TIMING_COLUMNS) throw new Error("Too many timing columns");
+      c.timingSettings.columns.push({ id: randomUUID(), name: clean });
+    });
+  }
+
+  async renameTimingColumn(coupleId: string, columnId: string, name: string): Promise<void> {
+    const clean = name.trim().slice(0, 40);
+    if (!clean) throw new Error("Column name is required");
+    await this.mutate(coupleId, (c) => {
+      const column = c.timingSettings.columns.find((col) => col.id === columnId);
+      if (!column) throw new Error("Timing column not found");
+      column.name = clean;
+    });
+  }
+
+  /** Removes a team column and its values from every moment. */
+  async deleteTimingColumn(coupleId: string, columnId: string): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      c.timingSettings.columns = c.timingSettings.columns.filter((col) => col.id !== columnId);
+      for (const item of c.timing) {
+        if (!item.team) continue;
+        delete item.team[columnId];
+        if (!Object.keys(item.team).length) delete item.team;
+      }
+    });
+  }
+
+  async setTimingHoursMinutesShown(coupleId: string, shown: boolean): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      c.timingSettings.showHoursMinutes = shown;
     });
   }
 

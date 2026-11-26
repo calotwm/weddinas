@@ -328,6 +328,24 @@ export interface TimingItem {
   time: string;
   title: string;
   note: string;
+  /** Typed duration ("Horas" + "Minutos"); without it the moment lasts until the next one. */
+  durationMin?: number;
+  /** Seen only by the team (surprises for the couple). */
+  teamOnly?: boolean;
+  /** Values of the team-only columns, by column id. */
+  team?: Record<string, string>;
+}
+
+/** A team-only column of the timing ("Equipo 1"…), renamed, added or removed by the team. */
+export interface TimingColumn {
+  id: string;
+  name: string;
+}
+
+export interface TimingSettings {
+  /** The "Horas" and "Minutos" columns; the team can hide them. */
+  showHoursMinutes: boolean;
+  columns: TimingColumn[];
 }
 
 /** One line of "Timing proveedores": when each vendor arrives (or sets up / leaves). */
@@ -425,6 +443,8 @@ export interface Couple {
   teamFiles?: TeamFiles;
   /** The team's comments on brief rubros, oldest first; never shown to the couple. */
   teamComments?: TeamComment[];
+  /** Missing on couples stored before phase 9; the service fills the defaults on load. */
+  timingSettings?: TimingSettings;
 }
 
 /** A team comment on a brief rubro; `@name` mentions notify those team members in the panel. */
@@ -460,7 +480,7 @@ export interface RsvpEntry {
 export type CoupleView = Omit<Couple, "accessCodeHash" | "rsvpToken"> & Required<Pick<Couple, CoupleSection>>;
 
 /** Optional in storage, always present once loaded through the service. */
-export type CoupleSection = "aesthetic" | "timing" | "guests" | "vendorTiming" | "rsvpInbox" | "teamFiles" | "teamComments";
+export type CoupleSection = "aesthetic" | "timing" | "guests" | "vendorTiming" | "rsvpInbox" | "teamFiles" | "teamComments" | "timingSettings";
 
 export const emptyTeamFiles = (): TeamFiles => ({
   stationeryIds: [],
