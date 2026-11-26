@@ -3,7 +3,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { CUSTOM_BLOCK_NAME_MAX } from "@/core/brief-catalog";
-import { COMPARISON_LIMITS, ComparisonTableError, parseComparisonFile, type ComparisonTable } from "@/core/comparison-table";
+import { COMPARISON_LIMITS, ComparisonEditError, ComparisonTableError, parseComparisonEdit, parseComparisonFile, type ComparisonTable } from "@/core/comparison-table";
 import { importCouple, refreshCoupleFromImport, type CoupleImport } from "@/core/couple-import";
 import { redirect } from "next/navigation";
 import { safeHttpUrl } from "@/core/url";
@@ -286,6 +286,19 @@ export async function uploadComparison(_prev: ComparisonResult, formData: FormDa
     return { error: "No se encontró la propuesta. Recargá la página." };
   }
   if (previous) await files.delete(coupleId, previous).catch(() => undefined);
+  revalidatePath("/", "layout");
+  return { ok: Date.now() };
+}
+
+/** Saves the comparison table edited (or built from scratch) on the web; called by the editor's autosave. */
+export async function saveComparisonEdit(coupleId: string, proposalId: string, sheetsJson: string): Promise<{ error?: string; ok?: number }> {
+  await requireAdmin();
+  if (sheetsJson.length > 500_000) return { error: "El cuadro es demasiado grande." };
+  try {
+    await portal.editProposalComparison(coupleId.slice(0, 100), proposalId.slice(0, 100), parseComparisonEdit(sheetsJson));
+  } catch (e) {
+    return { error: e instanceof ComparisonEditError ? e.message : "No se pudo guardar el cuadro. Recargá la página." };
+  }
   revalidatePath("/", "layout");
   return { ok: Date.now() };
 }

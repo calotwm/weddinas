@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { matchGuest, plain, type RsvpAnswer } from "./rsvp";
 import { accessCodeFor, hashAccessCode } from "./access-code";
-import type { ComparisonTable } from "./comparison-table";
+import type { ComparisonSheet, ComparisonTable } from "./comparison-table";
 import { byDayTime } from "./timing";
 import { normalizeWhatsapp } from "./whatsapp";
 import { normalizeSongChoice } from "./music";
@@ -669,6 +669,25 @@ export class PortalService {
       }
     });
     return removed;
+  }
+
+  /**
+   * Saves the comparison table as edited (or built from scratch) on the web. An uploaded table keeps its file name and
+   * original .xlsx; a choice whose vendor is no longer in the table is dropped.
+   */
+  async editProposalComparison(coupleId: string, proposalId: string, sheets: ComparisonSheet[]): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      const proposal = c.proposals.find((p) => p.id === proposalId);
+      if (!proposal) throw new Error("Proposal not found");
+      const table: ComparisonTable = {
+        fileName: proposal.comparison?.fileName ?? "Cuadro armado en la web",
+        uploadedAt: proposal.comparison?.uploadedAt ?? new Date().toISOString(),
+        sheets,
+        ...(proposal.comparison?.attachmentId ? { attachmentId: proposal.comparison.attachmentId } : {}),
+      };
+      if (proposal.chosenVendor && !comparisonVendorNames(table).includes(proposal.chosenVendor)) delete proposal.chosenVendor;
+      proposal.comparison = table;
+    });
   }
 
   async markNotificationsSeen(coupleId: string): Promise<void> {

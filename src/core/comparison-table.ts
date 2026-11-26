@@ -273,3 +273,67 @@ export async function parseComparisonFile(fileName: string, bytes: Uint8Array, u
   const name = (fileName.split(/[\\/]/).pop() ?? "").replace(/[<>:"|?*\u0000-\u001f]/g, "").trim().slice(0, 120) || "cuadro.xlsx";
   return parseComparisonGrid(sheets, { fileName: name, uploadedAt });
 }
+
+/** Why an edited comparison table was rejected, in words for the team. */
+export class ComparisonEditError extends Error {}
+
+/** Limits of a table edited on the web. */
+export const COMPARISON_EDIT_LIMITS = { sheets: 10, columns: 40, vendors: 30, cell: 2000, name: 120 } as const;
+
+/** The table as the web editor shows it: one row per vendor, a vendor's several Excel rows joined per cell by lines. */
+export function editableSheets(sheets: ComparisonSheet[]): ComparisonSheet[] {
+  return sheets.map((sheet) => ({
+    ...sheet,
+    vendors: sheet.vendors.map((vendor) => ({
+      ...vendor,
+      rows: [
+        sheet.columns.slice(1).map((_, c) =>
+          vendor.rows
+            .map((row) => row[c] ?? "")
+            .filter((value) => value.trim())
+            .join("\n"),
+        ),
+      ],
+    })),
+  }));
+}
+
+/** A table built from scratch: two options and the usual rows, ready to fill. */
+export function blankComparison(): ComparisonSheet {
+  const columns = ["Proveedor", "Valor", "Incluye", "Forma de pago"];
+  return { name: "Cuadro", columns, vendors: [1, 2].map((n) => ({ name: `Opción ${n}`, rows: [columns.slice(1).map(() => "")] })) };
+}
+
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+const editText = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+
+/** Validates the web editor's table (JSON); throws ComparisonEditError with the reason to show. */
+export function parseComparisonEdit(json: string): ComparisonSheet[] {
+  let data: unknown;
+  try {
+    data = JSON.parse(json);
+  } catch {
+    throw new ComparisonEditError("No se pudo leer el cuadro. Recargá la página.");
+  }
+  const L = COMPARISON_EDIT_LIMITS;
+  if (!Array.isArray(data) || data.length === 0 || data.length > L.sheets) throw new ComparisonEditError("El cuadro no tiene hojas válidas.");
+  return data.map((raw, s) => {
+    if (!isRecord(raw) || !Array.isArray(raw.columns) || !Array.isArray(raw.vendors)) throw new ComparisonEditError("El cuadro no tiene hojas válidas.");
+    const columns = raw.columns.map((c) => editText(c, L.name));
+    if (columns.length < 2 || columns.length > L.columns + 1) throw new ComparisonEditError(`Cada cuadro puede tener de 1 a ${L.columns} filas.`);
+    if (raw.vendors.length === 0 || raw.vendors.length > L.vendors) throw new ComparisonEditError(`Cada cuadro necesita de 1 a ${L.vendors} opciones.`);
+    const seen = new Set<string>();
+    const vendors = raw.vendors.map((v): ComparisonVendor => {
+      if (!isRecord(v)) throw new ComparisonEditError("Una opción del cuadro no es válida.");
+      const name = editText(v.name, L.name);
+      if (!name) throw new ComparisonEditError("Cada opción necesita un nombre.");
+      const key = name.toLowerCase();
+      if (seen.has(key)) throw new ComparisonEditError(`El nombre "${name}" está repetido: cada opción tiene que tener uno distinto.`);
+      seen.add(key);
+      const first = Array.isArray(v.rows) && Array.isArray(v.rows[0]) ? (v.rows[0] as unknown[]) : [];
+      const group = editText(v.group, L.name);
+      return { name, ...(group ? { group } : {}), rows: [columns.slice(1).map((_, c) => editText(first[c], L.cell))] };
+    });
+    return { name: editText(raw.name, L.name) || `Cuadro ${s + 1}`, columns, vendors };
+  });
+}

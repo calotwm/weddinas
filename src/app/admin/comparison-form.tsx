@@ -4,7 +4,8 @@ import { useActionState, useState } from "react";
 import { Icon } from "@/components/icons";
 import { ComparisonTableView } from "@/components/planner/comparison-table";
 import { SubmitButton } from "@/components/submit-button";
-import type { ComparisonTable } from "@/core/comparison-table";
+import { blankComparison, editableSheets, type ComparisonTable } from "@/core/comparison-table";
+import { ComparisonEditor } from "./comparison-editor";
 import { addProposal, removeComparison, uploadComparison } from "./actions";
 import { megabytes, UPLOAD_REQUEST_MAX_BYTES } from "@/core/upload-limits";
 
@@ -46,7 +47,7 @@ export function NewProposalForm({ coupleId, children }: { coupleId: string; chil
             accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             className="w-full text-sm"
           />
-          <p className="hint mt-1">El Excel del rubro (.xlsx hasta 5 MB): los novios lo ven como cuadro con un botón para elegir cada proveedor.</p>
+          <p className="hint mt-1">El Excel del rubro (.xlsx hasta 5 MB): los novios lo ven como cuadro con un botón para elegir cada proveedor. ¿Sin Excel? Guardá la propuesta y armá el cuadro de cero desde ella.</p>
         </div>
         <div>
           <label htmlFor="p-files" className="label">PDFs e imágenes (opcional)</label>
@@ -77,6 +78,7 @@ export function AdminComparison({
   chosen?: string;
 }) {
   const [state, action] = useActionState(uploadComparison, null);
+  const [editing, setEditing] = useState(false);
   const inputId = `comparison-${proposalId}`;
 
   return (
@@ -85,7 +87,15 @@ export function AdminComparison({
       <div className="mt-3 space-y-3">
         {comparison && (
           <>
-            <ComparisonTableView table={comparison} chosen={chosen} />
+            {editing ? (
+              <ComparisonEditor coupleId={coupleId} proposalId={proposalId} initial={editableSheets(comparison.sheets)} />
+            ) : (
+              <ComparisonTableView table={comparison} chosen={chosen} />
+            )}
+            <button type="button" className="btn-ghost btn-sm" onClick={() => setEditing((e) => !e)}>
+              <Icon name={editing ? "check" : "edit"} className="h-3.5 w-3.5" />
+              {editing ? "Listo, ver cuadro" : "Editar filas y columnas"}
+            </button>
             {comparison.attachmentId && (
               <a href={`/archivos/${coupleId}/${comparison.attachmentId}`} download={comparison.fileName} className="inline-flex items-center gap-1 text-xs font-semibold text-teal underline">
                 <Icon name="file" className="h-3.5 w-3.5" />
@@ -102,6 +112,15 @@ export function AdminComparison({
             </form>
           </>
         )}
+        {!comparison &&
+          (editing ? (
+            <ComparisonEditor coupleId={coupleId} proposalId={proposalId} initial={[blankComparison()]} unsaved />
+          ) : (
+            <button type="button" className="btn-ghost btn-sm" onClick={() => setEditing(true)}>
+              <Icon name="plus" className="h-3.5 w-3.5" />
+              Armar cuadro de cero
+            </button>
+          ))}
         <form action={action} className="space-y-2 rounded-2xl bg-cream/60 p-3 ring-1 ring-forest/5">
           <input type="hidden" name="coupleId" value={coupleId} />
           <input type="hidden" name="proposalId" value={proposalId} />
