@@ -88,6 +88,33 @@ describe("brief, client feedback phase 8", () => {
     expect(labels(await block("espacio"))).not.toContain("Contrato");
   });
 
+  it("S26: drops the Proveedor row from every rubro, keeping its name in the header and its text in the first row", async () => {
+    const key = await service.addCustomBriefBlock(coupleId, "Fuegos artificiales");
+    await storeRaw((c) => {
+      for (const b of c.brief!) b.fields.push({ label: "Proveedor", detail: "", note: "" });
+      const espacio = c.brief!.find((b) => b.key === "espacio")!;
+      espacio.vendor = "Darwin";
+      espacio.fields.find((f) => f.label === "Proveedor")!.detail = "darwin";
+      espacio.fields.find((f) => f.label === "Proveedor")!.note = "Confirmación a proveedor";
+      const custom = c.brief!.find((b) => b.key === key)!;
+      custom.vendor = "";
+      custom.fields.find((f) => f.label === "Proveedor")!.detail = "Pirotecnia Sur";
+      const foto = c.brief!.find((b) => b.key === "foto")!;
+      foto.vendor = "Lente";
+      foto.fields.find((f) => f.label === "Proveedor")!.detail = "Lente + Cine";
+    });
+    for (const b of (await load()).brief) expect(labels(b)).not.toContain("Proveedor");
+    const espacio = await block("espacio");
+    expect(espacio.vendor).toBe("Darwin");
+    expect(espacio.fields[0].note).toMatch(/Proveedor: Confirmación a proveedor$/);
+    expect((await block(key)).vendor).toBe("Pirotecnia Sur");
+    const foto = await block("foto");
+    expect(foto.vendor).toBe("Lente");
+    expect(foto.fields[0].detail).toMatch(/Proveedor: Lente \+ Cine$/);
+    await save(await block("espacio"));
+    expect(labels(await block("espacio"))).not.toContain("Proveedor");
+  });
+
   it("S28: drops En búsqueda; stored and new vendor blocks read as Para decidir", async () => {
     await storeRaw((c) => {
       c.brief!.find((b) => b.key === "foto")!.status = "searching";

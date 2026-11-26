@@ -155,7 +155,31 @@ const DROPPED_FIELDS: Array<{ label: string; into: string; from: (block: Pick<Br
 
 const joinText = (...parts: string[]) => parts.filter(Boolean).join("\n");
 
+/** The old sheets' "Proveedor" row, carried over by the import; the header's vendor field holds that name now. */
+const VENDOR_ROW = "Proveedor";
+
+/**
+ * Drops the "Proveedor" row of any rubro: its name fills an empty header vendor, and any other text it had moves to
+ * the end of the first row, so nothing written is lost.
+ */
+function dropVendorRow(block: BriefBlock): void {
+  const gone = block.fields.filter((f) => f.label.trim() === VENDOR_ROW);
+  if (gone.length === 0) return;
+  block.fields = block.fields.filter((f) => !gone.includes(f));
+  const names = gone.map((f) => f.detail.trim()).filter(Boolean);
+  if (!block.vendor.trim() && names.length === 1 && names[0].length <= 120 && !names[0].includes("\n")) block.vendor = names.shift()!;
+  const same = (name: string) => name.toLowerCase() === block.vendor.trim().toLowerCase();
+  const detail = joinText(...names.filter((name) => !same(name)).map((name) => `${VENDOR_ROW}: ${name}`));
+  const note = joinText(...gone.map((f) => (f.note.trim() ? `${VENDOR_ROW}: ${f.note.trim()}` : "")));
+  if (!detail && !note) return;
+  let into = block.fields[0];
+  if (!into) block.fields.push((into = { label: "Detalle", detail: "", note: "" }));
+  into.detail = joinText(into.detail, detail);
+  into.note = joinText(into.note, note);
+}
+
 function dropRetiredFields(block: BriefBlock): void {
+  dropVendorRow(block);
   for (const drop of DROPPED_FIELDS) {
     if (!drop.from(block)) continue;
     const gone = block.fields.filter((f) => f.label === drop.label);
