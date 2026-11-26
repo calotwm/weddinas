@@ -1,6 +1,6 @@
-import { GuestSummaryView } from "@/components/planner/guest-summary";
+import { GuestSummaryView, RestrictionSummary } from "@/components/planner/guest-summary";
 import { GuestManager } from "@/components/planner/guests";
-import { guestSummary } from "@/core/guests";
+import { guestSummary, restrictionSummary } from "@/core/guests";
 import { RsvpInbox } from "@/components/planner/rsvp-inbox";
 import { addGuest, assignRsvp, deleteGuest, dismissRsvp, importGuests, updateGuest } from "../actions";
 import { getCurrentCouple } from "../data";
@@ -16,6 +16,7 @@ export default async function GuestsPage() {
           Carguen a sus invitados (o importen su Excel), quién confirmó, en qué mesa va cada uno y su menú.
         </p>
       </div>
+      <RestrictionSummary groups={restrictionSummary(couple.guests)} />
       <section className="card">
         <GuestSummaryView summary={guestSummary(couple.guests)} />
       </section>

@@ -132,6 +132,7 @@ export function guestInput(formData: FormData): GuestInput {
     notes: text(formData, "notes", MAX_GUEST_NOTES),
     ...(GUEST_AGES.includes(age) ? { age } : {}),
     ...(travels === "yes" ? { travels: true } : travels === "no" ? { travels: false } : {}),
+    ...(text(formData, "list", 1) === "B" ? { list: "B" as const } : {}),
   };
 }
 

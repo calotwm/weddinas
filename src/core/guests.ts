@@ -31,6 +31,8 @@ export interface GuestSummary {
   unseated: number;
   /** Dietary restrictions with the number of expected guests that have them. */
   restrictions: Tally[];
+  /** Guests in list B, left out of every other count. */
+  listB: number;
 }
 
 const collator = new Intl.Collator("es", { numeric: true, sensitivity: "base" });
@@ -49,7 +51,14 @@ function tally(values: string[]): Tally[] {
   return [...byKey.values()].sort((a, b) => collator.compare(a.name, b.name));
 }
 
-export function guestSummary(guests: Guest[]): GuestSummary {
+/** List A (everyone not in list B) and list B, each in its original order. */
+export function splitLists<T extends Pick<Guest, "list">>(guests: T[]): { a: T[]; b: T[] } {
+  return { a: guests.filter((g) => g.list !== "B"), b: guests.filter((g) => g.list === "B") };
+}
+
+/** The counts of list A; list B guests are only counted apart. */
+export function guestSummary(all: Guest[]): GuestSummary {
+  const { a: guests, b } = splitLists(all);
   const count = (status: GuestStatus) => guests.filter((g) => g.status === status).length;
   const aged = (age: GuestAge) => guests.filter((g) => g.age === age).length;
   const confirmed = count("confirmed");
@@ -73,7 +82,59 @@ export function guestSummary(guests: Guest[]): GuestSummary {
     tables: tally(coming.map((g) => g.table)),
     unseated: coming.filter((g) => !g.table.trim()).length,
     restrictions: tally(coming.map((g) => g.restriction)),
+    listB: b.length,
   };
+}
+
+/** Menu answers that mean "no restriction". */
+const NO_RESTRICTION = /^(sin restric|ninguna|no$|no tiene|-$|normal$|standard$)/;
+
+export interface RestrictionGroup {
+  name: string;
+  /** Who has it, as "Apellido, Nombre", sorted. */
+  guests: string[];
+}
+
+/** Each dietary restriction of the expected list A guests with who has it, for the top of the guest list. */
+export function restrictionSummary(guests: Guest[]): RestrictionGroup[] {
+  const byKey = new Map<string, { name: string; guests: Guest[] }>();
+  for (const g of splitLists(guests).a) {
+    const key = fold(g.restriction);
+    if (g.status === "declined" || !key || NO_RESTRICTION.test(key)) continue;
+    const entry = byKey.get(key) ?? { name: g.restriction.trim(), guests: [] };
+    entry.guests.push(g);
+    byKey.set(key, entry);
+  }
+  return [...byKey.values()]
+    .sort((x, y) => collator.compare(x.name, y.name))
+    .map((e) => ({ name: e.name, guests: sortGuests(e.guests).map(guestDisplayName) }));
+}
+
+export interface SeatedGuest {
+  id: string;
+  name: string;
+  restriction: string;
+}
+
+export interface TableGroup {
+  /** As typed ("principal", "4"); "" holds the guests without a table. */
+  table: string;
+  guests: SeatedGuest[];
+}
+
+const isMainTable = (table: string) => fold(table).startsWith("principal");
+
+/** The seating by table for the "Mesas" download: Principal first, then by number or name, unseated last; declined left out. */
+export function tableSheet(guests: Guest[]): TableGroup[] {
+  const byKey = new Map<string, TableGroup>();
+  for (const g of sortGuests(guests.filter((g) => g.status !== "declined"))) {
+    const key = fold(g.table);
+    const group = byKey.get(key) ?? { table: g.table.trim(), guests: [] };
+    group.guests.push({ id: g.id, name: guestDisplayName(g), restriction: g.restriction.trim() });
+    byKey.set(key, group);
+  }
+  const rank = (t: TableGroup) => (!t.table ? 2 : isMainTable(t.table) ? 0 : 1);
+  return [...byKey.values()].sort((x, y) => rank(x) - rank(y) || collator.compare(x.table, y.table));
 }
 
 /** "Pérez, Ana" when the guest has a last name, else the name alone. */

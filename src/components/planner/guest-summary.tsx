@@ -1,4 +1,4 @@
-import { GUEST_AGE_LABEL, GUEST_AGES, type GuestSummary, type Tally } from "@/core/guests";
+import { GUEST_AGE_LABEL, GUEST_AGES, type GuestSummary, type RestrictionGroup, type Tally } from "@/core/guests";
 
 function TallyList({ title, items, empty }: { title: string; items: Tally[]; empty: string }) {
   return (
@@ -57,6 +57,7 @@ export function GuestSummaryView({ summary, compact = false }: { summary: GuestS
         </div>
         <p className="mt-2 text-sm text-ink/60">
           {summary.sent} enviado{summary.sent === 1 ? "" : "s"} sin respuesta · {summary.pending} sin enviar · {summary.declined} no viene{summary.declined === 1 ? "" : "n"}
+          {summary.listB > 0 && ` · ${summary.listB} en lista B (no suman)`}
         </p>
       </div>
       {!compact && (
@@ -72,5 +73,28 @@ export function GuestSummaryView({ summary, compact = false }: { summary: GuestS
       />
       <TallyList title="Menú" items={summary.restrictions} empty="Nadie cargó restricciones de menú." />
     </div>
+  );
+}
+
+/** The menu restrictions with who has each one, at the top of the guest list. */
+export function RestrictionSummary({ groups }: { groups: RestrictionGroup[] }) {
+  return (
+    <section className="card space-y-3" aria-labelledby="restrictions-title">
+      <h3 id="restrictions-title" className="section-title">Restricciones de menú</h3>
+      {groups.length === 0 ? (
+        <p className="text-sm text-ink/50">Nadie cargó restricciones de menú.</p>
+      ) : (
+        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {groups.map((g) => (
+            <li key={g.name} className="rounded-2xl bg-sand/60 px-4 py-3">
+              <p className="font-semibold text-forest">
+                {g.name} <span className="chip ml-1 bg-forest py-0 text-cream">{g.guests.length}</span>
+              </p>
+              <p className="mt-1 text-sm text-ink/70">{g.guests.join(" · ")}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

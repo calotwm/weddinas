@@ -15,6 +15,7 @@ import {
   MISSING_FIELD_LABEL,
   MISSING_FIELDS,
   sortGuests,
+  splitLists,
   type MissingField,
 } from "@/core/guests";
 import { AutoSaveForm } from "../auto-save-form";
@@ -54,7 +55,28 @@ const STATUS_FIELD_TONE: Record<GuestStatus, string> = {
 };
 
 /** Apellido, Nombre, Edad, RSVP, Mesa, Menú, Combi, Teléfono, Notas; wraps in two or three columns on smaller screens. */
-const ROW = "grid gap-2 grid-cols-2 sm:grid-cols-3 xl:grid-cols-[1fr_1fr_8rem_9rem_5rem_1fr_1fr_8rem_1fr] xl:items-center";
+// Two lines on wide screens instead of nine cramped columns, so every value reads whole; each field carries its caption.
+const ROW = "grid gap-x-2 gap-y-1.5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6";
+
+/** One field of a guest row with its caption on top, so every value can be told apart. */
+function Cell({ label, wide, children }: { label: string; wide?: boolean; children: React.ReactNode }) {
+  return (
+    <label className={`block min-w-0 ${wide ? "col-span-2" : ""}`}>
+      <span className="block text-[10px] font-semibold tracking-wider text-ink/45 uppercase">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+/** Lista A (the main one) or B (invited only if there is room). */
+function ListSelect({ id, defaultValue }: { id?: string; defaultValue?: Guest["list"] }) {
+  return (
+    <select id={id} name="list" defaultValue={defaultValue ?? "A"} aria-label={id ? undefined : "Lista"} className="field py-2">
+      <option value="A">Lista A</option>
+      <option value="B">Lista B</option>
+    </select>
+  );
+}
 
 /** Tinted with the color of the picked status, following the user's choice and the form's reset after saving. */
 function StatusSelect({ id, defaultValue }: { id?: string; defaultValue: GuestStatus }) {
@@ -187,15 +209,16 @@ function GuestRow({ guest, number, actions, coupleId }: { guest: Guest; number: 
       <AutoSaveForm compact save={actions.update} className={`min-w-0 flex-1 ${ROW}`}>
         <CoupleField coupleId={coupleId} />
         <input type="hidden" name="guestId" value={guest.id} />
-        <input name="lastName" maxLength={80} defaultValue={guest.lastName} aria-label="Apellido" placeholder="Apellido" className="field py-2 font-semibold text-forest" />
-        <input name="name" required maxLength={120} defaultValue={guest.name} aria-label="Nombre" placeholder="Nombre" className="field py-2 font-semibold text-forest" />
-        <AgeSelect defaultValue={guest.age} />
-        <StatusSelect defaultValue={guest.status} />
-        <input name="table" maxLength={40} defaultValue={guest.table} aria-label="Mesa" placeholder="Mesa" className="field py-2" />
-        <input name="restriction" maxLength={120} defaultValue={guest.restriction} aria-label="Menú" placeholder="Menú" className="field py-2" />
-        <input name="transport" maxLength={80} defaultValue={guest.transport} aria-label="Combi" placeholder="Combi" className="field py-2" />
-        <input name="phone" type="tel" maxLength={40} defaultValue={guest.phone} aria-label="Teléfono" placeholder="Teléfono" className="field py-2" />
-        <input name="notes" maxLength={MAX_GUEST_NOTES} defaultValue={guest.notes} aria-label="Notas" placeholder="Notas" className="field py-2" />
+        <Cell label="Apellido"><input name="lastName" maxLength={80} defaultValue={guest.lastName} title={guest.lastName} placeholder="Apellido" className="field py-2 font-semibold text-forest" /></Cell>
+        <Cell label="Nombre"><input name="name" required maxLength={120} defaultValue={guest.name} title={guest.name} placeholder="Nombre" className="field py-2 font-semibold text-forest" /></Cell>
+        <Cell label="Edad"><AgeSelect defaultValue={guest.age} /></Cell>
+        <Cell label="RSVP"><StatusSelect defaultValue={guest.status} /></Cell>
+        <Cell label="Lista"><ListSelect defaultValue={guest.list} /></Cell>
+        <Cell label="Mesa"><input name="table" maxLength={40} defaultValue={guest.table} title={guest.table} placeholder="Mesa" className="field py-2" /></Cell>
+        <Cell label="Menú"><input name="restriction" maxLength={120} defaultValue={guest.restriction} title={guest.restriction} placeholder="Menú" className="field py-2" /></Cell>
+        <Cell label="Combi"><input name="transport" maxLength={80} defaultValue={guest.transport} title={guest.transport} placeholder="Combi" className="field py-2" /></Cell>
+        <Cell label="Teléfono"><input name="phone" type="tel" maxLength={40} defaultValue={guest.phone} title={guest.phone} placeholder="Teléfono" className="field py-2" /></Cell>
+        <Cell label="Notas" wide><input name="notes" maxLength={MAX_GUEST_NOTES} defaultValue={guest.notes} title={guest.notes} placeholder="Notas" className="field py-2" /></Cell>
         <MoreFields guest={guest} />
       </AutoSaveForm>
       <form action={actions.remove} className="pt-1">
@@ -274,6 +297,7 @@ function AddGuestForm({ actions, coupleId }: { actions: GuestActions; coupleId?:
       {labelled("g-name", "Nombre", <input id="g-name" name="name" required maxLength={120} placeholder="Ej: Ana" className="field" />)}
       {labelled("g-age", "Edad", <AgeSelect id="g-age" />)}
       {labelled("g-status", "RSVP", <StatusSelect id="g-status" defaultValue="pending" />)}
+      {labelled("g-list", "Lista", <ListSelect id="g-list" />)}
       {labelled("g-table", "Mesa", <input id="g-table" name="table" maxLength={40} placeholder="Ej: 4" className="field" />)}
       {labelled("g-restriction", "Menú", <input id="g-restriction" name="restriction" maxLength={120} placeholder="Ej: Celíaco, vegano" className="field" />)}
       {labelled("g-transport", "Combi", <input id="g-transport" name="transport" maxLength={80} placeholder="Combi" className="field" />)}
@@ -294,6 +318,18 @@ function AddGuestForm({ actions, coupleId }: { actions: GuestActions; coupleId?:
 }
 
 /** Guest list: add one, import the Excel, edit inline (saves on its own), delete, search and filter. */
+function GuestRows({ guests, actions, coupleId }: { guests: Guest[]; actions: GuestActions; coupleId?: string }) {
+  return (
+    <ul className="space-y-2">
+      {guests.map((g, i) => (
+        // Keyed by id only: the row saves on its own without a form reset, so it must not remount (and lose
+        // what is being typed) when the saved values come back.
+        <GuestRow key={g.id} guest={g} number={i + 1} actions={actions} coupleId={coupleId} />
+      ))}
+    </ul>
+  );
+}
+
 export function GuestManager({ guests, actions, coupleId }: { guests: Guest[]; actions: GuestActions; coupleId?: string }) {
   const [status, setStatus] = useState<GuestStatus | "all">("all");
   const [table, setTable] = useState("");
@@ -302,6 +338,7 @@ export function GuestManager({ guests, actions, coupleId }: { guests: Guest[]; a
   const sorted = useMemo(() => sortGuests(guests), [guests]);
   const tables = useMemo(() => tableNames(guests), [guests]);
   const visible = useMemo(() => filterGuests(sorted, { status, table, missing, query }), [sorted, status, table, missing, query]);
+  const lists = useMemo(() => splitLists(visible), [visible]);
   const counts = useMemo(() => Object.fromEntries(GUEST_STATUSES.map((s) => [s, guests.filter((g) => g.status === s).length])), [guests]);
   const missingCounts = useMemo(
     () => Object.fromEntries(MISSING_FIELDS.map((f) => [f, guests.filter((g) => isMissing(g, f)).length])) as Record<MissingField, number>,
@@ -384,13 +421,18 @@ export function GuestManager({ guests, actions, coupleId }: { guests: Guest[]; a
         {visible.length === 0 ? (
           <p className="text-sm text-ink/50">{guests.length === 0 ? "Todavía no hay invitados cargados." : "Nadie con ese filtro."}</p>
         ) : (
-          <ul className="space-y-2">
-            {visible.map((g, i) => (
-              // Keyed by id only: the row saves on its own without a form reset, so it must not remount (and lose
-              // what is being typed) when the saved values come back.
-              <GuestRow key={g.id} guest={g} number={i + 1} actions={actions} coupleId={coupleId} />
-            ))}
-          </ul>
+          <>
+            <GuestRows guests={lists.a} actions={actions} coupleId={coupleId} />
+            {lists.b.length > 0 && (
+              <div className="space-y-3 border-t border-forest/10 pt-4">
+                <div>
+                  <h3 className="section-title">Lista B ({lists.b.length})</h3>
+                  <p className="text-xs text-ink/60">Se invitan si hay lugar. Para pasar a alguien a la lista A, cambiá su Lista.</p>
+                </div>
+                <GuestRows guests={lists.b} actions={actions} coupleId={coupleId} />
+              </div>
+            )}
+          </>
         )}
       </section>
     </div>

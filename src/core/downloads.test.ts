@@ -27,7 +27,7 @@ describe("downloads", () => {
   it("S23: every team sheet has its route under the couple's Descargas tab", () => {
     const base = path.join(app, "admin", "(panel)", "parejas", "[id]", "descargas");
     expect(existsSync(path.join(base, "page.tsx"))).toBe(true);
-    expect(DOWNLOAD_SHEETS.map((s) => s.slug)).toEqual(["proveedores", "invitados", "presupuesto", "timing", "familia", "musica"]);
+    expect(DOWNLOAD_SHEETS.map((s) => s.slug)).toEqual(["proveedores", "invitados", "mesas", "presupuesto", "timing", "familia", "musica"]);
     for (const { slug } of DOWNLOAD_SHEETS) expect(existsSync(path.join(base, slug, "page.tsx")), slug).toBe(true);
   });
 
@@ -53,7 +53,7 @@ describe("downloads", () => {
     });
 
     it("is empty without guests", () => {
-      expect(guestSheet([])).toEqual({ rows: [], totals: { confirmed: 0, total: 0 } });
+      expect(guestSheet([])).toEqual({ rows: [], listB: [], totals: { confirmed: 0, total: 0 } });
     });
   });
 

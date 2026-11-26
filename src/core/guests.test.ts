@@ -29,6 +29,7 @@ describe("guest summary", () => {
       tables: [],
       unseated: 0,
       restrictions: [],
+      listB: 0,
     });
   });
 

@@ -384,6 +384,8 @@ export interface Guest {
   notes?: string;
   /** Ticked by the team on the day to take attendance; the couple never sees or sets it. */
   arrived?: boolean;
+  /** "B": the second list, invited only if there is room; absent means list A. */
+  list?: "B";
 }
 
 export interface Couple {

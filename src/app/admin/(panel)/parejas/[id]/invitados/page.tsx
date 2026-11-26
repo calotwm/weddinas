@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Icon } from "@/components/icons";
-import { GuestSummaryView } from "@/components/planner/guest-summary";
+import { GuestSummaryView, RestrictionSummary } from "@/components/planner/guest-summary";
 import { GuestManager } from "@/components/planner/guests";
-import { guestSummary } from "@/core/guests";
+import { guestSummary, restrictionSummary } from "@/core/guests";
 import { addGuest, assignRsvp, createRsvpLink, deleteGuest, dismissRsvp, importGuests, setGuestArrived, updateGuest } from "@/app/admin/planner-actions";
 import { CopyButton } from "@/components/copy-button";
 import { RsvpInbox } from "@/components/planner/rsvp-inbox";
@@ -33,7 +33,14 @@ export default async function GuestsAdminPage({ params }: { params: Promise<{ id
             Descargar
           </Link>
         )}
+        {couple.guests.length > 0 && (
+          <Link href={`/admin/parejas/${couple.id}/descargas/mesas`} className="btn-ghost btn-sm">
+            <Icon name="file" className="h-3.5 w-3.5" />
+            Descargar mesas
+          </Link>
+        )}
       </div>
+      <RestrictionSummary groups={restrictionSummary(couple.guests)} />
       <section className="card">
         <GuestSummaryView summary={guestSummary(couple.guests)} />
       </section>

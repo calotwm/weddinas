@@ -152,6 +152,7 @@ function cleanGuest(input: NewGuestInput): GuestInput {
   if (notes) guest.notes = notes;
   if (input.age) guest.age = input.age;
   if (typeof input.travels === "boolean") guest.travels = input.travels;
+  if (input.list === "B") guest.list = "B";
   return guest;
 }
 
