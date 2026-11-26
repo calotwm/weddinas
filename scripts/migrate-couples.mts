@@ -98,7 +98,7 @@ async function main() {
       if (!file) continue;
       try {
         const bytes = new Uint8Array(await readFile(path.join(dataDir, entry.dir, file)));
-        const grids = await readComparisonWorkbook(bytes);
+        const grids = await readComparisonWorkbook(bytes, { formulas: kind === "presupuesto" });
         if (kind === "timing") await withClockTimes(bytes, grids);
         sheets[kind] = grids;
       } catch (e) {

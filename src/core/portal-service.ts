@@ -8,6 +8,7 @@ import { normalizeSongChoice } from "./music";
 import { cleanWebSelection, webDressCode } from "./web-options";
 import type { AestheticWeb } from "./couple";
 import { itemCategories, itemTracksConfirmedGuests } from "./budget";
+import { correctItem, type BudgetCorrection, type CorrectionResult } from "./budget-corrections";
 import { BRIEF_CATALOG, catalogBlock, categoryName, CUSTOM_BLOCK_NAME_MAX, CUSTOM_BLOCK_PREFIX, defaultBrief, defaultMusic, musicMomentKeys, newBriefBlock, newCustomBriefBlock, requiredFields, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
 import {
   emptyPublicInfo,
@@ -789,6 +790,28 @@ export class PortalService {
       }
       Object.assign(item, clean);
     });
+  }
+
+  /** Applies one-off corrections to imported items, skipping items edited since the import (see budget-corrections). */
+  async applyBudgetCorrections(corrections: BudgetCorrection[]): Promise<CorrectionResult> {
+    const result: CorrectionResult = { applied: 0, changed: 0, missing: 0 };
+    const byCouple = new Map<string, BudgetCorrection[]>();
+    for (const c of corrections) byCouple.set(c.coupleId, [...(byCouple.get(c.coupleId) ?? []), c]);
+    for (const [coupleId, list] of byCouple) {
+      if (!(await this.repo.findById(coupleId))) {
+        result.missing += list.length;
+        continue;
+      }
+      await this.mutate(coupleId, (c) => {
+        for (const correction of list) {
+          const item = c.budget.items.find((i) => i.id === correction.itemId);
+          if (!item) result.missing++;
+          else if (correctItem(item, correction)) result.applied++;
+          else result.changed++;
+        }
+      });
+    }
+    return result;
   }
 
   /** Returns the receipt files of the removed payments so the caller can delete them. */

@@ -338,6 +338,8 @@ interface BudgetRow {
   ars: number | null;
   usd: number | null;
   tc: number | null;
+  /** The currency typed by hand when the other one is a formula over the row's TC (`=D8*E8`, `=C6/E6`). */
+  fixed: Currency | null;
   date: string | null;
   obs: string;
 }
@@ -348,6 +350,22 @@ interface BudgetGroup {
   currency?: Currency;
   ipc: boolean;
   rows: BudgetRow[];
+}
+
+/** "A", "B", ..., "Z", "AA" for a 0-based column. */
+function columnLetter(c: number): string {
+  let letter = "";
+  for (let n = c + 1; n > 0; n = Math.floor((n - 1) / 26)) letter = String.fromCharCode(65 + ((n - 1) % 26)) + letter;
+  return letter;
+}
+
+/** The currency typed in a row whose other currency is converted with the row's own TC cell; null when unclear. */
+function fixedCurrency(sheet: GridSheet, r: number, c: number): Currency | null {
+  const tcCell = new RegExp(`(^|[^A-Z0-9$])\\$?${columnLetter(c + 3)}\\$?${r + 1}(?![0-9])`);
+  const converted = (col: number) => tcCell.test((sheet.formulas?.[`${r},${col}`] ?? "").toUpperCase());
+  const [arsConverted, usdConverted] = [converted(c + 1), converted(c + 2)];
+  if (arsConverted === usdConverted) return null;
+  return arsConverted ? "USD" : "ARS";
 }
 
 const KIND = /^(seña|sena|saldo|pago total|pago parcial|pago|iva|adicionales|adicional|flete|viáticos|viaticos|total)\b\s*\d*/i;
@@ -453,51 +471,79 @@ function parseBudget(sheets: GridSheet[], today: string, custom: Set<string>, wa
         const id = `${category}|${vendor}`;
         const group = groups.get(id) ?? { category, vendor, currency, ipc, rows: [] };
         groups.set(id, group);
-        group.rows.push({ label, kind, ars, usd, tc, date: parseDay(at(sheet, r, c + 5)), obs: at(sheet, r, c + 6) });
+        group.rows.push({ label, kind, ars, usd, tc, fixed: fixedCurrency(sheet, r, c), date: parseDay(at(sheet, r, c + 5)), obs: at(sheet, r, c + 6) });
       }
     }
   }
 
   const items: NonNullable<CoupleImport["budget"]>["items"] = [];
   for (const group of groups.values()) {
-    const currency: Currency = group.currency ?? (group.rows.every((r) => r.usd !== null && Number.isInteger(r.usd)) ? "USD" : "ARS");
-    const inCurrency = (row: BudgetRow) =>
-      currency === "USD" ? (row.usd ?? (row.ars && row.tc ? row.ars / row.tc : null)) : (row.ars ?? (row.usd && row.tc ? row.usd * row.tc : null));
-    const rows = group.rows.filter((row) => {
-      if (inCurrency(row) !== null) return true;
-      warnings.push(`Presupuesto: "${row.label}" no tiene monto en ${currency} ni TC; no se importa.`);
-      return false;
-    });
-    if (rows.length === 0) continue;
-
-    const paid = rows.filter((row) => row.date !== null && row.date <= today);
-    const owed = rows.filter((row) => !paid.includes(row));
-    const payments: PaymentInput[] = paid
-      .map((row): PaymentInput => {
-        const common = { date: row.date!, kind: row.kind, note: row.label };
-        if (currency === "USD" && row.ars && row.tc) return { ...common, amount: round2(row.ars), currency: "ARS", arsPerUsd: row.tc };
-        return { ...common, amount: round2(inCurrency(row)!), currency, arsPerUsd: null };
-      })
-      .sort((a, b) => a.date.localeCompare(b.date));
-    const due = owed.map((row) => row.date).filter((d): d is string => d !== null && d > today).sort();
-    const notes = [...new Set(owed.map((row) => row.obs).filter((obs) => obs && !/^(congelado|se ajusta por ipc|iva)$/i.test(obs)))];
-
-    const item: BudgetItemInput & { payments?: PaymentInput[] } = {
-      category: group.category,
-      vendor: group.vendor,
-      concept: categoryLabel(group.category, custom),
-      amount: round2(rows.reduce((sum, row) => sum + inCurrency(row)!, 0)),
-      currency,
-      adjustment: currency === "ARS" && (group.ipc || owed.some((row) => /ipc/i.test(row.obs))) ? "ipc" : "frozen",
-      baseMonth: (payments[0]?.date ?? today).slice(0, 7),
-      note: notes.join("\n"),
-      ...(due.length > 0 && { dueDate: due[0] }),
-      payments,
-    };
-    items.push(item);
+    const currency = group.currency ?? typedCurrency(group.rows) ?? (group.rows.every((r) => r.usd !== null && Number.isInteger(r.usd)) ? "USD" : "ARS");
+    // An unpaid row typed in the other currency is owed at that price, not at the converted one: its own item.
+    const other = group.rows.filter((row) => row.fixed && row.fixed !== currency && !isPaid(row, today));
+    const own = group.rows.filter((row) => !other.includes(row));
+    for (const [rows, itemCurrency] of [[own, currency], [other, currency === "USD" ? "ARS" : "USD"]] as const) {
+      const item = budgetItem(group, rows, itemCurrency, today, custom, warnings);
+      if (item) items.push(item);
+    }
   }
   if (items.length === 0 && guests === null) return null;
   return { usdQuote: "blue", guests, items };
+}
+
+const isPaid = (row: BudgetRow, today: string) => row.date !== null && row.date <= today;
+
+/** The currency most rows were typed in, when the sheet tells (see fixedCurrency). */
+function typedCurrency(rows: BudgetRow[]): Currency | null {
+  const usd = rows.filter((row) => row.fixed === "USD").length;
+  const ars = rows.filter((row) => row.fixed === "ARS").length;
+  return usd === 0 && ars === 0 ? null : usd > ars ? "USD" : "ARS";
+}
+
+function budgetItem(
+  group: BudgetGroup,
+  groupRows: BudgetRow[],
+  currency: Currency,
+  today: string,
+  custom: Set<string>,
+  warnings: string[],
+): (BudgetItemInput & { payments?: PaymentInput[] }) | null {
+  const inCurrency = (row: BudgetRow) =>
+    currency === "USD" ? (row.usd ?? (row.ars && row.tc ? row.ars / row.tc : null)) : (row.ars ?? (row.usd && row.tc ? row.usd * row.tc : null));
+  const rows = groupRows.filter((row) => {
+    if (inCurrency(row) !== null) return true;
+    warnings.push(`Presupuesto: "${row.label}" no tiene monto en ${currency} ni TC; no se importa.`);
+    return false;
+  });
+  if (rows.length === 0) return null;
+
+  const paid = rows.filter((row) => isPaid(row, today));
+  const owed = rows.filter((row) => !paid.includes(row));
+  const payments: PaymentInput[] = paid
+    .map((row): PaymentInput => {
+      const common = { date: row.date!, kind: row.kind, note: row.label };
+      // A payment keeps the price typed in the sheet, with the row's TC when it is not the item's currency.
+      const typed = row.fixed ?? (currency === "USD" && row.ars && row.tc ? "ARS" : currency);
+      const typedAmount = typed === "USD" ? row.usd : row.ars;
+      if (typed !== currency && typedAmount && row.tc) return { ...common, amount: round2(typedAmount), currency: typed, arsPerUsd: row.tc };
+      return { ...common, amount: round2(inCurrency(row)!), currency, arsPerUsd: null };
+    })
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const due = owed.map((row) => row.date).filter((d): d is string => d !== null && d > today).sort();
+  const notes = [...new Set(owed.map((row) => row.obs).filter((obs) => obs && !/^(congelado|se ajusta por ipc|iva)$/i.test(obs)))];
+
+  return {
+    category: group.category,
+    vendor: group.vendor,
+    concept: categoryLabel(group.category, custom),
+    amount: round2(rows.reduce((sum, row) => sum + inCurrency(row)!, 0)),
+    currency,
+    adjustment: currency === "ARS" && (group.ipc || owed.some((row) => /ipc/i.test(row.obs))) ? "ipc" : "frozen",
+    baseMonth: (payments[0]?.date ?? today).slice(0, 7),
+    note: notes.join("\n"),
+    ...(due.length > 0 && { dueDate: due[0] }),
+    payments,
+  };
 }
 
 // --- guests ---

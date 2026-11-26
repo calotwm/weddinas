@@ -56,6 +56,8 @@ export interface GridSheet {
   name: string;
   rows: CellValue[][];
   merges: CellRange[];
+  /** Formula text of formula cells by "row,column" (0-based); only when read with `{ formulas: true }`. */
+  formulas?: Record<string, string>;
 }
 
 export const COMPARISON_LIMITS = { maxBytes: 5 * 1024 * 1024, sheets: 10, rows: 200, columns: 30, cellChars: 2000 };
@@ -222,8 +224,8 @@ export const workbookLimitMessage = (reason: "too-big" | "too-many-sheets", what
     ? `${what} es demasiado grande para leerlo. Dejá solo la hoja que hace falta y volvé a subirlo.`
     : `${what} tiene demasiadas hojas. Dejá solo las que hacen falta y volvé a subirlo.`;
 
-/** Reads the visible sheets of an xlsx file into plain grids. */
-export async function readComparisonWorkbook(bytes: Uint8Array): Promise<GridSheet[]> {
+/** Reads the visible sheets of an xlsx file into plain grids; `formulas` also keeps each formula cell's formula text. */
+export async function readComparisonWorkbook(bytes: Uint8Array, options: { formulas?: boolean } = {}): Promise<GridSheet[]> {
   const limit = xlsxLimitError(bytes);
   if (limit) throw new WorkbookLimitError(limit);
   const { default: ExcelJS } = await import("exceljs");
@@ -237,18 +239,21 @@ export async function readComparisonWorkbook(bytes: Uint8Array): Promise<GridShe
     .filter((ws) => ws.state === "visible" || ws.state === undefined)
     .map((ws) => {
       const rows: CellValue[][] = [];
+      const formulas: Record<string, string> = {};
       ws.eachRow({ includeEmpty: false }, (row, number) => {
         if (number > MAX_READ_ROWS) return;
         const cells: CellValue[] = [];
         for (let c = 1; c <= Math.min(row.cellCount, MAX_READ_COLUMNS); c++) {
           const cell = row.getCell(c);
           cells.push(cell.type === ExcelJS.ValueType.Merge ? null : toCellValue(cell.value, cell.numFmt));
+          // `cell.formula` also resolves shared formulas to this cell's own references.
+          if (options.formulas && cell.type === ExcelJS.ValueType.Formula && cell.formula) formulas[`${number - 1},${c - 1}`] = cell.formula;
         }
         rows[number - 1] = cells;
       });
       for (let r = 0; r < rows.length; r++) rows[r] ??= [];
       const merges = (ws.model.merges ?? []).map(parseRange).filter((m) => m.top < MAX_READ_ROWS && m.left < MAX_READ_COLUMNS);
-      return { name: ws.name, rows, merges };
+      return options.formulas ? { name: ws.name, rows, merges, formulas } : { name: ws.name, rows, merges };
     });
 }
 

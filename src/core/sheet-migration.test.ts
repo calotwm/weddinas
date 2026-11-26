@@ -183,6 +183,65 @@ describe("migrateCouple: budget", () => {
   });
 });
 
+describe("migrateCouple: budget fixed prices", () => {
+  // Columns B..H: Presupuesto, AR$, USD, TC, %, Fecha, Obs; TC is column E. The converted currency is a formula over it.
+  const espacio: GridSheet = {
+    name: "Espacio",
+    rows: [
+      [_, "Espacio - Salón Uno"],
+      [_, "Presupuesto", "AR$", "USD", "TC", "%", "Fecha de pago", "Obs"],
+      [_, "Seña - Espacio", 3600000, 2571.428571, 1400, _, "10/06/2026", _],
+      [_, "Saldo - Espacio", 14350000, 10250, 1400, _, "20/01/2027", _],
+      [_, "Adicionales - Espacio", 2000000, 1388.888889, 1440, _, "20/01/2027", _],
+    ],
+    merges: [],
+    formulas: { "2,3": "C3/E3", "3,2": "D4*E4", "4,3": "C5/E5" },
+  };
+  const foto: GridSheet = {
+    name: "Foto",
+    rows: [
+      [_, "Foto - Lente"],
+      [_, "Presupuesto", "AR$", "USD", "TC", "%", "Fecha de pago", "Obs"],
+      [_, "Seña - Foto", 1826500, 1300, 1405, _, "10/06/2026", _],
+      [_, "Saldo - Foto", 1704000, 1200, 1420, _, "20/01/2027", _],
+    ],
+    merges: [],
+    formulas: { "2,2": "D3*E3", "3,2": "D4*E4", "3,3": "2500-D3" },
+  };
+  const items = () => migrateCouple(couple({ presupuesto: [espacio, foto] })).data!.budget!.items;
+
+  it("takes the typed price of each row, never the one converted with the row's TC", () => {
+    expect(items().find((i) => i.category === "foto")).toMatchObject({ currency: "USD", amount: 2500, payments: [{ amount: 1300, currency: "USD", arsPerUsd: null }] });
+  });
+
+  it("keeps an unpaid row typed in the other currency as its own item at its typed price", () => {
+    const espacioItems = items().filter((i) => i.category === "espacio");
+    expect(espacioItems.map((i) => [i.currency, i.amount, i.payments!.length])).toEqual([
+      ["ARS", 5600000, 1],
+      ["USD", 10250, 0],
+    ]);
+    expect(espacioItems[1]).toMatchObject({ vendor: "Salón Uno", adjustment: "frozen", dueDate: "2027-01-20" });
+  });
+
+  it("records a paid row typed in the other currency as a payment at its typed price and TC", () => {
+    const paidInUsd: GridSheet = {
+      ...espacio,
+      rows: [espacio.rows[0], espacio.rows[1], espacio.rows[2], [_, "Saldo - Espacio", 14350000, 10250, 1400, _, "01/06/2026", _]],
+    };
+    const item = migrateCouple(couple({ presupuesto: [paidInUsd] })).data!.budget!.items[0];
+    expect(item).toMatchObject({ currency: "ARS", amount: 17950000 });
+    expect(item.payments!.map((p) => [p.amount, p.currency, p.arsPerUsd])).toEqual([
+      [10250, "USD", 1400],
+      [3600000, "ARS", null],
+    ]);
+  });
+
+  it("keeps the previous behavior for sheets read without formulas", () => {
+    const plain = migrateCouple(couple({ presupuesto: [{ ...espacio, formulas: undefined }] })).data!.budget!.items;
+    expect(plain.map((i) => [i.currency, i.amount])).toEqual([["ARS", 19950000]]);
+  });
+});
+
 describe("migrateCouple: guests", () => {
   it("imports the guest list with the existing guest importer and reports a list it cannot read", () => {
     const invitados = sheet("Invitados", [
