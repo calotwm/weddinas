@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { useId } from "react";
-import { normalizeBlockStatus, type BlockStatus, type BriefBlock, type OfferedBlockStatus } from "@/core/couple";
+import { shownBlockStatus, type BlockStatus, type BriefBlock, type ShownBlockStatus } from "@/core/couple";
 import type { RubroReceipt } from "@/core/budget";
 import { AttachmentList } from "@/components/attachments";
 import { ReceiptLinks } from "@/components/planner/budget";
@@ -70,15 +70,14 @@ export function NoteText({ text, collapse = false }: { text: string; collapse?: 
   );
 }
 
-/** The statuses the team picks from; the retired "En búsqueda" shows as "Para decidir". */
-export const BLOCK_STATUS: Record<OfferedBlockStatus, { label: string; className: string }> = {
-  deciding: { label: "Para decidir", className: "bg-peach text-rust" },
+/** The statuses the team picks from: Pendiente and Confirmado (anything else stored reads as Pendiente). */
+export const BLOCK_STATUS: Record<ShownBlockStatus, { label: string; className: string }> = {
+  deciding: { label: "Pendiente", className: "bg-peach text-rust" },
   confirmed: { label: "Confirmado", className: "bg-mint/25 text-forest" },
-  na: { label: "No aplica", className: "bg-ink/8 text-ink/50" },
 };
 
 export function StatusChip({ status }: { status: BlockStatus }) {
-  const s = BLOCK_STATUS[normalizeBlockStatus(status)];
+  const s = BLOCK_STATUS[shownBlockStatus(status)];
   return <span className={`chip ${s.className}`}>{s.label}</span>;
 }
 

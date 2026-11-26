@@ -110,7 +110,7 @@ export function AestheticForm({
         <section className="card space-y-4">
           <div>
             <h3 className="section-title">Colores</h3>
-            <p className="text-sm text-ink/60">Elijan cada color; se guarda con su número, como referencia para deco y papelería.</p>
+            <p className="text-sm text-ink/60">Elijan cada color; se guarda con su número, como referencia para deco y elementos gráficos.</p>
           </div>
           <PaletteEditor initial={aesthetic.palette} />
         </section>

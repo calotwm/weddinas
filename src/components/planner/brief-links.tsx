@@ -72,7 +72,7 @@ export function BriefLinks({
                       <span className="flex h-20 w-20 items-center justify-center rounded-xl bg-white text-sm font-semibold text-forest ring-1 ring-forest/10">PDF</span>
                     ) : (
                       // eslint-disable-next-line @next/next/no-img-element -- couple files are served by our own route, not next/image
-                      <img src={photoUrl(coupleId, id)} alt="Diseño de papelería" loading="lazy" className="h-20 w-20 rounded-xl object-cover ring-1 ring-forest/10" />
+                      <img src={photoUrl(coupleId, id)} alt="Elemento gráfico" loading="lazy" className="h-20 w-20 rounded-xl object-cover ring-1 ring-forest/10" />
                     )}
                   </a>
                 </li>

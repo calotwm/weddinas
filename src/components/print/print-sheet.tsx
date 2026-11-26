@@ -28,6 +28,8 @@ export function PrintSheet({
         <PrintButton />
       </div>
       <header className="border-b border-forest/10 pb-4">
+        {/* eslint-disable-next-line @next/next/no-img-element -- printed as is, no optimization needed */}
+        <img src="/img/weddinas-logo.png" alt="Weddinas wedding planners" className="mx-auto mb-4 h-16 w-auto" />
         <p className="eyebrow">Weddinas · {coupleNames(couple)}</p>
         <h2 className="font-display text-4xl text-forest">{title}</h2>
         <p className="text-sm text-ink/60 first-letter:uppercase">{formatWeddingDate(couple.weddingDate)}</p>

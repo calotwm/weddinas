@@ -153,6 +153,11 @@ export type OfferedBlockStatus = Exclude<BlockStatus, "searching">;
 
 export const normalizeBlockStatus = (status: BlockStatus): OfferedBlockStatus => (status === "searching" ? "deciding" : status);
 
+/** The statuses the team sees and picks: "Pendiente" (deciding) and "Confirmado". Stored "na" keeps hiding event blocks from the couple. */
+export type ShownBlockStatus = "deciding" | "confirmed";
+
+export const shownBlockStatus = (status: BlockStatus): ShownBlockStatus => (status === "confirmed" ? "confirmed" : "deciding");
+
 /** Who a brief line is waiting on, as the agency colors it: violet, yellow, orange, green. */
 export type LineState = "weddinas" | "couple" | "vendor" | "confirmed";
 

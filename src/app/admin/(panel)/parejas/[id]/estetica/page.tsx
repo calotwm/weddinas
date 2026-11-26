@@ -40,8 +40,8 @@ export default async function AestheticAdminPage({ params }: { params: Promise<{
         max={MAX_AESTHETIC_PHOTOS}
       />
       <TeamImageGallery
-        title="Papelería"
-        description="Los diseños de papelería elegidos. Los subís vos; la pareja los ve en su portal"
+        title="Elementos gráficos"
+        description="Los elementos gráficos elegidos. Los subís vos; la pareja los ve en su portal"
         coupleId={couple.id}
         fileIds={couple.teamFiles.stationeryIds}
         max={MAX_STATIONERY}

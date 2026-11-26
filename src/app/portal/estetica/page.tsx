@@ -15,7 +15,7 @@ export default async function AestheticPage() {
       <div>
         <h2 className="font-display text-3xl text-forest">Estética</h2>
         <p className="mt-1 max-w-2xl text-sm text-ink/70">
-          Cuéntennos qué les gusta: tipografías, colores, ideas y cómo quieren su web. Nos sirve para deco, papelería y para los proveedores.
+          Cuéntennos qué les gusta: tipografías, colores, ideas y cómo quieren su web. Nos sirve para deco, elementos gráficos y para los proveedores.
         </p>
       </div>
 
@@ -30,8 +30,8 @@ export default async function AestheticPage() {
         max={MAX_AESTHETIC_PHOTOS}
       />
       <TeamImageGallery
-        title="Papelería"
-        description="Los diseños de papelería que eligieron, cargados por el equipo Weddinas."
+        title="Elementos gráficos"
+        description="Los elementos gráficos que eligieron, cargados por el equipo Weddinas."
         coupleId={couple.id}
         fileIds={couple.teamFiles.stationeryIds}
         max={MAX_STATIONERY}

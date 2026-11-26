@@ -5,7 +5,7 @@ import { Icon } from "@/components/icons";
 import { SubmitButton } from "@/components/submit-button";
 import { LINE_STATE_CHIP, LINE_STATE_DOT } from "@/components/planner/line-state";
 import { CUSTOM_BLOCK_NAME_MAX, TEAM_FIELD, TEAM_OWNERS } from "@/core/brief-catalog";
-import { isLineState, LINE_STATES, normalizeBlockStatus, type BriefBlock, type LineState } from "@/core/couple";
+import { isLineState, LINE_STATES, shownBlockStatus, type BriefBlock, type LineState } from "@/core/couple";
 import { addCustomBriefBlock } from "@/app/admin/actions";
 import { saveBriefBlock, saveIdeas } from "@/app/admin/planner-actions";
 import { BLOCK_STATUS } from "@/components/planner/brief";
@@ -143,7 +143,7 @@ export function BriefBlockForm({ coupleId, block, budgetPayment }: { coupleId: s
         )}
         <div>
           <label htmlFor={`s-${id}`} className="label">Estado</label>
-          <select id={`s-${id}`} name="status" defaultValue={normalizeBlockStatus(block.status)}className="field">
+          <select id={`s-${id}`} name="status" defaultValue={shownBlockStatus(block.status)} className="field">
             {Object.entries(BLOCK_STATUS).map(([value, { label }]) => (
               <option key={value} value={value}>{label}</option>
             ))}
