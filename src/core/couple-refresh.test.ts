@@ -72,7 +72,7 @@ async function existingCouple() {
   const rsvpToken = await service.rsvpToken(coupleId);
   const loaded = (await service.getCouple(coupleId))!;
   const item = loaded.budget.items[0];
-  await service.setPaymentReceipt(coupleId, item.id, item.payments[0].id, RECEIPT);
+  await service.addPaymentFile(coupleId, item.id, item.payments[0].id, RECEIPT);
   await service.setFamilyPhoto(coupleId, loaded.family[0].id, MERCEDES);
   await service.setFamilyPhoto(coupleId, loaded.family[1].id, TITO);
   return { coupleId, accessCode, rsvpToken, before: (await service.getCouple(coupleId))! };

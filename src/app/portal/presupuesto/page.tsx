@@ -44,7 +44,7 @@ export default async function BudgetPage() {
                   ipc={ipc}
                   anchor={anchor}
                   receiptAction={(p) => (
-                    <ReceiptForm action={uploadPaymentReceipt} itemId={item.id} paymentId={p.id} replace={Boolean(p.receiptId)} />
+                    <ReceiptForm action={uploadPaymentReceipt} itemId={item.id} paymentId={p.id} hasFiles={Boolean(p.receiptId)} />
                   )}
                 />
               </Fragment>

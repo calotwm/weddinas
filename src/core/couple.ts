@@ -108,6 +108,16 @@ export interface Payment {
   note: string;
   /** Uploaded receipt (image or PDF) in the couple's files. Optional. */
   receiptId?: string;
+  /** More "archivos de pago" (images or PDFs) after the first one, oldest first. */
+  receiptIds?: string[];
+}
+
+/** An additional charge agreed but not paid yet: it adds to the item's total and stays in its balance. */
+export interface BudgetCharge {
+  id: string;
+  concept: string;
+  /** In the item's currency. */
+  amount: number;
 }
 
 /** Whether a vendor's price includes freight and travel expenses; missing means unknown. */
@@ -135,6 +145,8 @@ export interface BudgetItem {
   freightPaid?: boolean;
   /** Guests confirmed to the vendor (Espacio, Catering, Barra and Ambientación only). Optional. */
   confirmedGuests?: number;
+  /** Additional charges still to pay ("adicional por pagar"). */
+  charges?: BudgetCharge[];
   payments: Payment[];
 }
 

@@ -3,8 +3,8 @@ import type { BriefBlock } from "@/core/couple";
 
 /** The couple's brief, so custom rubros show the name the team gave them. */
 type RubroNames = ReadonlyArray<Pick<BriefBlock, "key" | "name">>;
-import { dueItems, itemCategories, itemCategoryName, paidVsPending, splitPaid, summarizeBudget, summarizeItem, type RubroReceipt } from "@/core/budget";
-import type { Budget, BudgetItem, FreightIncluded, Payment, PaymentKind } from "@/core/couple";
+import { budgetStage, dueItems, itemCategories, itemCategoryName, orderByStage, paidVsPending, paymentFiles, summarizeBudget, summarizeItem, type BudgetStage, type RubroReceipt } from "@/core/budget";
+import type { Budget, BudgetCharge, BudgetItem, FreightIncluded, Payment, PaymentKind } from "@/core/couple";
 import type { IpcSeries, UsdQuote } from "@/core/money";
 import { addDays, formatDay, formatMoney, formatMonth } from "@/lib/format";
 import { Icon } from "../icons";
@@ -53,17 +53,19 @@ const PENDING_COLOR = "#c6541a";
 export const categoryAnchor = (category: string) => `rubro-${category}`;
 
 /**
- * Fully paid items go last; the first card of each category gets the anchor the overview links to,
- * and the first fully paid card is flagged so the page can draw the "Pago al 100%" divider before it.
+ * Estimates (no vendor yet) first, then items with a balance, fully paid ones last; the first card of each category
+ * gets the anchor the overview links to, and the first fully paid card is flagged so the page can draw the
+ * "Pago al 100%" divider before it.
  */
 export function orderedBudgetItems(
   items: BudgetItem[],
   ipc: IpcSeries | null,
 ): Array<{ item: BudgetItem; anchor?: string; firstPaid?: boolean }> {
   const seen = new Set<string>();
-  const { owing, paid } = splitPaid(items, ipc);
-  return [...owing, ...paid].map((item, i) => {
-    const firstPaid = i === owing.length && owing.length > 0 ? true : undefined;
+  const ordered = orderByStage(items, ipc);
+  const firstPaidAt = ordered.findIndex((item) => budgetStage(item, ipc) === "paid");
+  return ordered.map((item, i) => {
+    const firstPaid = i === firstPaidAt && i > 0 ? true : undefined;
     const key = itemCategories(item).join("+");
     if (seen.has(key)) return { item, firstPaid };
     seen.add(key);
@@ -72,6 +74,12 @@ export function orderedBudgetItems(
 }
 
 /** Separates the items that still have a balance from the ones paid in full: a filled band across the whole grid. */
+const STAGE: Record<BudgetStage, { label: string; chip: string; ring: string }> = {
+  estimate: { label: "Estimado", chip: "bg-yellow-100 text-yellow-900", ring: "ring-yellow-300" },
+  pending: { label: "Pendiente de pago", chip: "bg-red-100 text-red-800", ring: "ring-red-300" },
+  paid: { label: "Pago al 100%", chip: "bg-green-100 text-green-800", ring: "ring-green-300" },
+};
+
 export function PaidDivider() {
   return (
     <div
@@ -87,7 +95,7 @@ export function PaidDivider() {
   );
 }
 
-/** A rubro's payment receipts as links ("Comprobante 10/06/2026"), for its brief block. */
+/** A rubro's payment receipts as links ("Archivo de pago 10/06/2026"), for its brief block. */
 export function ReceiptLinks({ coupleId, receipts }: { coupleId: string; receipts: RubroReceipt[] }) {
   if (receipts.length === 0) return null;
   return (
@@ -101,7 +109,7 @@ export function ReceiptLinks({ coupleId, receipts }: { coupleId: string; receipt
             className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-sm font-semibold text-teal ring-1 ring-forest/10 underline-offset-4 hover:underline"
           >
             <Icon name="file" className="h-3.5 w-3.5" />
-            Comprobante {formatDay(r.date)}
+            Archivo de pago {formatDay(r.date)}
           </a>
         </li>
       ))}
@@ -233,6 +241,8 @@ export function BudgetItemCard({
   anchor,
   paymentAction,
   receiptAction,
+  fileAction,
+  chargeAction,
   brief,
   children,
 }: {
@@ -243,21 +253,26 @@ export function BudgetItemCard({
   anchor?: string;
   /** Optional control rendered next to each payment (admin delete button). */
   paymentAction?: (payment: Payment) => React.ReactNode;
-  /** Optional control to attach or replace a payment's receipt. */
+  /** Optional control to add payment files ("archivos de pago"). */
   receiptAction?: (payment: Payment) => React.ReactNode;
+  /** Optional control next to each payment file (team delete button). */
+  fileAction?: (payment: Payment, fileId: string) => React.ReactNode;
+  /** Optional control next to each additional charge still to pay (team delete button). */
+  chargeAction?: (charge: BudgetCharge) => React.ReactNode;
   brief?: RubroNames;
   children?: React.ReactNode;
 }) {
   const s = summarizeItem(item, ipc);
   const adjusted = item.currency === "ARS" && item.adjustment === "ipc";
+  const stage = STAGE[budgetStage(item, ipc)];
 
   return (
-    <article id={anchor} className="card scroll-mt-6 space-y-4">
+    <article id={anchor} className={`card scroll-mt-6 space-y-4 ring-2 ${stage.ring}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="flex flex-wrap items-center gap-2 text-xs tracking-[0.2em] text-rust uppercase">
             {itemCategoryName(item, brief)}
-            {s.pending <= 0 && <span className="chip bg-mint/25 py-0.5 tracking-normal text-forest normal-case">Pago al 100%</span>}
+            <span className={`chip py-0.5 tracking-normal normal-case ${stage.chip}`}>{stage.label}</span>
           </p>
           <h3 className="font-display text-2xl text-forest">{item.vendor || "Sin proveedor"}</h3>
           {item.concept && <p className="text-sm text-ink/70">{item.concept}</p>}
@@ -304,6 +319,19 @@ export function BudgetItemCard({
       )}
       {item.note && <p className="text-sm text-ink/70">{item.note}</p>}
 
+      {(item.charges ?? []).length > 0 && (
+        <ul className="space-y-1 rounded-2xl bg-red-50 px-4 py-2.5 text-sm ring-1 ring-red-200">
+          {item.charges!.map((c) => (
+            <li key={c.id} className="flex items-center gap-3">
+              <span className="chip bg-red-100 text-red-800">Adicional por pagar</span>
+              <span className="text-ink/70">{c.concept}</span>
+              <span className="ml-auto font-semibold text-red-800">{formatMoney(c.amount, item.currency)}</span>
+              {chargeAction?.(c)}
+            </li>
+          ))}
+        </ul>
+      )}
+
       {item.payments.length > 0 && (
         <ul className="divide-y divide-forest/5 rounded-2xl ring-1 ring-forest/10">
           {item.payments.map((p) => (
@@ -315,17 +343,20 @@ export function BudgetItemCard({
                   <span className="font-semibold text-forest">{formatMoney(p.amount, p.currency)}</span>
                   {p.arsPerUsd && <span className="block text-xs text-ink/50">a {formatMoney(p.arsPerUsd, "ARS")} por dólar</span>}
                   {p.note && <span className="block text-xs text-ink/50">{p.note}</span>}
-                  {p.receiptId && (
-                    <a
-                      href={receiptUrl(coupleId, p.receiptId)}
-                      target="_blank"
-                      rel="noopener"
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-teal underline-offset-4 hover:underline"
-                    >
-                      <Icon name="file" className="h-3 w-3" />
-                      Ver comprobante
-                    </a>
-                  )}
+                  {paymentFiles(p).map((fileId, n, all) => (
+                    <span key={fileId} className="flex items-center justify-end gap-1">
+                      <a
+                        href={receiptUrl(coupleId, fileId)}
+                        target="_blank"
+                        rel="noopener"
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-teal underline-offset-4 hover:underline"
+                      >
+                        <Icon name="file" className="h-3 w-3" />
+                        {all.length === 1 ? "Ver archivo de pago" : `Archivo de pago ${n + 1}`}
+                      </a>
+                      {fileAction?.(p, fileId)}
+                    </span>
+                  ))}
                 </span>
                 {paymentAction?.(p)}
               </div>

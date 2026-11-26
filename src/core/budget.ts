@@ -1,5 +1,5 @@
 import { categoryName } from "./brief-catalog";
-import type { BriefBlock, BudgetItem } from "./couple";
+import type { BriefBlock, BudgetItem, Payment } from "./couple";
 import { adjustedAmount, convert, ipcFactor, type Currency, type IpcSeries } from "./money";
 
 export interface ItemSummary {
@@ -39,11 +39,17 @@ export interface BudgetSummary {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+/** Every file of a payment: the first receipt plus the other "archivos de pago". */
+export const paymentFiles = (p: Pick<Payment, "receiptId" | "receiptIds">): string[] => [...(p.receiptId ? [p.receiptId] : []), ...(p.receiptIds ?? [])];
+
+/** What the item costs: its amount plus the additional charges still to pay. */
+const itemCost = (item: BudgetItem) => item.amount + (item.charges ?? []).reduce((sum, c) => sum + c.amount, 0);
+
 export function summarizeItem(item: BudgetItem, ipc: IpcSeries | null): ItemSummary {
   const paid = round2(
     item.payments.reduce((sum, p) => sum + (convert(p.amount, p.currency, item.currency, p.arsPerUsd) ?? 0), 0),
   );
-  const pendingNominal = Math.max(0, round2(item.amount - paid));
+  const pendingNominal = Math.max(0, round2(itemCost(item) - paid));
   const pending = adjustedAmount({ ...item, amount: pendingNominal }, ipc);
   const adjusted = item.currency === "ARS" && item.adjustment === "ipc";
   return {
@@ -131,6 +137,18 @@ export const isFullyPaid = (item: BudgetItem, ipc: IpcSeries | null) => summariz
 export const paidLast = (items: BudgetItem[], ipc: IpcSeries | null) =>
   [...items].sort((a, b) => Number(isFullyPaid(a, ipc)) - Number(isFullyPaid(b, ipc)));
 
+/** "Estimado" (no vendor yet, yellow), "Pendiente" (a balance to pay, red) or "Pago al 100%" (green). */
+export type BudgetStage = "estimate" | "pending" | "paid";
+
+export const budgetStage = (item: BudgetItem, ipc: IpcSeries | null): BudgetStage =>
+  !item.vendor.trim() ? "estimate" : isFullyPaid(item, ipc) ? "paid" : "pending";
+
+const STAGE_ORDER: BudgetStage[] = ["estimate", "pending", "paid"];
+
+/** Estimates first, then items with a balance, then fully paid ones; each group keeps its order. */
+export const orderByStage = (items: BudgetItem[], ipc: IpcSeries | null) =>
+  [...items].sort((a, b) => STAGE_ORDER.indexOf(budgetStage(a, ipc)) - STAGE_ORDER.indexOf(budgetStage(b, ipc)));
+
 /** Items still being paid and fully paid ones, each group in its original order. */
 export function splitPaid(items: BudgetItem[], ipc: IpcSeries | null): { owing: BudgetItem[]; paid: BudgetItem[] } {
   const owing: BudgetItem[] = [];
@@ -194,8 +212,7 @@ export function rubroReceipts(items: BudgetItem[], category: string): RubroRecei
   return items
     .filter((i) => coversCategory(i, category))
     .flatMap((i) => i.payments)
-    .filter((p) => p.receiptId)
-    .map((p) => ({ paymentId: p.id, date: p.date, receiptId: p.receiptId! }))
+    .flatMap((p) => paymentFiles(p).map((receiptId) => ({ paymentId: p.id, date: p.date, receiptId })))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 

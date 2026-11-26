@@ -7,7 +7,7 @@ import { normalizeWhatsapp } from "./whatsapp";
 import { normalizeSongChoice } from "./music";
 import { cleanWebSelection, webDressCode } from "./web-options";
 import type { AestheticWeb } from "./couple";
-import { itemCategories, itemTracksConfirmedGuests } from "./budget";
+import { itemCategories, itemTracksConfirmedGuests, paymentFiles } from "./budget";
 import { correctItem, type BudgetCorrection, type CorrectionResult } from "./budget-corrections";
 import { parseMentions, TEAM_COMMENT_MAX, TeamCommentError } from "./team-comments";
 import { BRIEF_CATALOG, catalogBlock, categoryName, CUSTOM_BLOCK_NAME_MAX, CUSTOM_BLOCK_PREFIX, defaultBrief, defaultMusic, musicMomentKeys, newBriefBlock, newCustomBriefBlock, requiredFields, SONG_MOMENT_KEYS, withCatalogFields } from "./brief-catalog";
@@ -22,6 +22,7 @@ import {
   type BlockStatus,
   type BriefBlock,
   type BriefField,
+  type BudgetCharge,
   type BudgetItem,
   type TeamComment,
   type ChecklistTask,
@@ -68,7 +69,8 @@ const familyKey = (m: Pick<FamilyMember, "side" | "name">) => `${m.side}|${plain
 const paymentKey = (item: Pick<BudgetItem, "category" | "vendor">, p: Pick<Payment, "date" | "amount" | "currency">) =>
   [item.category, plain(item.vendor), p.date, p.amount, p.currency].join("|");
 
-export type BudgetItemInput = Omit<BudgetItem, "id" | "payments" | "dueDate"> & { dueDate?: string };
+export type BudgetItemInput = Omit<BudgetItem, "id" | "payments" | "dueDate" | "charges"> & { dueDate?: string };
+export type BudgetChargeInput = Omit<BudgetCharge, "id">;
 export type PaymentInput = Omit<Payment, "id">;
 export interface BriefBlockUpdate {
   vendor: string;
@@ -180,6 +182,9 @@ function attachmentsOf(couple: Couple, target: AttachmentTarget): Attachment[] {
   if (!owner) throw new Error(`${target.kind} not found`);
   return (owner.attachments ??= []);
 }
+
+/** Files one payment can hold. */
+const MAX_PAYMENT_FILES = 10;
 
 const BLOCK_STATUSES: BlockStatus[] = ["searching", "deciding", "confirmed", "na"];
 const PAYMENT_KINDS: PaymentKind[] = ["sena", "saldo", "adicional", "iva", "intermedio"];
@@ -457,8 +462,10 @@ export class PortalService {
       }
       if (sheet.budget) {
         const receipts = new Map<string, string[]>();
+        const moreFiles = new Map<string, string[][]>();
         for (const item of c.budget.items) {
           for (const p of item.payments) if (p.receiptId) receipts.set(paymentKey(item, p), [...(receipts.get(paymentKey(item, p)) ?? []), p.receiptId]);
+          for (const p of item.payments) if (p.receiptIds?.length) moreFiles.set(paymentKey(item, p), [...(moreFiles.get(paymentKey(item, p)) ?? []), p.receiptIds]);
         }
         c.budget = {
           ...sheet.budget,
@@ -466,7 +473,8 @@ export class PortalService {
             ...item,
             payments: item.payments.map((p) => {
               const receiptId = p.receiptId ?? receipts.get(paymentKey(item, p))?.shift();
-              return receiptId ? { ...p, receiptId } : p;
+              const receiptIds = p.receiptIds ?? moreFiles.get(paymentKey(item, p))?.shift();
+              return { ...p, ...(receiptId ? { receiptId } : {}), ...(receiptIds ? { receiptIds } : {}) };
             }),
           })),
         };
@@ -867,7 +875,7 @@ export class PortalService {
     let receipts: string[] = [];
     await this.mutate(coupleId, (c) => {
       const item = c.budget.items.find((i) => i.id === itemId);
-      receipts = (item?.payments ?? []).flatMap((p) => (p.receiptId ? [p.receiptId] : []));
+      receipts = (item?.payments ?? []).flatMap(paymentFiles);
       c.budget.items = c.budget.items.filter((i) => i.id !== itemId);
     });
     return receipts;
@@ -878,7 +886,10 @@ export class PortalService {
     if (!DAY.test(input.date)) throw new Error("Date must be YYYY-MM-DD");
     if (!PAYMENT_KINDS.includes(input.kind)) throw new Error("Unknown payment kind");
     checkReceiptId(input.receiptId);
+    for (const id of input.receiptIds ?? []) checkReceiptId(id);
+    if (paymentFiles(input).length > MAX_PAYMENT_FILES) throw new Error("Too many payment files");
     const payment: Payment = { id: randomUUID(), ...input, note: input.note.trim() };
+    if (!payment.receiptIds?.length) delete payment.receiptIds;
     await this.mutate(coupleId, (c) => {
       const item = c.budget.items.find((i) => i.id === itemId);
       if (!item) throw new Error("Budget item not found");
@@ -892,29 +903,64 @@ export class PortalService {
     return payment;
   }
 
-  /** Returns the removed payment's receipt file, if any, so the caller can delete it. */
-  async deletePayment(coupleId: string, itemId: string, paymentId: string): Promise<string | null> {
-    let receipt: string | null = null;
+  /** Returns the removed payment's files so the caller can delete them. */
+  async deletePayment(coupleId: string, itemId: string, paymentId: string): Promise<string[]> {
+    let removed: string[] = [];
     await this.mutate(coupleId, (c) => {
       const item = c.budget.items.find((i) => i.id === itemId);
       if (!item) return;
-      receipt = item.payments.find((p) => p.id === paymentId)?.receiptId ?? null;
+      const payment = item.payments.find((p) => p.id === paymentId);
+      removed = payment ? paymentFiles(payment) : [];
       item.payments = item.payments.filter((p) => p.id !== paymentId);
     });
-    return receipt;
+    return removed;
   }
 
-  /** Attaches (or replaces) a payment's receipt; returns the previous receipt file so the caller can delete it. */
-  async setPaymentReceipt(coupleId: string, itemId: string, paymentId: string, receiptId: string): Promise<string | null> {
-    checkReceiptId(receiptId);
-    let previous: string | null = null;
+  /** Adds one more "archivo de pago" (image or PDF) to a payment. */
+  async addPaymentFile(coupleId: string, itemId: string, paymentId: string, fileId: string): Promise<void> {
+    checkReceiptId(fileId);
     await this.mutate(coupleId, (c) => {
       const payment = c.budget.items.find((i) => i.id === itemId)?.payments.find((p) => p.id === paymentId);
       if (!payment) throw new Error("Payment not found");
-      previous = payment.receiptId ?? null;
-      payment.receiptId = receiptId;
+      if (paymentFiles(payment).length >= MAX_PAYMENT_FILES) throw new Error("Too many payment files");
+      if (!payment.receiptId) payment.receiptId = fileId;
+      else payment.receiptIds = [...(payment.receiptIds ?? []), fileId];
     });
-    return previous;
+  }
+
+  /** Takes a file off a payment; returns it so the caller can delete it, or null when the payment does not have it. */
+  async removePaymentFile(coupleId: string, itemId: string, paymentId: string, fileId: string): Promise<string | null> {
+    let removed: string | null = null;
+    await this.mutate(coupleId, (c) => {
+      const payment = c.budget.items.find((i) => i.id === itemId)?.payments.find((p) => p.id === paymentId);
+      if (!payment || !paymentFiles(payment).includes(fileId)) return;
+      removed = fileId;
+      const [first, ...rest] = paymentFiles(payment).filter((id) => id !== fileId);
+      if (first) payment.receiptId = first;
+      else delete payment.receiptId;
+      if (rest.length) payment.receiptIds = rest;
+      else delete payment.receiptIds;
+    });
+    return removed;
+  }
+
+  /** Adds an additional charge still to pay ("adicional por pagar") to a budget item, in the item's currency. */
+  async addBudgetCharge(coupleId: string, itemId: string, input: BudgetChargeInput): Promise<BudgetCharge> {
+    if (!(input.amount > 0) || !Number.isFinite(input.amount)) throw new Error("Amount must be positive");
+    const charge: BudgetCharge = { id: randomUUID(), concept: input.concept.trim().slice(0, 200), amount: input.amount };
+    await this.mutate(coupleId, (c) => {
+      const item = c.budget.items.find((i) => i.id === itemId);
+      if (!item) throw new Error("Budget item not found");
+      item.charges = [...(item.charges ?? []), charge];
+    });
+    return charge;
+  }
+
+  async deleteBudgetCharge(coupleId: string, itemId: string, chargeId: string): Promise<void> {
+    await this.mutate(coupleId, (c) => {
+      const item = c.budget.items.find((i) => i.id === itemId);
+      if (item) item.charges = (item.charges ?? []).filter((ch) => ch.id !== chargeId);
+    });
   }
 
   async addBriefBlock(coupleId: string, key: string): Promise<void> {

@@ -6,7 +6,7 @@ import { FREIGHT_LABEL, PAYMENT_KIND } from "@/components/planner/budget";
 import { itemTracksConfirmedGuests } from "@/core/budget";
 import type { BudgetItem } from "@/core/couple";
 import type { Currency } from "@/core/money";
-import { addPayment, saveBudgetItem, type PlannerResult } from "@/app/admin/planner-actions";
+import { addBudgetCharge, addPayment, saveBudgetItem, type PlannerResult } from "@/app/admin/planner-actions";
 import { MAX_DOCUMENT_BYTES, megabytes } from "@/core/upload-limits";
 
 export interface CategoryOption {
@@ -206,12 +206,33 @@ export function PaymentForm({ coupleId, item, today, arsPerUsd }: { coupleId: st
       )}
       <input name="note" maxLength={300} aria-label="Nota del pago" placeholder="Nota (opcional): ej. transferencia, recibo n°…" className="field" />
       <div>
-        <label htmlFor={`receipt-${item.id}`} className="label">Comprobante (opcional)</label>
-        <input id={`receipt-${item.id}`} name="receipt" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" className="text-sm" />
-        <p className="hint mt-1">PDF o imagen, hasta {megabytes(MAX_DOCUMENT_BYTES)} (imágenes hasta 5 MB).</p>
+        <label htmlFor={`receipt-${item.id}`} className="label">Archivos de pago (opcional)</label>
+        <input id={`receipt-${item.id}`} name="receipt" type="file" multiple accept="application/pdf,image/jpeg,image/png,image/webp" className="text-sm" />
+        <p className="hint mt-1">Hasta 10 archivos: PDF o imagen, hasta {megabytes(MAX_DOCUMENT_BYTES)} cada uno (imágenes hasta 5 MB).</p>
       </div>
       <Feedback state={state} />
       <SubmitButton className="btn-ghost btn-sm" doneText="¡Registrado!">Registrar pago</SubmitButton>
+    </form>
+  );
+}
+
+/** "Adicional por pagar": an extra charge agreed now and paid later; it adds to the item's balance. */
+export function ChargeForm({ coupleId, item }: { coupleId: string; item: BudgetItem }) {
+  const [state, action] = useActionState(addBudgetCharge, null);
+  const ref = useResetOnSuccess(state);
+
+  return (
+    <form ref={ref} action={action} className="space-y-3 rounded-2xl bg-red-50 p-4 ring-1 ring-red-200">
+      <input type="hidden" name="coupleId" value={coupleId} />
+      <input type="hidden" name="itemId" value={item.id} />
+      <p className="text-sm font-semibold text-forest">Agregar adicional por pagar</p>
+      <p className="hint">No es un pago: suma al total y queda en el saldo hasta que lo registren como pago.</p>
+      <div className="grid grid-cols-2 gap-3">
+        <input name="concept" maxLength={200} aria-label="Concepto del adicional" placeholder="Concepto: ej. hora extra" className="field" />
+        <input name="amount" required inputMode="decimal" aria-label={`Monto del adicional en ${item.currency === "USD" ? "dólares" : "pesos"}`} placeholder={`Monto en ${item.currency === "USD" ? "dólares" : "pesos"}`} className="field" />
+      </div>
+      <Feedback state={state} />
+      <SubmitButton className="btn-ghost btn-sm" doneText="¡Agregado!">Agregar adicional</SubmitButton>
     </form>
   );
 }

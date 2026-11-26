@@ -10,9 +10,9 @@ import { currentMonth, today } from "@/lib/format";
 import { requireAdmin } from "@/server/auth";
 import { portal } from "@/server/container";
 import { loadRates } from "@/server/rates";
-import { deleteBudgetItem, deletePayment, saveBudgetSettings, uploadPaymentReceipt } from "@/app/admin/planner-actions";
+import { deleteBudgetCharge, deleteBudgetItem, deletePayment, removePaymentFile, saveBudgetSettings, uploadPaymentReceipt } from "@/app/admin/planner-actions";
 import { ReceiptForm } from "@/app/portal/presupuesto/receipt-form";
-import { BudgetItemForm, PaymentForm } from "./forms";
+import { BudgetItemForm, ChargeForm, PaymentForm } from "./forms";
 
 export const dynamic = "force-dynamic";
 
@@ -96,8 +96,31 @@ export default async function BudgetAdminPage({ params }: { params: Promise<{ id
                     </SubmitButton>
                   </form>
                 )}
+                fileAction={(p, fileId) => (
+                  <form action={removePaymentFile}>
+                    {hidden}
+                    <input type="hidden" name="itemId" value={item.id} />
+                    <input type="hidden" name="paymentId" value={p.id} />
+                    <input type="hidden" name="fileId" value={fileId} />
+                    <SubmitButton className="btn-icon !h-6 !w-6" pendingText="…" confirm="¿Borrar este archivo de pago?">
+                      <Icon name="trash" className="h-3 w-3" />
+                      <span className="sr-only">Borrar archivo de pago</span>
+                    </SubmitButton>
+                  </form>
+                )}
+                chargeAction={(c) => (
+                  <form action={deleteBudgetCharge}>
+                    {hidden}
+                    <input type="hidden" name="itemId" value={item.id} />
+                    <input type="hidden" name="chargeId" value={c.id} />
+                    <SubmitButton className="btn-icon" pendingText="…" confirm="¿Borrar este adicional por pagar?">
+                      <Icon name="trash" className="h-4 w-4" />
+                      <span className="sr-only">Borrar adicional</span>
+                    </SubmitButton>
+                  </form>
+                )}
                 receiptAction={(p) => (
-                  <ReceiptForm action={uploadPaymentReceipt} coupleId={couple.id} itemId={item.id} paymentId={p.id} replace={Boolean(p.receiptId)} />
+                  <ReceiptForm action={uploadPaymentReceipt} coupleId={couple.id} itemId={item.id} paymentId={p.id} hasFiles={Boolean(p.receiptId)} />
                 )}
               >
                 <PaymentForm coupleId={couple.id} item={item} today={today()} arsPerUsd={quote?.rate ?? null} />
@@ -109,6 +132,9 @@ export default async function BudgetAdminPage({ params }: { params: Promise<{ id
                     </summary>
                     <div className="mt-4">
                       <BudgetItemForm coupleId={couple.id} categories={withRubro(categories, itemCategories(item), couple.brief)} defaultMonth={currentMonth()} item={item} />
+                    </div>
+                    <div className="mt-4">
+                      <ChargeForm coupleId={couple.id} item={item} />
                     </div>
                   </details>
                   <form action={deleteBudgetItem}>

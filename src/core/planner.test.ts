@@ -181,12 +181,14 @@ describe("planner workspace", () => {
         service.addPayment(coupleId, item.id, { date: "2026-10-30", amount: 100, currency: "ARS", arsPerUsd: null, kind: "sena", note: "", receiptId: "../db.json" }),
       ).rejects.toThrow("receipt");
 
-      const previous = await service.setPaymentReceipt(coupleId, item.id, payment.id, "a1b2c3d4-0000-4000-8000-000000000002.jpg");
-      expect(previous).toBe("a1b2c3d4-0000-4000-8000-000000000001.pdf");
-      expect((await load()).budget.items[0].payments[0].receiptId).toBe("a1b2c3d4-0000-4000-8000-000000000002.jpg");
-      await expect(service.setPaymentReceipt(coupleId, item.id, "nope", "a1b2c3d4-0000-4000-8000-000000000003.jpg")).rejects.toThrow("Payment");
+      await service.addPaymentFile(coupleId, item.id, payment.id, "a1b2c3d4-0000-4000-8000-000000000002.jpg");
+      expect((await load()).budget.items[0].payments[0]).toMatchObject({
+        receiptId: "a1b2c3d4-0000-4000-8000-000000000001.pdf",
+        receiptIds: ["a1b2c3d4-0000-4000-8000-000000000002.jpg"],
+      });
+      await expect(service.addPaymentFile(coupleId, item.id, "nope", "a1b2c3d4-0000-4000-8000-000000000003.jpg")).rejects.toThrow("Payment");
 
-      expect(await service.deletePayment(coupleId, item.id, payment.id)).toBe("a1b2c3d4-0000-4000-8000-000000000002.jpg");
+      expect(await service.deletePayment(coupleId, item.id, payment.id)).toEqual(["a1b2c3d4-0000-4000-8000-000000000001.pdf", "a1b2c3d4-0000-4000-8000-000000000002.jpg"]);
       expect((await load()).budget.items[0].payments).toEqual([]);
 
       await service.addPayment(coupleId, item.id, { date: "2026-10-30", amount: 100, currency: "ARS", arsPerUsd: null, kind: "sena", note: "", receiptId: "a1b2c3d4-0000-4000-8000-000000000004.png" });

@@ -24,7 +24,7 @@ import type { BudgetItemInput } from "@/core/portal-service";
 import { readWebForm } from "@/core/web-options";
 import { requireAdmin } from "@/server/auth";
 import { files, portal } from "@/server/container";
-import { attachReceipt, deleteReceipts, pickedReceipt, saveReceipt, type ReceiptResult } from "@/server/receipts";
+import { attachReceipt, deleteReceipts, pickedReceipts, saveReceipts, type ReceiptResult } from "@/server/receipts";
 
 const text = (formData: FormData, key: string, max = 4000) => String(formData.get(key) ?? "").trim().slice(0, max);
 
@@ -102,9 +102,8 @@ export async function addPayment(_prev: PlannerResult, formData: FormData): Prom
   if (!(value > 0)) return { error: "Ingresá el monto pagado." };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Elegí la fecha del pago." };
   const coupleId = text(formData, "coupleId", 100);
-  const receipt = pickedReceipt(formData);
-  const saved = receipt ? await saveReceipt(coupleId, receipt) : null;
-  if (saved && "error" in saved) return saved;
+  const saved = await saveReceipts(coupleId, pickedReceipts(formData));
+  if ("error" in saved) return saved;
   try {
     await portal.addPayment(coupleId, text(formData, "itemId", 100), {
       date,
@@ -113,10 +112,11 @@ export async function addPayment(_prev: PlannerResult, formData: FormData): Prom
       arsPerUsd: rate > 0 ? rate : null,
       kind: text(formData, "kind", 10) as PaymentKind,
       note: text(formData, "note", 300),
-      receiptId: saved?.id,
+      receiptId: saved.ids[0],
+      receiptIds: saved.ids.slice(1),
     });
   } catch (e) {
-    if (saved) await deleteReceipts(coupleId, [saved.id]);
+    await deleteReceipts(coupleId, saved.ids);
     const message = e instanceof Error ? e.message : "";
     return { error: message.includes("exchange rate") ? "Si pagaron en otra moneda, cargá el tipo de cambio de ese día." : "No se pudo registrar el pago." };
   }
@@ -126,7 +126,7 @@ export async function addPayment(_prev: PlannerResult, formData: FormData): Prom
 export async function deletePayment(formData: FormData): Promise<void> {
   await requireAdmin();
   const coupleId = text(formData, "coupleId", 100);
-  await deleteReceipts(coupleId, [await portal.deletePayment(coupleId, text(formData, "itemId", 100), text(formData, "paymentId", 100))]);
+  await deleteReceipts(coupleId, await portal.deletePayment(coupleId, text(formData, "itemId", 100), text(formData, "paymentId", 100)));
   revalidatePath("/", "layout");
 }
 
@@ -135,6 +135,34 @@ export async function uploadPaymentReceipt(_prev: ReceiptResult, formData: FormD
   const result = await attachReceipt(text(formData, "coupleId", 100), formData);
   if (result?.ok) revalidatePath("/", "layout");
   return result;
+}
+
+/** Takes one "archivo de pago" off a payment and deletes the file. */
+export async function removePaymentFile(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const coupleId = text(formData, "coupleId", 100);
+  const removed = await portal.removePaymentFile(coupleId, text(formData, "itemId", 100), text(formData, "paymentId", 100), text(formData, "fileId", 100));
+  await deleteReceipts(coupleId, [removed]);
+  revalidatePath("/", "layout");
+}
+
+/** "Adicional por pagar": an extra charge that adds to the item's balance without a payment yet. */
+export async function addBudgetCharge(_prev: PlannerResult, formData: FormData): Promise<PlannerResult> {
+  await requireAdmin();
+  const value = amount(formData, "amount");
+  if (!(value > 0)) return { error: "Ingresá el monto del adicional." };
+  try {
+    await portal.addBudgetCharge(text(formData, "coupleId", 100), text(formData, "itemId", 100), { concept: text(formData, "concept", 200), amount: value });
+  } catch {
+    return { error: "No se pudo agregar el adicional." };
+  }
+  return done();
+}
+
+export async function deleteBudgetCharge(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.deleteBudgetCharge(text(formData, "coupleId", 100), text(formData, "itemId", 100), text(formData, "chargeId", 100));
+  revalidatePath("/", "layout");
 }
 
 export async function saveBudgetSettings(formData: FormData): Promise<void> {
