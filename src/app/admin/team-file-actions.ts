@@ -97,6 +97,13 @@ export async function uploadTeamCoverPhoto(_prev: TeamFileResult, formData: Form
   return result;
 }
 
+/** Which part of the cover shows (the focus point picked over the photo). Throws on failure so the picker shows it. */
+export async function setTeamCoverFocus(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.setCoverFocus(coupleOf(formData), Number(formData.get("x")), Number(formData.get("y")));
+  refresh();
+}
+
 export async function removeTeamCoverPhoto(formData: FormData): Promise<void> {
   await requireAdmin();
   await clearCoverPhoto(coupleOf(formData));

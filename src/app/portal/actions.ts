@@ -141,6 +141,12 @@ export async function uploadCoverPhoto(_prev: PhotoResult, formData: FormData): 
   return result;
 }
 
+/** Which part of the cover shows (the focus point picked over the photo). Throws on failure so the picker shows it. */
+export async function saveCoverFocus(formData: FormData): Promise<void> {
+  await portal.setCoverFocus(await requireCoupleId(), Number(formData.get("x")), Number(formData.get("y")));
+  revalidatePath("/", "layout");
+}
+
 export async function removeCoverPhoto(): Promise<void> {
   await clearCoverPhoto(await requireCoupleId());
   revalidatePath("/", "layout");

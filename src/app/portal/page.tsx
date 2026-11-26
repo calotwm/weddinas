@@ -6,7 +6,7 @@ import { GuestSummaryView } from "@/components/planner/guest-summary";
 import { TimingList } from "@/components/planner/timing";
 import { checklistSections, isPresented, publishedTasks } from "@/core/couple";
 import { guestSummary } from "@/core/guests";
-import { coverCss } from "@/core/url";
+import { coverCss, coverPosition } from "@/core/url";
 import { currentMonth, formatDay, formatMoney, monthEnd, today, weddingDateToIso } from "@/lib/format";
 import { loadRates } from "@/server/rates";
 import { getCurrentCouple } from "./data";
@@ -30,7 +30,7 @@ export default async function PortalHome() {
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <section className="card relative overflow-hidden bg-forest text-center lg:col-span-3">
-        {cover !== "none" && <div aria-hidden className="absolute inset-0 bg-cover bg-center opacity-25" style={{ backgroundImage: cover }} />}
+        {cover !== "none" && <div aria-hidden className="absolute inset-0 bg-cover opacity-25" style={{ backgroundImage: cover, backgroundPosition: coverPosition(couple.publicInfo) }} />}
         <div className="relative py-4">
           <p className="font-script text-4xl text-peach sm:text-5xl">Cuenta regresiva</p>
           <p className="mt-1 mb-8 text-xs tracking-[0.3em] text-cream/70 uppercase">para el gran día</p>

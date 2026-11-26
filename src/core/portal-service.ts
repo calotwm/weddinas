@@ -760,8 +760,19 @@ export class PortalService {
     await this.mutate(coupleId, (c) => {
       previous = c.publicInfo.coverPhotoId ?? null;
       c.publicInfo.coverPhotoId = photoId;
+      // A new photo has its faces elsewhere: it starts centered.
+      if (photoId !== previous) delete c.publicInfo.coverFocus;
     });
     return previous;
+  }
+
+  /** Which part of the cover shows, in percent from the left and the top (0-100). */
+  async setCoverFocus(coupleId: string, x: number, y: number): Promise<void> {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error("Invalid cover focus");
+    const clamp = (n: number) => Math.min(100, Math.max(0, Math.round(n)));
+    await this.mutate(coupleId, (c) => {
+      c.publicInfo.coverFocus = { x: clamp(x), y: clamp(y) };
+    });
   }
 
   /** The only file served without a session: the current cover of a public page. */

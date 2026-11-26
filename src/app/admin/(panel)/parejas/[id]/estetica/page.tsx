@@ -4,7 +4,9 @@ import { TeamFileCard, TeamImageGallery } from "@/components/planner/team-files"
 import { WebOptionsForm } from "@/components/planner/web-options";
 import { MAX_AESTHETIC_PHOTOS, MAX_STATIONERY } from "@/core/portal-service";
 import { removeAestheticPhoto, saveAestheticGeneral, saveAestheticWeb, uploadAestheticPhotos } from "@/app/admin/planner-actions";
-import { removeStationery, removeTeamCoverPhoto, uploadStationery, uploadTeamCoverPhoto } from "@/app/admin/team-file-actions";
+import { removeStationery, removeTeamCoverPhoto, setTeamCoverFocus, uploadStationery, uploadTeamCoverPhoto } from "@/app/admin/team-file-actions";
+import { CoverFocusPicker } from "@/components/cover-focus-picker";
+import { coverPhotoUrl } from "@/core/url";
 import { requireAdmin } from "@/server/auth";
 import { portal } from "@/server/container";
 
@@ -56,6 +58,12 @@ export default async function AestheticAdminPage({ params }: { params: Promise<{
         emptyText="Todavía no hay portada."
         edit={{ upload: uploadTeamCoverPhoto, remove: removeTeamCoverPhoto, fields: { coupleId: couple.id }, inputName: "photo", accept: "image" }}
       />
+      {couple.publicInfo.coverPhotoId && (
+        <section className="card space-y-3">
+          <h3 className="section-title">Qué parte de la portada se ve</h3>
+          <CoverFocusPicker key={couple.publicInfo.coverPhotoId} imageUrl={coverPhotoUrl(couple.slug, couple.publicInfo.coverPhotoId)} focus={couple.publicInfo.coverFocus} save={setTeamCoverFocus} coupleId={couple.id} />
+        </section>
+      )}
 
       <h3 className="font-display text-2xl text-forest">Web</h3>
       <WebOptionsForm

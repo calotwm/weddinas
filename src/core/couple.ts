@@ -34,6 +34,8 @@ export interface PublicInfo {
   coverImageUrl: string;
   /** Uploaded cover (a file id); served publicly at /boda/<slug>/portada and preferred over coverImageUrl. */
   coverPhotoId?: string | null;
+  /** Which part of the cover shows (percent from the left and from the top), like choosing a Facebook cover; centered when missing. */
+  coverFocus?: { x: number; y: number };
   schedule: ScheduleItem[];
 }
 

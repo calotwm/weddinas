@@ -5,7 +5,7 @@ import { CopyButton } from "@/components/copy-button";
 import { Countdown } from "@/components/countdown";
 import { Icon, type IconName } from "@/components/icons";
 import { coupleNames } from "@/core/couple";
-import { coverCss, mapEmbedUrl } from "@/core/url";
+import { coverCss, coverPosition, mapEmbedUrl } from "@/core/url";
 import { siteOrigin } from "@/server/site-url";
 import { formatWeddingDate, weddingDateToIso } from "@/lib/format";
 import { ensureDemoData, portal } from "@/server/container";
@@ -70,7 +70,7 @@ export default async function WeddingPage({ params }: Props) {
     <div className="min-h-screen">
       <header className="relative flex min-h-[92svh] items-center justify-center overflow-hidden px-4 py-24 text-center">
         {hasCover && (
-          <div aria-hidden className="absolute inset-0 scale-105 bg-cover bg-center" style={{ backgroundImage: cover }} />
+          <div aria-hidden className="absolute inset-0 scale-105 bg-cover" style={{ backgroundImage: cover, backgroundPosition: coverPosition(info) }} />
         )}
         <div aria-hidden className={`absolute inset-0 ${hasCover ? "bg-gradient-to-b from-ink/50 via-forest/55 to-forest/90" : "bg-forest"}`} />
         <div className="relative max-w-3xl">

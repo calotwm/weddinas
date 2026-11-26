@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { Icon } from "@/components/icons";
 import { SubmitButton } from "@/components/submit-button";
-import { savePublicInfo } from "../actions";
+import { saveCoverFocus, savePublicInfo } from "../actions";
+import { CoverFocusPicker } from "@/components/cover-focus-picker";
 import { getCurrentCouple } from "../data";
-import { coverCss } from "@/core/url";
+import { coverCss, coverPhotoUrl } from "@/core/url";
 import { CoverField } from "./cover-field";
 import { CoverUpload } from "./cover-upload";
 import { ScheduleEditor } from "./schedule-editor";
@@ -38,6 +39,12 @@ export default async function MyPage() {
   return (
     <div className="space-y-6">
       <CoverUpload preview={info.coverPhotoId ? coverCss(couple.slug, info) : null} />
+      {info.coverPhotoId && (
+        <section className="card space-y-3">
+          <h3 className="section-title">Qué parte de la portada se ve</h3>
+          <CoverFocusPicker key={info.coverPhotoId} imageUrl={coverPhotoUrl(couple.slug, info.coverPhotoId)} focus={info.coverFocus} save={saveCoverFocus} />
+        </section>
+      )}
       <form action={savePublicInfo} className="space-y-6">
         <div className="grid gap-6 lg:grid-cols-2">
           <section className="card space-y-5">
