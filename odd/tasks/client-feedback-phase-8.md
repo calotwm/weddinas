@@ -6,7 +6,7 @@ Branch: `feat/client-feedback-phase-8` (base `f467881`) · Delivery: ask-on-risk
 ## Specs
 
 Pagos / presupuesto
-- S1. "Que figure en el presupuesto solo el valor del que tiene precio fijo en nuestro presu viejo. Que NO tome el de la formula." — PENDING DECISION: the app has no formula amount; the only candidate is the sheet import computing a missing currency column from the other one × TC.
+- S1. "Que figure en el presupuesto solo el valor del que tiene precio fijo en nuestro presu viejo. Que NO tome el de la formula." — Decided (L7): in the old Presupuesto sheets each row has one typed price and the other currency is a formula over the row's TC (`=D8*E8`, `=C6/E6`). The import must take the typed (fixed) price, never the converted one, and the already-imported couples in production must be corrected without touching items the team edited after the import.
 - S2. "Si un pago esta al 100% la propuesta pero faltan viaticos. No tiene que ir para bajo junto con el resto que estan al 100% pago." — assumption: an item with viáticos ("Fletes / viáticos: Sí") gets a "Viáticos pagos" check; until it is ticked the item is not fully paid (stays up, brief does not say "Pago al 100%").
 
 Genérica
@@ -43,7 +43,7 @@ Brief (PDF)
 - S23. "Agregar Ceremonia como un proveedor independiente." — assumption: a new core vendor rubro "Ceremonia" (key `ceremonia-proveedor`), separate from the Ceremonia event block.
 - S24. "Cambiar el proveedor "Combis" por "Autos y Combis"."
 - S25. "Permitir modificar títulos, especialmente en "Show de Ceremonia", ya que en algunos casos corresponde a Ceremonia y Recepción." — every block's title is editable per couple.
-- S26. "Eliminar la fila "Proveedor" de todos los rubros." — PENDING: no row is called "Proveedor"; the only match is the header input with the hired vendor's name, which feeds budget, portal and printed sheets.
+- S26. "Eliminar la fila "Proveedor" de todos los rubros." — Decided (L7): "proveedor dice de todos los rubros, cualquier cosa hacelo y hace un backup por si lo quiere devuelta". The "Proveedor" row exists in 216 production rubros (the old sheets' row, kept by the import); drop it from every rubro: its name fills an empty header vendor and any other text moves to the first row. Backup of the removed rows kept outside the repo (weddinas-backups/proveedor-rows-2026-11-26.json).
 - S27. "Eliminar la fila "Contrato" de todos los proveedores." — also removed from stored briefs.
 - S28. "Eliminar el estado "En búsqueda"." — stored "searching" reads as "Para decidir".
 - S29. "En Invitación, eliminar la opción "Confirmación"." — the "Confirmaciones" row, also from stored briefs.
@@ -57,7 +57,7 @@ Portal de los novios (PDF)
 - S35. "Civil: No figura en el portal de los novios. Revisar su visualización." — cause: event blocks only show once "Confirmado". Fix: event blocks show when they have content.
 
 Comentarios (PDF)
-- S36. "Incorporar comentarios con menciones (@). Que al mencionar a una integrante del equipo le llegue una notificación. Que cada persona pueda identificar fácilmente qué tareas tiene pendientes. Evaluar reemplazar las flechas de desplazamiento por un botón de "Comentarios" que permita realizar menciones específicas." — PENDING DECISION (new feature: in-app vs email notifications).
+- S36. "Incorporar comentarios con menciones (@). Que al mencionar a una integrante del equipo le llegue una notificación. Que cada persona pueda identificar fácilmente qué tareas tiene pendientes. Evaluar reemplazar las flechas de desplazamiento por un botón de "Comentarios" que permita realizar menciones específicas." — Decided (L7): "las menciones que sea en la web tipo cuando te figura una notificacion en el teams web y que tenga un sonido". In-app notification in the team panel (badge + list, like Teams web) with a sound; no email.
 
 Integraciones (PDF)
 - S37. "Vincular las selecciones de DJ y Técnica con la solapa Música. Vincular las selecciones de los Shows con la solapa Música." — assumption: the DJ block and the show blocks show the Música choices (read-only, linked to the tab).
@@ -74,7 +74,9 @@ Integraciones (PDF)
 - [~] T7 S4 autosave — timing rows, web options, budget dollar/guests (a5054b4, ab95607); guests rows (T2/T3); estética (T2). Still with a button: budget item edit, timing sheet link, proposals, welcome message, WhatsApp, portal family/public page.
 - [x] T8 S37-S38 integrations — inline (assumption: show-intervención ↔ Comidas, show-fiesta ↔ Fiesta) · ab95607
 - [x] T10 S21 template — inline · 9bf46dc (probe on a production backup copy: 23 couples, 602 blocks, 0 texts lost, idempotent; 1339 empty rows dropped)
-- [ ] T9 S1, S26, S36 — pending decision
+- [x] T11 S1 fixed price in the sheet import + production correction — inline (Risk: item 1, stored data) · 66d3ebb
+- [x] T12 S26 drop the "Proveedor" row (217 rows in production, carried over by the import) — inline · f8a411d
+- [x] T13 S36 comments with @mentions + in-app bell with sound and Menciones page — inline · 92426b9
 
 ## Log
 
@@ -84,3 +86,5 @@ Integraciones (PDF)
 - L4 Production build OK. Independent verifier: no blockers; S2-S3, S5-S20, S22-S25, S27-S35, S37-S38 PASS; S4 PARTIAL (budget item, timing link keep a button). Advisories: old items with viáticos "No incluido" now read as owing until "Viáticos pagos" is ticked; artist dropped when the title already contains it; printed guest list lost N°/Estado/Llegó. Fixed: first renewal on the first activity after loading (9fa8418).
 - L5 (2026-11-25) User: "vos mandale ya fue" / "proba de vuelta, vos tenes los usuarios maestro los hiciste vos fijate si estan localmente o subidos". Railway SSH timed out; backup fetched from /admin/backup with a team session signed with the production SESSION_SECRET (read only).
 - L6 (2026-11-25) User: "subi todo esto y dsps hace lo que falta tmb suma un buscador en el brief y revisa que el codigo no este tipo plagado de cosas que quizas podrian mejorarse, comentame lo que en cuentres despues de subir y sumar el buscador en el breif". main fast-forwarded and pushed; Railway deploy 6ac84c38 SUCCESS (phase 8), then brief search 3e98a1c deployed 075574b6 SUCCESS. Code review findings reported to the user (easy access codes derivable from the public page; swallowed errors in portal/timing actions; settings.json read-modify-write; unserialized createCouple; sync full-file reads).
+- L7 (2026-11-26) User: "proveedor dice de todos los rubros, cualquier cosa hacelo y hace un backup por si lo quiere devuelta, las menciones que sea en la web tipo cuando te figura una notificacion en el teams web y que tenga un sonido, 1 es eso, hace el coambio lo del precio pq esta pasando eso". Evidence for S1: in the 23 source workbooks the converted column is a formula over the same row's TC cell (e.g. ARS `D8*E8` with USD typed 10250); the importer summed the converted value whenever the item currency differed from the typed one.
+- L8 T11-T13: vitest 53 files / 460 tests, tsc, eslint and next build clean. S1 plan on a production backup copy: 67 imported items took a converted price; 60 are still exactly as imported and get corrected through the team-only /admin/budget-corrections endpoint (applies only when the item still matches the import); 7 were edited by the team and are left for review. S26 probe: 217 rows removed, 22 header vendors filled, 0 texts lost, idempotent.
