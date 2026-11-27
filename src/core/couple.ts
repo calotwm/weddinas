@@ -117,8 +117,10 @@ export interface Payment {
 }
 
 /** An additional charge agreed but not paid yet: it adds to the item's total and stays in its balance. */
+/** A charge is an "Adicional" unless it is a flete; paying it records a payment of that kind. */
 export interface BudgetCharge {
   id: string;
+  kind?: "fletes";
   concept: string;
   /** In the item's currency. */
   amount: number;

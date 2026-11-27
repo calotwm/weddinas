@@ -63,7 +63,11 @@ export function BudgetItemForm({
             {categories.map((c) => (
               <option key={c.key} value={c.key}>{c.name}</option>
             ))}
+            <option value="__new">+ Nuevo rubro…</option>
           </select>
+          {category === "__new" && (
+            <input name="newCategory" required maxLength={60} aria-label="Nombre del rubro nuevo" placeholder="Nombre del rubro: ej. Fuegos artificiales" className="field mt-2" />
+          )}
           <details className="mt-2 text-sm" open={extras.length > 0 || undefined}>
             <summary className="cursor-pointer text-teal">
               También es de otro rubro{extras.filter((x) => x !== category).length > 0 && ` (${extras.filter((x) => x !== category).length})`}
@@ -168,9 +172,29 @@ export function BudgetItemForm({
           </div>
         )}
       </div>
+      {!item && <FleteRows />}
       <Feedback state={state} />
       <SubmitButton doneText="¡Guardado!">{item ? "Guardar cambios" : "Agregar al presupuesto"}</SubmitButton>
     </form>
+  );
+}
+
+/** Fletes to pay for a new item, as many as needed, each with what it is for. */
+function FleteRows() {
+  const [rows, setRows] = useState(0);
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: rows }, (_, n) => (
+        <div key={n} className="grid grid-cols-[1fr_9rem] gap-2">
+          <input name="fleteConcept" maxLength={200} aria-label={`Flete ${n + 1}: de qué es`} placeholder="De qué es: ej. traslado de vajilla" className="field" />
+          <input name={`fleteAmount${n}`} inputMode="decimal" aria-label={`Flete ${n + 1}: monto`} placeholder="Monto" className="field" />
+        </div>
+      ))}
+      <button type="button" onClick={() => setRows((r) => r + 1)} className="btn-ghost btn-sm">
+        + Agregar flete
+      </button>
+      {rows > 0 && <p className="hint">Cada flete suma al total y queda por pagar hasta que lo marquen «Pagado».</p>}
+    </div>
   );
 }
 
@@ -231,10 +255,14 @@ export function ChargeForm({ coupleId, item }: { coupleId: string; item: BudgetI
     <form ref={ref} action={action} className="space-y-3 rounded-2xl bg-red-50 p-4 ring-1 ring-red-200">
       <input type="hidden" name="coupleId" value={coupleId} />
       <input type="hidden" name="itemId" value={item.id} />
-      <p className="text-sm font-semibold text-forest">Agregar adicional por pagar</p>
+      <p className="text-sm font-semibold text-forest">Agregar adicional o flete por pagar</p>
       <p className="hint">No es un pago: suma al total y queda en el saldo hasta que lo marquen «Pagado».</p>
       <div className="grid grid-cols-2 gap-3">
-        <input name="concept" maxLength={200} aria-label="Concepto del adicional" placeholder="Concepto: ej. hora extra" className="field" />
+        <select name="kind" aria-label="Tipo" className="field col-span-2">
+          <option value="adicional">Adicional</option>
+          <option value="fletes">Flete</option>
+        </select>
+        <input name="concept" maxLength={200} aria-label="Concepto" placeholder="De qué es: ej. hora extra, traslado" className="field" />
         <input name="amount" required inputMode="decimal" aria-label={`Monto del adicional en ${item.currency === "USD" ? "dólares" : "pesos"}`} placeholder={`Monto en ${item.currency === "USD" ? "dólares" : "pesos"}`} className="field" />
       </div>
       <Feedback state={state} />

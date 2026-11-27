@@ -46,6 +46,9 @@ const done = (): PlannerResult => {
   return { ok: Date.now() };
 };
 
+/** The rubro select's "Nuevo rubro…" option; its name comes in `newCategory`. */
+const NEW_RUBRO = "__new";
+
 function budgetItemInput(formData: FormData): BudgetItemInput {
   return {
     category: text(formData, "category", 60),
@@ -71,10 +74,25 @@ export async function saveBudgetItem(_prev: PlannerResult, formData: FormData): 
   const itemId = text(formData, "itemId", 100);
   const input = budgetItemInput(formData);
   if (!(input.amount >= 0)) return { error: "Ingresá el monto (puede ser 0)." };
+  if (input.category === NEW_RUBRO) {
+    const name = text(formData, "newCategory", 60);
+    if (!name) return { error: "Escribí el nombre del rubro nuevo." };
+    try {
+      input.category = await portal.ensureRubro(coupleId, name);
+    } catch {
+      return { error: "No se pudo crear ese rubro. Probá con otro nombre." };
+    }
+  }
+  // "Fletes" rows of a new item: each becomes a flete still to pay, with what it is for.
+  const fletes = formData.getAll("fleteConcept").map((concept, n) => ({ concept: String(concept).trim().slice(0, 200), amount: amount(formData, `fleteAmount${n}`) }));
+  if (fletes.some((f) => (f.concept || !Number.isNaN(f.amount)) && !(f.amount > 0))) return { error: "Cada flete necesita su monto." };
   if (!/^\d{4}-\d{2}$/.test(input.baseMonth)) return { error: "Elegí el mes en que se acordó el monto." };
   try {
     if (itemId) await portal.updateBudgetItem(coupleId, itemId, input);
-    else await portal.addBudgetItem(coupleId, input);
+    else {
+      const created = await portal.addBudgetItem(coupleId, input);
+      for (const f of fletes.filter((f) => f.amount > 0)) await portal.addBudgetCharge(coupleId, created.id, { ...f, concept: f.concept || "Flete", kind: "fletes" });
+    }
   } catch (e) {
     const message = e instanceof Error ? e.message : "";
     return {
@@ -154,7 +172,11 @@ export async function addBudgetCharge(_prev: PlannerResult, formData: FormData):
   const value = amount(formData, "amount");
   if (!(value > 0)) return { error: "Ingresá el monto del adicional." };
   try {
-    await portal.addBudgetCharge(text(formData, "coupleId", 100), text(formData, "itemId", 100), { concept: text(formData, "concept", 200), amount: value });
+    await portal.addBudgetCharge(text(formData, "coupleId", 100), text(formData, "itemId", 100), {
+      concept: text(formData, "concept", 200),
+      amount: value,
+      ...(text(formData, "kind", 10) === "fletes" && { kind: "fletes" as const }),
+    });
   } catch {
     return { error: "No se pudo agregar el adicional." };
   }

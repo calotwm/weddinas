@@ -1027,7 +1027,7 @@ export class PortalService {
       if (!item || !charge) throw new Error("Charge not found");
       item.charges = item.charges!.filter((ch) => ch.id !== chargeId);
       if (item.charges.length === 0) delete item.charges;
-      item.payments.push({ id: randomUUID(), date, amount: charge.amount, currency: item.currency, arsPerUsd: null, kind: "adicional", note: charge.concept });
+      item.payments.push({ id: randomUUID(), date, amount: charge.amount, currency: item.currency, arsPerUsd: null, kind: charge.kind ?? "adicional", note: charge.concept });
       item.payments.sort((a, b) => a.date.localeCompare(b.date));
     });
   }
@@ -1035,7 +1035,7 @@ export class PortalService {
   /** Adds an additional charge still to pay ("adicional por pagar") to a budget item, in the item's currency. */
   async addBudgetCharge(coupleId: string, itemId: string, input: BudgetChargeInput): Promise<BudgetCharge> {
     if (!(input.amount > 0) || !Number.isFinite(input.amount)) throw new Error("Amount must be positive");
-    const charge: BudgetCharge = { id: randomUUID(), concept: input.concept.trim().slice(0, 200), amount: input.amount };
+    const charge: BudgetCharge = { id: randomUUID(), ...(input.kind === "fletes" && { kind: "fletes" as const }), concept: input.concept.trim().slice(0, 200), amount: input.amount };
     await this.mutate(coupleId, (c) => {
       const item = c.budget.items.find((i) => i.id === itemId);
       if (!item) throw new Error("Budget item not found");
@@ -1056,6 +1056,21 @@ export class PortalService {
     await this.mutate(coupleId, (c) => {
       ensureBriefBlock(c, key);
     });
+  }
+
+/** The rubro with this name (catalog or the couple's own), created as a custom rubro when there is none; returns its key. */
+  async ensureRubro(coupleId: string, name: string): Promise<string> {
+    const slug = slugify(name.trim());
+    if (!slug) throw new Error("Brief block name is required");
+    const catalog = BRIEF_CATALOG.find((b) => b.key === slug || slugify(b.name) === slug);
+    if (catalog) {
+      await this.mutate(coupleId, (c) => {
+        ensureBriefBlock(c, catalog.key);
+      });
+      return catalog.key;
+    }
+    const own = (await this.getCouple(coupleId))?.brief.find((b) => b.key === slug || slugify(b.name) === slug);
+    return own ? own.key : this.addCustomBriefBlock(coupleId, name);
   }
 
   /** Adds a vendor rubro outside the catalog by its name; returns its key. */

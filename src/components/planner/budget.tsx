@@ -325,7 +325,7 @@ export function BudgetItemCard({
         <ul className="space-y-1 rounded-2xl bg-red-50 px-4 py-2.5 text-sm ring-1 ring-red-200">
           {item.charges!.map((c) => (
             <li key={c.id} className="flex items-center gap-3">
-              <span className="chip bg-red-100 text-red-800">Adicional por pagar</span>
+              <span className="chip bg-red-100 text-red-800">{c.kind === "fletes" ? "Flete por pagar" : "Adicional por pagar"}</span>
               <span className="text-ink/70">{c.concept}</span>
               <span className="ml-auto font-semibold text-red-800">{formatMoney(c.amount, item.currency)}</span>
               {chargeAction?.(c)}

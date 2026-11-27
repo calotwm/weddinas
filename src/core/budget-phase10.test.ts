@@ -95,3 +95,38 @@ describe("budget service (phase 10)", () => {
     expect(summarizeItem(after, null)).toMatchObject({ paid: 300, pending: 1000, total: 1300 });
   });
 });
+
+describe("item form: new rubros and fletes (S6, S8)", () => {
+  let dir: string;
+  let service: PortalService;
+  let coupleId: string;
+
+  beforeEach(async () => {
+    dir = mkdtempSync(path.join(tmpdir(), "weddinas-budget10b-"));
+    service = new PortalService(new JsonCoupleRepository(path.join(dir, "db.json")));
+    coupleId = (await service.createCouple({ partnerA: "Ana", partnerB: "Beto", weddingDate: "2027-03-20T18:00" })).couple.id;
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  it("adds a rubro by its name, or reuses the one with that name", async () => {
+    const key = await service.ensureRubro(coupleId, "Fuegos artificiales");
+    expect(await service.ensureRubro(coupleId, " fuegos  ARTIFICIALES ")).toBe(key);
+    expect(await service.ensureRubro(coupleId, "Catering")).toBe("catering");
+    const item = await service.addBudgetItem(coupleId, { category: key, vendor: "", concept: "", amount: 0, currency: "ARS", adjustment: "frozen", baseMonth: "2026-06", note: "" });
+    expect(item.category).toBe(key);
+    await expect(service.ensureRubro(coupleId, "  ")).rejects.toThrow();
+  });
+
+  it("keeps several fletes with what each one is for; paying one records a Fletes payment", async () => {
+    const item = await service.addBudgetItem(coupleId, { category: "catering", vendor: "V", concept: "", amount: 1000, currency: "ARS", adjustment: "frozen", baseMonth: "2026-06", note: "" });
+    const ida = await service.addBudgetCharge(coupleId, item.id, { concept: "Flete vajilla", amount: 100, kind: "fletes" });
+    await service.addBudgetCharge(coupleId, item.id, { concept: "Flete mobiliario", amount: 200, kind: "fletes" });
+    let saved = (await service.getCouple(coupleId))!.budget.items[0];
+    expect(saved.charges?.map((c) => [c.concept, c.kind])).toEqual([["Flete vajilla", "fletes"], ["Flete mobiliario", "fletes"]]);
+    expect(summarizeItem(saved, null)).toMatchObject({ total: 1300, pending: 1300 });
+    await service.payBudgetCharge(coupleId, item.id, ida.id, "2026-07-01");
+    saved = (await service.getCouple(coupleId))!.budget.items[0];
+    expect(saved.payments.map((p) => p.kind)).toEqual(["fletes"]);
+    expect(summarizeItem(saved, null)).toMatchObject({ total: 1300, pending: 1200 });
+  });
+});
