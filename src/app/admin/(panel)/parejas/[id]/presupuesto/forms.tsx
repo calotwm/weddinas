@@ -7,7 +7,7 @@ import { itemTracksConfirmedGuests } from "@/core/budget";
 import type { BudgetItem } from "@/core/couple";
 import type { Currency } from "@/core/money";
 import { addBudgetCharge, addPayment, saveBudgetItem, type PlannerResult } from "@/app/admin/planner-actions";
-import { MAX_DOCUMENT_BYTES, megabytes } from "@/core/upload-limits";
+import { ANY_FILE_ACCEPT, MAX_DOCUMENT_BYTES, megabytes } from "@/core/upload-limits";
 
 export interface CategoryOption {
   key: string;
@@ -207,8 +207,8 @@ export function PaymentForm({ coupleId, item, today, arsPerUsd }: { coupleId: st
       <input name="note" maxLength={300} aria-label="Nota del pago" placeholder="Nota (opcional): ej. transferencia, recibo n°…" className="field" />
       <div>
         <label htmlFor={`receipt-${item.id}`} className="label">Archivos de pago (opcional)</label>
-        <input id={`receipt-${item.id}`} name="receipt" type="file" multiple accept="application/pdf,image/jpeg,image/png,image/webp" className="text-sm" />
-        <p className="hint mt-1">Hasta 10 archivos: PDF o imagen, hasta {megabytes(MAX_DOCUMENT_BYTES)} cada uno (imágenes hasta 5 MB).</p>
+        <input id={`receipt-${item.id}`} name="receipt" type="file" multiple accept={ANY_FILE_ACCEPT} className="text-sm" />
+        <p className="hint mt-1">Hasta 10 archivos (PDF, imagen, Word, Excel…), hasta {megabytes(MAX_DOCUMENT_BYTES)} cada uno (imágenes hasta 5 MB).</p>
       </div>
       <Feedback state={state} />
       <SubmitButton className="btn-ghost btn-sm" doneText="¡Registrado!">Registrar pago</SubmitButton>

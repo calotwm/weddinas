@@ -16,7 +16,7 @@ export default async function PlansAdminPage({ params }: { params: Promise<{ id:
     <div className="space-y-6">
       <div>
         <h2 className="font-display text-3xl text-forest">Planos</h2>
-        <p className="hint">Subí una imagen o un PDF por plano; la pareja los ve en su portal, sin poder cambiarlos.</p>
+        <p className="hint">Subí un archivo por plano (imagen, PDF, Excel, Word…); la pareja los ve en su portal, sin poder cambiarlos.</p>
       </div>
       <div className="grid gap-6 lg:grid-cols-2">
         {PLAN_SLOTS.map((slot) => (

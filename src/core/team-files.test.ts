@@ -99,10 +99,11 @@ describe("team files: inspiration, Papelería, timing image and link, Planos", (
       expect((await load()).teamFiles.plans).toEqual({ planA: fileId(4), planB: null, ceremony: fileId(3, "png") });
     });
 
-    it("rejects unknown slots and spreadsheets", async () => {
+    it("rejects unknown slots and takes Excel plans (phase 10)", async () => {
       await expect(service.setTeamFile(coupleId, "planC" as never, fileId(1))).rejects.toThrow("slot");
-      await expect(service.setTeamFile(coupleId, "planA", fileId(1, "xlsx"))).rejects.toThrow("Invalid");
-      expect((await load()).teamFiles.plans).toEqual({ planA: null, planB: null, ceremony: null });
+      await expect(service.setTeamFile(coupleId, "planA", "../x.xlsx")).rejects.toThrow("Invalid");
+      expect(await service.setTeamFile(coupleId, "planA", fileId(1, "xlsx"))).toBeNull();
+      expect((await load()).teamFiles.plans).toEqual({ planA: fileId(1, "xlsx"), planB: null, ceremony: null });
     });
   });
 });

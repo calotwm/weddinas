@@ -7,7 +7,7 @@ import { Icon } from "../icons";
 import { timingDownloadUrl } from "@/core/timing-sheet";
 import { SubmitButton } from "../submit-button";
 import { photoUrl } from "./family";
-import { MAX_DOCUMENT_BYTES, megabytes } from "@/core/upload-limits";
+import { ANY_FILE_ACCEPT, MAX_DOCUMENT_BYTES, megabytes, opensInBrowser } from "@/core/upload-limits";
 
 // Files the team uploads for the couple to see (Papelería, timing image, Planos, cover photo).
 // Without `edit` they render read-only, which is how the couple sees them.
@@ -15,7 +15,7 @@ import { MAX_DOCUMENT_BYTES, megabytes } from "@/core/upload-limits";
 type Result = { error?: string; ok?: number } | null;
 
 const IMAGE_TYPES = "image/jpeg,image/png,image/webp";
-const DOCUMENT_TYPES = `${IMAGE_TYPES},application/pdf`;
+const DOCUMENT_TYPES = ANY_FILE_ACCEPT;
 
 const isPdf = (fileId: string) => fileId.endsWith(".pdf");
 
@@ -122,7 +122,12 @@ export function TeamFileCard({
         <p className="text-sm text-ink/50">{edit ? `Todavía no subiste nada. ${hint}` : emptyText}</p>
       ) : (
         <div className="flex flex-wrap items-start gap-3">
-          {isPdf(fileId) ? (
+          {!opensInBrowser(fileId) ? (
+            <a href={photoUrl(coupleId, fileId)} download className="btn-ghost btn-sm">
+              <Icon name="file" className="h-4 w-4" />
+              Descargar {fileId.split(".").pop()?.toUpperCase()}
+            </a>
+          ) : isPdf(fileId) ? (
             <a href={photoUrl(coupleId, fileId)} target="_blank" rel="noreferrer" className="btn-ghost btn-sm">
               <Icon name="file" className="h-4 w-4" />
               Ver PDF

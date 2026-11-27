@@ -7,7 +7,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { blankComparison, editableSheets, type ComparisonTable } from "@/core/comparison-table";
 import { ComparisonEditor } from "./comparison-editor";
 import { addProposal, removeComparison, uploadComparison } from "./actions";
-import { megabytes, UPLOAD_REQUEST_MAX_BYTES } from "@/core/upload-limits";
+import { ANY_FILE_ACCEPT, megabytes, UPLOAD_REQUEST_MAX_BYTES } from "@/core/upload-limits";
 
 // Same cap as addProposal on the server; checked here first so a too-heavy pick does not clear the typed form.
 const NEW_PROPOSAL_MAX_BYTES = UPLOAD_REQUEST_MAX_BYTES;
@@ -51,7 +51,7 @@ export function NewProposalForm({ coupleId, children }: { coupleId: string; chil
         </div>
         <div>
           <label htmlFor="p-files" className="label">PDFs e imágenes (opcional)</label>
-          <input id="p-files" name="files" type="file" multiple accept="application/pdf,image/jpeg,image/png,image/webp" className="w-full text-sm" />
+          <input id="p-files" name="files" type="file" multiple accept={ANY_FILE_ACCEPT} className="w-full text-sm" />
           <p className="hint mt-1">Hasta {NEW_PROPOSAL_MAX_FILES} archivos; entre todo, cuadro incluido, hasta {megabytes(NEW_PROPOSAL_MAX_BYTES)}.</p>
         </div>
       </div>

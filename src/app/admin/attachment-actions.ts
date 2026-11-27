@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import type { AttachmentTarget } from "@/core/portal-service";
-import { MAX_DOCUMENT_BYTES, MAX_IMAGE_BYTES, megabytes, UPLOAD_REQUEST_MAX_BYTES } from "@/core/upload-limits";
+import { ANY_FILE_KINDS, MAX_DOCUMENT_BYTES, MAX_IMAGE_BYTES, megabytes, UPLOAD_REQUEST_MAX_BYTES } from "@/core/upload-limits";
 import { requireAdmin } from "@/server/auth";
 import { files, portal } from "@/server/container";
 
@@ -39,10 +39,10 @@ export async function uploadAttachments(_prev: AttachmentResult, formData: FormD
     }
     let id: string;
     try {
-      id = await files.saveDocument(coupleId, new Uint8Array(await file.arrayBuffer()));
+      id = await files.saveDocument(coupleId, new Uint8Array(await file.arrayBuffer()), file.name);
     } catch (e) {
       const tooLarge = e instanceof Error && e.message.includes("large");
-      skipped.push(`${file.name} (${tooLarge ? `las imágenes van hasta ${megabytes(MAX_IMAGE_BYTES)}` : "solo PDF, JPG, PNG o WebP"})`);
+      skipped.push(`${file.name} (${tooLarge ? `las imágenes van hasta ${megabytes(MAX_IMAGE_BYTES)}` : `solo ${ANY_FILE_KINDS}`})`);
       continue;
     }
     try {

@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { SubmitButton } from "@/components/submit-button";
 import type { ReceiptResult } from "@/server/receipts";
+import { ANY_FILE_ACCEPT } from "@/core/upload-limits";
 
 /** Adds payment files ("archivos de pago") to a payment; used by the couple's and the team's budget pages. */
 export function ReceiptForm({
@@ -27,7 +28,7 @@ export function ReceiptForm({
       <input type="hidden" name="paymentId" value={paymentId} />
       <label className="text-xs text-ink/60">
         <span className="sr-only">Archivos de pago</span>
-        <input name="receipt" type="file" multiple required accept="application/pdf,image/jpeg,image/png,image/webp" className="max-w-56 text-xs" />
+        <input name="receipt" type="file" multiple required accept={ANY_FILE_ACCEPT} className="max-w-56 text-xs" />
       </label>
       <SubmitButton className="btn-ghost btn-sm" pendingText="Subiendo…" doneText="¡Listo!">
         Agregar archivos de pago

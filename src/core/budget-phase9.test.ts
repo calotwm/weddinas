@@ -90,10 +90,10 @@ describe("budget service (S10, S11)", () => {
     expect(await service.deleteBudgetItem(coupleId, itemId)).toEqual(["00000000-0000-4000-8000-00000000000d.pdf"]);
   });
 
-  it("rejects a file that is not an uploaded image or PDF", async () => {
+  it("rejects a path or an id that is not an uploaded file", async () => {
     const payment = await service.addPayment(coupleId, itemId, { date: "2026-11-01", amount: 500, currency: "ARS", arsPerUsd: null, kind: "sena", note: "" });
     await expect(service.addPaymentFile(coupleId, itemId, payment.id, "../x")).rejects.toThrow();
-    await expect(service.addPayment(coupleId, itemId, { date: "2026-11-01", amount: 1, currency: "ARS", arsPerUsd: null, kind: "sena", note: "", receiptIds: ["00000000-0000-4000-8000-0000000000ee.xlsx"] })).rejects.toThrow();
+    await expect(service.addPayment(coupleId, itemId, { date: "2026-11-01", amount: 1, currency: "ARS", arsPerUsd: null, kind: "sena", note: "", receiptIds: ["00000000-0000-4000-8000-0000000000ee.exe"] })).rejects.toThrow();
   });
 
   it("adds and removes additional charges to pay, kept when the item is edited", async () => {

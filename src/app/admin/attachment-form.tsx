@@ -5,7 +5,7 @@ import { Icon } from "@/components/icons";
 import { SubmitButton } from "@/components/submit-button";
 import { attachmentPickProblem } from "@/core/attachment-pick";
 import { uploadAttachments } from "./attachment-actions";
-import { MAX_DOCUMENT_BYTES, MAX_IMAGE_BYTES, megabytes, UPLOAD_REQUEST_MAX_BYTES } from "@/core/upload-limits";
+import { ANY_FILE_ACCEPT, MAX_DOCUMENT_BYTES, MAX_IMAGE_BYTES, megabytes, UPLOAD_REQUEST_MAX_BYTES } from "@/core/upload-limits";
 
 export function AttachmentUploadForm({
   coupleId,
@@ -38,7 +38,7 @@ export function AttachmentUploadForm({
       <input type="hidden" name="targetId" value={targetId} />
       <label htmlFor={inputId} className="label">Adjuntar archivos (PDF hasta {megabytes(MAX_DOCUMENT_BYTES)}; JPG, PNG o WebP hasta {megabytes(MAX_IMAGE_BYTES)}; hasta {megabytes(UPLOAD_REQUEST_MAX_BYTES)} por vez)</label>
       <div className="flex flex-wrap items-center gap-2">
-        <input id={inputId} name="files" type="file" multiple required accept="application/pdf,image/jpeg,image/png,image/webp" className="min-w-0 flex-1 text-sm" />
+        <input id={inputId} name="files" type="file" multiple required accept={ANY_FILE_ACCEPT} className="min-w-0 flex-1 text-sm" />
         {allowInternal && (
           <label className="flex items-center gap-1.5 text-xs text-ink/70">
             <input type="checkbox" name="internal" className="accent-forest" />

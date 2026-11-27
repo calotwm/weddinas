@@ -159,7 +159,7 @@ describe("isFileId", () => {
     expect(isFileId("0f8fad5b-d9cb-469f-a165-70867728950e.pdf")).toBe(true);
     expect(isFileId("x/0f8fad5b-d9cb-469f-a165-70867728950e.jpg")).toBe(false);
     expect(isFileId("0f8fad5b-d9cb-469f-a165-70867728950e.xlsx")).toBe(true);
-    expect(isFileId("0f8fad5b-d9cb-469f-a165-70867728950e.xls")).toBe(false);
+    expect(isFileId("0f8fad5b-d9cb-469f-a165-70867728950e.xls")).toBe(true);
     expect(isFileId("0f8fad5b-d9cb-469f-a165-70867728950e.xlsm")).toBe(false);
     expect(isFileId("0f8fad5b-d9cb-469f-a165-70867728950e.xlsx/../db.json")).toBe(false);
   });
@@ -217,7 +217,8 @@ describe("LocalFileStore", () => {
     expect(MAX_SPREADSHEET_BYTES).toBe(5 * 1024 * 1024);
 
     await expect(store.saveImage("couple-1", book)).rejects.toThrow("image");
-    await expect(store.saveDocument("couple-1", book)).rejects.toThrow("supported");
+    // Phase 10: attachments take any Office file, workbooks included.
+    expect(await store.saveDocument("couple-1", book)).toMatch(/\.xlsx$/);
     await expect(store.saveSpreadsheet("couple-1", pdf)).rejects.toThrow("spreadsheet");
     await expect(store.saveSpreadsheet("couple-1", png)).rejects.toThrow("spreadsheet");
     await expect(store.saveSpreadsheet("couple-1", zip(["word/document.xml"]))).rejects.toThrow("spreadsheet");

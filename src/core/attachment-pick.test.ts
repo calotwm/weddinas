@@ -19,14 +19,16 @@ describe("attachmentPickProblem", () => {
   });
 
   it("names each file of a type the server does not take, with a hint for iPhone photos", () => {
-    expect(attachmentPickProblem([file("contrato.docx", 10), file("IMG_1.HEIC", 10, "image/heic")])).toBe(
-      "No se pueden subir: contrato.docx (solo PDF, JPG, PNG o WebP), IMG_1.HEIC (foto de iPhone: guardala como JPG).",
+    // Phase 10: Word, Excel and the other Office files are taken.
+    expect(attachmentPickProblem([file("contrato.docx", 10), file("plano.xlsx", 10)])).toBeNull();
+    expect(attachmentPickProblem([file("app.exe", 10), file("IMG_1.HEIC", 10, "image/heic")])).toBe(
+      "No se pueden subir: app.exe (solo PDF, imágenes (JPG, PNG, WebP), Word, Excel, PowerPoint, CSV o texto), IMG_1.HEIC (foto de iPhone: guardala como JPG).",
     );
   });
 
   it("names images over 5 MB and PDFs over 20 MB", () => {
     expect(attachmentPickProblem([file("foto.png", 6 * MB, "image/png"), file("menu.pdf", 20.5 * MB, "application/pdf")])).toBe(
-      "No se pueden subir: foto.png (las imágenes van hasta 5 MB), menu.pdf (los PDF van hasta 20 MB).",
+      "No se pueden subir: foto.png (las imágenes van hasta 5 MB), menu.pdf (los archivos van hasta 20 MB).",
     );
   });
 

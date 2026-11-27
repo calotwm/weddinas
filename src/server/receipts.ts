@@ -1,7 +1,7 @@
 import "server-only";
 import { MAX_DOCUMENT_BYTES } from "@/core/uploads";
 import { files, portal } from "@/server/container";
-import { megabytes } from "@/core/upload-limits";
+import { ANY_FILE_KINDS, megabytes } from "@/core/upload-limits";
 
 export type ReceiptResult = { error?: string; ok?: number } | null;
 
@@ -14,10 +14,10 @@ export function pickedReceipts(formData: FormData): File[] {
 export async function saveReceipt(coupleId: string, file: File): Promise<{ id: string } | { error: string }> {
   if (file.size > MAX_DOCUMENT_BYTES) return { error: `El archivo pesa más de ${megabytes(MAX_DOCUMENT_BYTES)}.` };
   try {
-    return { id: await files.saveDocument(coupleId, new Uint8Array(await file.arrayBuffer())) };
+    return { id: await files.saveDocument(coupleId, new Uint8Array(await file.arrayBuffer()), file.name) };
   } catch (e) {
     const tooLarge = e instanceof Error && e.message.includes("large");
-    return { error: tooLarge ? "Las imágenes van hasta 5 MB." : "Los archivos de pago tienen que ser PDF, JPG, PNG o WebP." };
+    return { error: tooLarge ? "Las imágenes van hasta 5 MB." : `Los archivos de pago pueden ser ${ANY_FILE_KINDS}.` };
   }
 }
 

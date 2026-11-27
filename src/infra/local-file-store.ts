@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { detectDocument, detectImage, detectXlsx, isFileId, MAX_DOCUMENT_BYTES, MAX_IMAGE_BYTES, MAX_SPREADSHEET_BYTES, mimeForFileId, type FileType } from "@/core/uploads";
+import { detectFile, detectImage, detectXlsx, isFileId, MAX_DOCUMENT_BYTES, MAX_IMAGE_BYTES, MAX_SPREADSHEET_BYTES, mimeForFileId, type FileType } from "@/core/uploads";
 
 const COUPLE_ID = /^[A-Za-z0-9-]{1,64}$/;
 
@@ -13,9 +13,9 @@ export class LocalFileStore {
     return this.save(coupleId, bytes, MAX_IMAGE_BYTES, detectImage, "Not a supported image");
   }
 
-  /** PDF or image, for attachments. */
-  saveDocument(coupleId: string, bytes: Uint8Array): Promise<string> {
-    return this.save(coupleId, bytes, MAX_DOCUMENT_BYTES, detectDocument, "Not a supported file");
+  /** Any supported file (PDF, image, Office, CSV, text) for attachments; the name's extension tells old Office files and text apart. */
+  saveDocument(coupleId: string, bytes: Uint8Array, fileName = ""): Promise<string> {
+    return this.save(coupleId, bytes, MAX_DOCUMENT_BYTES, (b) => detectFile(b, fileName), "Not a supported file");
   }
 
   /** Excel workbook only (a comparison table's original file); the other flows never accept it. */
@@ -35,8 +35,8 @@ export class LocalFileStore {
     if (bytes.byteLength > maxBytes) throw new Error("File too large");
     const type = detect(bytes);
     if (!type) throw new Error(unsupported);
-    // Only PDFs get the larger document limit; images keep theirs wherever they are uploaded.
-    if (type.ext !== "pdf" && bytes.byteLength > MAX_IMAGE_BYTES) throw new Error("File too large");
+    // Images keep their 5 MB limit wherever they are uploaded; documents get the larger one.
+    if (/^(jpg|png|webp)$/.test(type.ext) && bytes.byteLength > MAX_IMAGE_BYTES) throw new Error("File too large");
     const id = `${randomUUID()}.${type.ext}`;
     await mkdir(dir, { recursive: true });
     await writeFile(path.join(dir, id), bytes);

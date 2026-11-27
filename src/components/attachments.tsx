@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 import type { Attachment } from "@/core/couple";
 import { Icon } from "./icons";
+import { opensInBrowser } from "@/core/upload-limits";
 
 const fileUrl = (coupleId: string, id: string) => `/archivos/${coupleId}/${id}`;
 const isImage = (a: Attachment) => /\.(jpg|png|webp)$/.test(a.id);
-const isSpreadsheet = (a: Attachment) => a.id.endsWith(".xlsx");
+const downloads = (a: Attachment) => !opensInBrowser(a.id);
 
 function size(bytes: number): string {
   return bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -31,7 +32,7 @@ export function AttachmentList({
         <li key={a.id} className="group relative overflow-hidden rounded-2xl bg-white ring-1 ring-forest/10">
           <a
             href={fileUrl(coupleId, a.id)}
-            {...(isSpreadsheet(a) ? { download: a.name } : { target: "_blank", rel: "noopener" })}
+            {...(downloads(a) ? { download: a.name } : { target: "_blank", rel: "noopener" })}
             className="block"
           >
             {isImage(a) ? (
@@ -40,7 +41,7 @@ export function AttachmentList({
             ) : (
               <span className="flex aspect-[4/3] flex-col items-center justify-center gap-1 bg-peach-soft text-rust">
                 <Icon name="file" className="h-8 w-8" />
-                <span className="text-xs font-semibold">{isSpreadsheet(a) ? "Excel" : "PDF"}</span>
+                <span className="text-xs font-semibold">{a.name.split(".").pop()?.toUpperCase() ?? "Archivo"}</span>
               </span>
             )}
             <span className="block truncate px-3 pt-2 text-xs font-semibold text-forest" title={a.name}>{a.name}</span>

@@ -14,3 +14,13 @@ export const UPLOAD_REQUEST_MAX_BYTES = 40 * MB;
 
 /** "20 MB", for messages. */
 export const megabytes = (bytes: number) => `${Math.round(bytes / MB)} MB`;
+
+/** What file pickers offer for attachments: PDFs, images, Word, Excel, PowerPoint, CSV and text. */
+export const ANY_FILE_ACCEPT =
+  "application/pdf,image/jpeg,image/png,image/webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt";
+
+/** How the accepted files are named in messages. */
+export const ANY_FILE_KINDS = "PDF, imágenes (JPG, PNG, WebP), Word, Excel, PowerPoint, CSV o texto";
+
+/** Files the browser shows by themselves (images and PDFs); every other file is downloaded. */
+export const opensInBrowser = (id: string) => /\.(jpg|png|webp|pdf)$/.test(id);

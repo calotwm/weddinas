@@ -1,9 +1,9 @@
-import { MAX_DOCUMENT_BYTES, MAX_IMAGE_BYTES, MAX_SPREADSHEET_BYTES } from "./upload-limits";
+import { MAX_DOCUMENT_BYTES, MAX_IMAGE_BYTES, MAX_SPREADSHEET_BYTES, opensInBrowser } from "./upload-limits";
 
-export { MAX_DOCUMENT_BYTES, MAX_IMAGE_BYTES, MAX_SPREADSHEET_BYTES };
+export { MAX_DOCUMENT_BYTES, MAX_IMAGE_BYTES, MAX_SPREADSHEET_BYTES, opensInBrowser };
 
 export interface FileType {
-  ext: "jpg" | "png" | "webp" | "pdf" | "xlsx";
+  ext: "jpg" | "png" | "webp" | "pdf" | "xlsx" | "docx" | "pptx" | "doc" | "xls" | "ppt" | "csv" | "txt";
   mime: string;
 }
 
@@ -13,6 +13,13 @@ const MIME: Record<FileType["ext"], string> = {
   webp: "image/webp",
   pdf: "application/pdf",
   xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  doc: "application/msword",
+  xls: "application/vnd.ms-excel",
+  ppt: "application/vnd.ms-powerpoint",
+  csv: "text/csv; charset=utf-8",
+  txt: "text/plain; charset=utf-8",
 };
 
 /** Identifies an image by its leading bytes, ignoring whatever type the browser claimed (no SVG: it can carry scripts). */
@@ -97,12 +104,54 @@ export function xlsxLimitError(bytes: Uint8Array, limits = XLSX_LIMITS): "unread
   return null;
 }
 
-const FILE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp|pdf|xlsx)$/;
+const FILE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp|pdf|xlsx|docx|pptx|doc|xls|ppt|csv|txt)$/;
 
 /** Generated file ids are a UUID plus a known extension, so they can never point outside a couple's folder. */
 export const isFileId = (id: string) => FILE_ID.test(id);
 
 export const mimeForFileId = (id: string) => MIME[id.slice(id.lastIndexOf(".") + 1) as FileType["ext"]];
 
-/** Workbooks are always downloaded; images and PDFs open in the browser. */
-export const contentDispositionForFileId = (id: string) => (id.endsWith(".xlsx") ? "attachment" : "inline");
+
+/** Images and PDFs open in the browser; every other file (Office, text) is always downloaded, never rendered. */
+export const contentDispositionForFileId = (id: string) => (opensInBrowser(id) ? "inline" : "attachment");
+
+const OLE = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
+const OOXML: Array<[entry: string, ext: "docx" | "xlsx" | "pptx"]> = [
+  ["word/document.xml", "docx"],
+  [WORKBOOK_ENTRY, "xlsx"],
+  ["ppt/presentation.xml", "pptx"],
+];
+
+/** Plain text: valid UTF-8 without control bytes or markup a browser could run. */
+function isPlainText(bytes: Uint8Array): boolean {
+  const head = bytes.subarray(0, 64 * 1024);
+  if (head.some((b) => b < 9 || (b > 13 && b < 32))) return false;
+  let text: string;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(head);
+  } catch {
+    return false;
+  }
+  return !/<\s*(html|script|svg|iframe|body|!doctype)/i.test(text);
+}
+
+/**
+ * Any file the team attaches ("cualquier tipo de archivo"): PDFs and images by their bytes; Word, Excel and PowerPoint
+ * (new ones by their zip content, old ones by the Office signature plus the name's extension); CSV and text when the
+ * name says so and the content is plain text. Anything else (HTML, SVG, programs, unknown archives) is rejected.
+ */
+export function detectFile(bytes: Uint8Array, fileName = ""): FileType | null {
+  const known = detectDocument(bytes);
+  if (known) return known;
+  const ext = fileName.slice(fileName.lastIndexOf(".") + 1).toLowerCase();
+  const entries = zipEntries(bytes);
+  if (entries) {
+    const match = OOXML.find(([entry]) => entries.some((e) => e.name === entry));
+    return match ? { ext: match[1], mime: MIME[match[1]] } : null;
+  }
+  if (bytes.length >= 8 && OLE.every((b, i) => bytes[i] === b)) {
+    return ext === "doc" || ext === "xls" || ext === "ppt" ? { ext, mime: MIME[ext] } : null;
+  }
+  if ((ext === "csv" || ext === "txt") && isPlainText(bytes)) return { ext, mime: MIME[ext] };
+  return null;
+}

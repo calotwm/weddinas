@@ -112,7 +112,8 @@ export type TeamFileSlot = "timingImage" | PlanSlot;
 export const TEAM_FILE_SLOTS: readonly TeamFileSlot[] = ["timingImage", ...PLAN_SLOTS];
 
 const isImageId = (id: string) => isFileId(id) && /\.(jpg|png|webp)$/.test(id);
-const isImageOrPdfId = (id: string) => isFileId(id) && !id.endsWith(".xlsx");
+/** Plans and other team files: any uploaded file (image, PDF, Office, text). */
+const isAnyFileId = (id: string) => isFileId(id);
 const MAX_PALETTE = 24;
 const MAX_TIMING = 100;
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -363,7 +364,7 @@ function cleanBudgetItem(input: BudgetItemInput): BudgetItemInput {
 
 /** A receipt must be one of the couple's uploaded images or PDFs (never a spreadsheet or a path). */
 function checkReceiptId(receiptId: string | undefined) {
-  if (receiptId !== undefined && (!isFileId(receiptId) || receiptId.endsWith(".xlsx"))) throw new Error("Invalid receipt file");
+  if (receiptId !== undefined && !isFileId(receiptId)) throw new Error("Invalid receipt file");
 }
 
 const MAX_RSVP_INBOX = 1000;
@@ -1256,7 +1257,7 @@ export class PortalService {
   /** Sets (or clears with null) one of the team's file slots; returns the previous file id to delete. */
   async setTeamFile(coupleId: string, slot: TeamFileSlot, fileId: string | null): Promise<string | null> {
     if (!TEAM_FILE_SLOTS.includes(slot)) throw new Error("Unknown file slot");
-    if (fileId !== null && !(slot === "timingImage" ? isImageId(fileId) : isImageOrPdfId(fileId))) throw new Error("Invalid file");
+    if (fileId !== null && !(slot === "timingImage" ? isImageId(fileId) : isAnyFileId(fileId))) throw new Error("Invalid file");
     let previous: string | null = null;
     await this.mutate(coupleId, (c) => {
       if (slot === "timingImage") {
