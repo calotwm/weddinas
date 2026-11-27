@@ -77,8 +77,8 @@ function TimingFields({ item, settings, duration, defaultTime }: { item?: Timing
       <ClockInput defaultValue={item?.time ?? defaultTime} className="py-2 font-semibold text-forest" />
       <DurationFields item={item} shown={settings.showHoursMinutes} />
       <span className="self-center px-1 text-sm text-ink/60 tabular-nums">{duration ?? "—"}</span>
-      <input name="title" required maxLength={120} defaultValue={item?.title} aria-label="Actividad" placeholder="Actividad" className="field py-2" />
-      <textarea name="note" rows={2} maxLength={500} defaultValue={item?.note} aria-label="Descripción" placeholder="Descripción" className="field py-2" />
+      <textarea name="title" required rows={1} maxLength={120} defaultValue={item?.title} aria-label="Actividad" placeholder="Actividad" className="field field-sizing-content py-2" />
+      <textarea name="note" rows={2} maxLength={500} defaultValue={item?.note} aria-label="Descripción" placeholder="Descripción" className="field field-sizing-content py-2" />
       {settings.columns.map((col) => (
         <textarea
           key={col.id}
@@ -88,7 +88,7 @@ function TimingFields({ item, settings, duration, defaultTime }: { item?: Timing
           defaultValue={item?.team?.[col.id]}
           aria-label={`${col.name} (solo equipo)`}
           placeholder={col.name}
-          className="field bg-peach-soft py-2"
+          className="field field-sizing-content bg-peach-soft py-2"
         />
       ))}
       <label className="flex items-center gap-1.5 self-center text-xs text-rust">
@@ -291,7 +291,7 @@ export function TimingSchedule({
                       </>
                     )}
                     <td className="py-2 pr-3 whitespace-nowrap text-ink/70">{durations[i] ?? ""}</td>
-                    <td className="py-2 pr-3 text-forest">
+                    <td className="py-2 pr-3 whitespace-pre-line text-forest">
                       {t.title}
                       {t.teamOnly && <span className="chip ml-2 bg-peach py-0 text-rust">Solo equipo</span>}
                     </td>
@@ -322,11 +322,11 @@ export function TimingList({ timing, limit }: { timing: TimingItem[]; limit?: nu
         <li key={t.id} className="flex gap-3">
           <span className="w-12 shrink-0 font-semibold text-teal tabular-nums">{t.time}</span>
           <span className="min-w-0">
-            <span className="block truncate text-forest">
+            <span className="block whitespace-pre-line text-forest">
               {t.title}
               {durations[i] && <span className="text-xs text-ink/50"> · {durations[i]}</span>}
             </span>
-            {t.note && <span className="block truncate text-sm text-ink/60">{t.note}</span>}
+            {t.note && <span className="block text-sm whitespace-pre-line text-ink/60">{t.note}</span>}
           </span>
         </li>
       ))}

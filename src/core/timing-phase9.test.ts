@@ -103,4 +103,12 @@ describe("timing service (S6, S8)", () => {
     expect(shown.map((t) => t.title)).toEqual(["Cita"]);
     expect(shown[0]).not.toHaveProperty("team");
   });
+
+  it("keeps line breaks in the description and team columns (phase 10 S3)", async () => {
+    const [col] = (await load()).timingSettings.columns;
+    await service.addTimingItem(coupleId, { time: "17:00", title: "Cita", note: "Primero fotos\nDespués brindis", team: { [col.id]: "Velas\nFósforos" } });
+    const [saved] = (await load()).timing;
+    expect(saved.note).toBe("Primero fotos\nDespués brindis");
+    expect(saved.team?.[col.id]).toBe("Velas\nFósforos");
+  });
 });
