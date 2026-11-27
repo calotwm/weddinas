@@ -295,7 +295,7 @@ export function musicMoments(music: Pick<Music, "customMoments" | "hiddenMoments
     group: g.group,
     moments: g.moments.filter((m) => !hidden.has(m.key)).map((m) => ({ ...m, custom: false })),
   }));
-  for (const m of music.customMoments ?? []) {
+  for (const m of (music.customMoments ?? []).filter((m) => !isTandasMoment(m))) {
     let group = groups.find((g) => g.group.toLowerCase() === m.group.toLowerCase());
     if (!group) groups.push((group = { group: m.group, moments: [] }));
     group.moments.push({ key: m.key, label: m.label, custom: true });
@@ -313,3 +313,16 @@ export function musicMoments(music: Pick<Music, "customMoments" | "hiddenMoments
 
 export const musicMomentKeys = (music: Pick<Music, "customMoments" | "hiddenMoments" | "order">) =>
   musicMoments(music).flatMap((g) => g.moments.map((m) => m.key));
+
+/** A moment the team added to hold the party sets ("Tandas"); they now have their own field, next to Infaltables. */
+const isTandasMoment = (m: { label: string }) => /^tandas?$/i.test(m.label.trim());
+
+/**
+ * The party sets ("Tandas"): the stored field plus the text of any «Tandas» moment, each once. Saving the music form
+ * writes this into `tandas`, and the moment (no longer listed) loses its song then.
+ */
+export function musicTandas(music: Pick<Music, "tandas" | "customMoments" | "songs">): string {
+  const keys = new Set((music.customMoments ?? []).filter(isTandasMoment).map((m) => m.key));
+  const parts = [music.tandas ?? "", ...music.songs.filter((s) => keys.has(s.moment)).map((s) => s.song)].map((t) => t.trim()).filter(Boolean);
+  return [...new Set(parts)].join("\n");
+}

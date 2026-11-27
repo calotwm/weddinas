@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { musicMomentKeys, musicMoments } from "@/core/brief-catalog";
+import { musicMomentKeys, musicMoments, musicTandas } from "@/core/brief-catalog";
 import type { Music, SongStatus } from "@/core/couple";
 import { songStatus } from "@/core/music";
 import { safeHttpUrl } from "@/core/url";
@@ -14,8 +14,8 @@ const NOTE_MAX = 500;
 
 /**
  * Song choices from MusicEditor's form; the couple's and the team's save actions share it.
- * Rows come in the order they are shown, which is the dragged order. The party sets ("Tandas") are not
- * in the form any more, so they are left out and the stored text stays.
+ * Rows come in the order they are shown, which is the dragged order. The party sets ("Tandas") have their own
+ * field next to Infaltables and Prohibidas.
  */
 export function musicInput(formData: FormData): Music {
   const moments = formData.getAll("moment").map(String);
@@ -34,6 +34,8 @@ export function musicInput(formData: FormData): Music {
     playlistUrl: safeHttpUrl(formText(formData, "playlistUrl", 500)),
     mustPlay: formText(formData, "mustPlay", 2000),
     banned: formText(formData, "banned", 2000),
+    // Only a form with the Tandas field changes them; without it the stored text stays.
+    ...(formData.has("tandas") && { tandas: formText(formData, "tandas", 2000) }),
   };
 }
 
@@ -137,7 +139,11 @@ export function MusicEditor({ music, save, header, coupleId }: { music: Music; s
           <label htmlFor="banned" className="label">Prohibidas</label>
           <textarea id="banned" name="banned" rows={4} defaultValue={music.banned} placeholder="Lo que no quieren escuchar" className="field" />
         </div>
-        <div className="md:col-span-2">
+        <div>
+          <label htmlFor="tandas" className="label">Tandas</label>
+          <textarea id="tandas" name="tandas" rows={4} defaultValue={musicTandas(music)} placeholder="Una tanda por línea: ej. cumbia, rock nacional, reggaeton" className="field" />
+        </div>
+        <div>
           <label htmlFor="playlistUrl" className="label">Link a su playlist</label>
           <input id="playlistUrl" name="playlistUrl" type="url" defaultValue={music.playlistUrl} placeholder="https://open.spotify.com/playlist/…" className="field" />
         </div>
@@ -224,7 +230,7 @@ export function MusicSummary({ music, removable = false }: { music: Music; remov
           </ul>
         </section>
       ))}
-      <section className="card grid gap-4 text-sm sm:grid-cols-3">
+      <section className="card grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <p className="label">Infaltables</p>
           <p className="whitespace-pre-line">{music.mustPlay || "—"}</p>
@@ -232,6 +238,10 @@ export function MusicSummary({ music, removable = false }: { music: Music; remov
         <div>
           <p className="label">Prohibidas</p>
           <p className="whitespace-pre-line">{music.banned || "—"}</p>
+        </div>
+        <div>
+          <p className="label">Tandas</p>
+          <p className="whitespace-pre-line">{musicTandas(music) || "—"}</p>
         </div>
         <div>
           <p className="label">Playlist</p>

@@ -151,7 +151,7 @@ describe("music phase 8: one song field, two statuses, ordered moments", () => {
     expect(await music()).toMatchObject({ mustPlay: "Cumbia", tandas: "1° tanda: rock nacional" });
   });
 
-  it("reads the song form without artist or tandas, in the order the rows are shown", () => {
+  it("reads the song form without artist (tandas only when the form has the field), in the order the rows are shown", () => {
     const form = new FormData();
     for (const [moment, title, status, note] of [
       ["cierre", "Mil horas\nen vivo", "chosen", "Con\npapelitos"],
