@@ -264,6 +264,14 @@ export async function addChecklistTask(formData: FormData): Promise<void> {
   revalidatePath("/", "layout");
 }
 
+/** The pencil next to "Cambiar mes": edits the topic's text. */
+export async function renameChecklistTask(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const title = text(formData, "title", 200);
+  if (title) await portal.renameTask(text(formData, "coupleId", 100), text(formData, "taskId", 100), title);
+  revalidatePath("/", "layout");
+}
+
 export async function setChecklistTaskMonth(formData: FormData): Promise<void> {
   await requireAdmin();
   await portal.setTaskMonth(text(formData, "coupleId", 100), text(formData, "taskId", 100), month(formData));

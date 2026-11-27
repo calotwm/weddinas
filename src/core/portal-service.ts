@@ -793,6 +793,17 @@ export class PortalService {
     return task;
   }
 
+  /** Changes a topic's title; month, draft and done stay. */
+  async renameTask(coupleId: string, taskId: string, title: string): Promise<void> {
+    const clean = title.trim().replace(/s+/g, " ").slice(0, 200);
+    if (!clean) throw new Error("Title is required");
+    await this.mutate(coupleId, (c) => {
+      const task = c.tasks.find((t) => t.id === taskId);
+      if (!task) throw new Error("Task not found");
+      task.title = clean;
+    });
+  }
+
   async setTaskMonth(coupleId: string, taskId: string, month: string | null): Promise<void> {
     if (month && !MONTH.test(month)) throw new Error("Month must be YYYY-MM");
     await this.mutate(coupleId, (c) => {

@@ -89,4 +89,12 @@ describe("PortalService checklist months", () => {
     const s = checklistSections((await service.getCouple(couple.id))!.tasks, "2026-11");
     expect(s.noMonth.map((t) => t.id)).toEqual(["old"]);
   });
+
+  it("renames a topic after it was added (phase 10 S14), never to an empty title", async () => {
+    const { couple } = await create();
+    const task = await service.addTask(couple.id, "Elegir fotógrafo", "2026-12");
+    await service.renameTask(couple.id, task.id, "  Elegir fotógrafo y video ");
+    expect((await service.getCouple(couple.id))!.tasks.find((t) => t.id === task.id)).toMatchObject({ title: "Elegir fotógrafo y video", month: "2026-12", draft: true });
+    await expect(service.renameTask(couple.id, task.id, "  ")).rejects.toThrow();
+  });
 });

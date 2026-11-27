@@ -9,7 +9,7 @@ import { currentMonth } from "@/lib/format";
 import { requireAdmin } from "@/server/auth";
 import { portal } from "@/server/container";
 import { siteOrigin } from "@/server/site-url";
-import { addChecklistTask, deleteChecklistTask, publishChecklistTasks, setChecklistTaskMonth, toggleChecklistTask } from "@/app/admin/planner-actions";
+import { addChecklistTask, deleteChecklistTask, publishChecklistTasks, renameChecklistTask, setChecklistTaskMonth, toggleChecklistTask } from "@/app/admin/planner-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +38,18 @@ function TaskRow({ coupleId, task }: { coupleId: string; task: ChecklistTask }) 
         <input name="month" type="month" defaultValue={task.month ?? ""} aria-label={`Mes de ${task.title}`} className="field !w-40 !py-1.5 text-sm" />
         <SubmitButton className="btn-ghost btn-sm" pendingText="…">Cambiar mes</SubmitButton>
       </form>
+      <details className="group">
+        <summary className="btn-icon list-none" title="Editar tema">
+          <Icon name="edit" className="h-4 w-4" />
+          <span className="sr-only">Editar {task.title}</span>
+        </summary>
+        <form action={renameChecklistTask} className="mt-2 flex items-center gap-1">
+          <input type="hidden" name="coupleId" value={coupleId} />
+          <input type="hidden" name="taskId" value={task.id} />
+          <input name="title" required maxLength={200} defaultValue={task.title} aria-label={`Nuevo texto de ${task.title}`} className="field !w-72 !py-1.5 text-sm" />
+          <SubmitButton className="btn-ghost btn-sm" pendingText="…">Guardar</SubmitButton>
+        </form>
+      </details>
       <form action={deleteChecklistTask}>
         <input type="hidden" name="coupleId" value={coupleId} />
         <input type="hidden" name="taskId" value={task.id} />
