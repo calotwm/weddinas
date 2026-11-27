@@ -96,7 +96,7 @@ export interface ChecklistTask {
 /** Tasks the couple sees: every task except the team's unpublished drafts. */
 export const publishedTasks = (tasks: ChecklistTask[]) => tasks.filter((t) => !t.draft);
 
-export type PaymentKind = "sena" | "saldo" | "adicional" | "iva" | "intermedio";
+export type PaymentKind = "sena" | "saldo" | "adicional" | "iva" | "intermedio" | "viaticos" | "fletes";
 
 export interface Payment {
   id: string;
@@ -110,8 +110,10 @@ export interface Payment {
   note: string;
   /** Uploaded receipt (image or PDF) in the couple's files. Optional. */
   receiptId?: string;
-  /** More "archivos de pago" (images or PDFs) after the first one, oldest first. */
+  /** More "archivos de pago" after the first one, oldest first. */
   receiptIds?: string[];
+  /** A payment to make on `date`, not made yet: it counts nothing as paid until it is marked paid. */
+  planned?: true;
 }
 
 /** An additional charge agreed but not paid yet: it adds to the item's total and stays in its balance. */

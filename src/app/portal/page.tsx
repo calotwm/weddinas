@@ -103,12 +103,12 @@ export default async function PortalHome() {
         </div>
         {due.length > 0 ? (
           <ul className="mt-5 divide-y divide-forest/8">
-            {due.map(({ item, pending: amount, overdue }) => (
+            {due.map(({ item, dueDate, pending: amount, overdue }) => (
               <li key={item.id} className="flex items-start justify-between gap-3 py-2.5">
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-forest">{item.vendor || itemCategoryName(item)}</p>
                   <p className={`text-sm ${overdue ? "font-semibold text-rust" : "text-ink/60"}`}>
-                    {overdue ? "Venció el" : "Vence el"} {formatDay(item.dueDate!)}
+                    {overdue ? "Venció el" : "Vence el"} {formatDay(dueDate)}
                   </p>
                 </div>
                 <p className="shrink-0 font-semibold text-rust">{formatMoney(amount, item.currency)}</p>

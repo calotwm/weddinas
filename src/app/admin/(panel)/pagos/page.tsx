@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Icon } from "@/components/icons";
 import { PAYMENT_KIND } from "@/components/planner/budget";
-import { dueItems, isFullyPaid, itemCategoryName, summarizeBudget, summarizeItem } from "@/core/budget";
+import { dueItems, isFullyPaid, nextDueDate, itemCategoryName, summarizeBudget, summarizeItem } from "@/core/budget";
 import { coupleNames, type BudgetItem, type CoupleView as Couple, type Payment } from "@/core/couple";
 import { formatDay, formatMoney, monthEnd, today } from "@/lib/format";
 import { requireAdmin } from "@/server/auth";
@@ -20,11 +20,12 @@ interface CoupleBudget {
 }
 
 function DueChip({ item, overdue }: { item: BudgetItem; overdue: boolean }) {
-  if (!item.dueDate) return <span className="text-ink/40">—</span>;
+  const dueDate = nextDueDate(item);
+  if (!dueDate) return <span className="text-ink/40">—</span>;
   return (
     <span className={`chip ${overdue ? "bg-rust/10 text-rust" : "bg-sand text-ink/70"}`}>
       {overdue ? "Venció " : ""}
-      {formatDay(item.dueDate)}
+      {formatDay(dueDate)}
     </span>
   );
 }
@@ -123,7 +124,8 @@ export default async function PaymentsAdminPage({ searchParams }: { searchParams
                 <tbody className="divide-y divide-forest/6">
                   {items.map((item) => {
                     const s = summarizeItem(item, ipc);
-                    const overdue = Boolean(item.dueDate && item.dueDate < day && s.pending > 0);
+                    const due = nextDueDate(item);
+                    const overdue = Boolean(due && due < day && s.pending > 0);
                     return (
                       <tr key={item.id} className="hover:bg-peach-soft/40">
                         <td className="px-4 py-2.5 sm:px-5">
@@ -170,7 +172,7 @@ export default async function PaymentsAdminPage({ searchParams }: { searchParams
               <tbody className="divide-y divide-forest/6">
                 {payments.map(({ couple, item, payment }) => (
                   <tr key={payment.id}>
-                    <td className="px-4 py-2.5 whitespace-nowrap sm:px-5">{formatDay(payment.date)}</td>
+                    <td className="px-4 py-2.5 whitespace-nowrap sm:px-5">{payment.planned ? `A pagar el ${formatDay(payment.date)}` : formatDay(payment.date)}</td>
                     <td className="px-2 py-2.5">
                       <Link href={`/admin/parejas/${couple.id}/presupuesto`} className="text-forest underline-offset-4 hover:underline">
                         {coupleNames(couple)}

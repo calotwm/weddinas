@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { today } from "@/lib/format";
 import {
   aestheticInput,
   guestInput,
@@ -69,7 +70,7 @@ export async function saveBudgetItem(_prev: PlannerResult, formData: FormData): 
   const coupleId = text(formData, "coupleId", 100);
   const itemId = text(formData, "itemId", 100);
   const input = budgetItemInput(formData);
-  if (!(input.amount > 0)) return { error: "Ingresá un monto mayor a cero." };
+  if (!(input.amount >= 0)) return { error: "Ingresá el monto (puede ser 0)." };
   if (!/^\d{4}-\d{2}$/.test(input.baseMonth)) return { error: "Elegí el mes en que se acordó el monto." };
   try {
     if (itemId) await portal.updateBudgetItem(coupleId, itemId, input);
@@ -99,7 +100,7 @@ export async function addPayment(_prev: PlannerResult, formData: FormData): Prom
   const value = amount(formData, "amount");
   const rate = amount(formData, "arsPerUsd");
   const date = text(formData, "date", 10);
-  if (!(value > 0)) return { error: "Ingresá el monto pagado." };
+  if (!(value >= 0)) return { error: "Ingresá el monto del pago (puede ser 0)." };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Elegí la fecha del pago." };
   const coupleId = text(formData, "coupleId", 100);
   const saved = await saveReceipts(coupleId, pickedReceipts(formData));
@@ -114,6 +115,7 @@ export async function addPayment(_prev: PlannerResult, formData: FormData): Prom
       note: text(formData, "note", 300),
       receiptId: saved.ids[0],
       receiptIds: saved.ids.slice(1),
+      ...(formData.get("planned") === "on" && { planned: true as const }),
     });
   } catch (e) {
     await deleteReceipts(coupleId, saved.ids);
@@ -157,6 +159,20 @@ export async function addBudgetCharge(_prev: PlannerResult, formData: FormData):
     return { error: "No se pudo agregar el adicional." };
   }
   return done();
+}
+
+/** A planned payment was made today. */
+export async function markPaymentPaid(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.markPaymentPaid(text(formData, "coupleId", 100), text(formData, "itemId", 100), text(formData, "paymentId", 100), today());
+  revalidatePath("/", "layout");
+}
+
+/** An "adicional por pagar" was paid today: it becomes an Adicional payment. */
+export async function payBudgetCharge(formData: FormData): Promise<void> {
+  await requireAdmin();
+  await portal.payBudgetCharge(text(formData, "coupleId", 100), text(formData, "itemId", 100), text(formData, "chargeId", 100), today());
+  revalidatePath("/", "layout");
 }
 
 export async function deleteBudgetCharge(formData: FormData): Promise<void> {

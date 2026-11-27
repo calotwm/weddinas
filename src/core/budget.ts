@@ -1,5 +1,5 @@
 import { categoryName } from "./brief-catalog";
-import type { BriefBlock, BudgetItem, Payment } from "./couple";
+import type { BriefBlock, BudgetItem, Payment, PaymentKind } from "./couple";
 import { adjustedAmount, convert, ipcFactor, type Currency, type IpcSeries } from "./money";
 
 export interface ItemSummary {
@@ -42,13 +42,25 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 /** Every file of a payment: the first receipt plus the other "archivos de pago". */
 export const paymentFiles = (p: Pick<Payment, "receiptId" | "receiptIds">): string[] => [...(p.receiptId ? [p.receiptId] : []), ...(p.receiptIds ?? [])];
 
-/** What the item costs: its amount plus the additional charges still to pay. */
-const itemCost = (item: BudgetItem) => item.amount + (item.charges ?? []).reduce((sum, c) => sum + c.amount, 0);
+/** Payment kinds that are extras on top of the agreed amount: they add to the total and are paid at once. */
+export const EXTRA_PAYMENT_KINDS: readonly PaymentKind[] = ["adicional", "viaticos", "fletes"];
+
+const inItemCurrency = (item: BudgetItem, p: Payment) => convert(p.amount, p.currency, item.currency, p.arsPerUsd) ?? 0;
+
+/** What the item costs: its amount, the additional charges still to pay and the extra payments (made or planned). */
+const itemCost = (item: BudgetItem) =>
+  item.amount +
+  (item.charges ?? []).reduce((sum, c) => sum + c.amount, 0) +
+  item.payments.filter((p) => EXTRA_PAYMENT_KINDS.includes(p.kind)).reduce((sum, p) => sum + inItemCurrency(item, p), 0);
+
+/** The item's next due date: its own one or its earliest planned payment, whichever comes first. */
+export function nextDueDate(item: BudgetItem): string | undefined {
+  const dates = [item.dueDate, ...item.payments.filter((p) => p.planned).map((p) => p.date)].filter((d): d is string => Boolean(d));
+  return dates.sort()[0];
+}
 
 export function summarizeItem(item: BudgetItem, ipc: IpcSeries | null): ItemSummary {
-  const paid = round2(
-    item.payments.reduce((sum, p) => sum + (convert(p.amount, p.currency, item.currency, p.arsPerUsd) ?? 0), 0),
-  );
+  const paid = round2(item.payments.filter((p) => !p.planned).reduce((sum, p) => sum + inItemCurrency(item, p), 0));
   const pendingNominal = Math.max(0, round2(itemCost(item) - paid));
   const pending = adjustedAmount({ ...item, amount: pendingNominal }, ipc);
   const adjusted = item.currency === "ARS" && item.adjustment === "ipc";
@@ -226,6 +238,8 @@ export const itemTracksConfirmedGuests = (item: Pick<BudgetItem, "category" | "e
 
 export interface DueItem {
   item: BudgetItem;
+  /** The item's next due date (see nextDueDate). */
+  dueDate: string;
   /** Pending balance in the item's currency. */
   pending: number;
   overdue: boolean;
@@ -234,8 +248,9 @@ export interface DueItem {
 /** Items with a balance due on or before `until` ("YYYY-MM-DD"), earliest first; `today` decides which are overdue. */
 export function dueItems(items: BudgetItem[], ipc: IpcSeries | null, today: string, until: string): DueItem[] {
   return items
-    .filter((item) => item.dueDate && item.dueDate <= until)
-    .map((item) => ({ item, pending: summarizeItem(item, ipc).pending, overdue: item.dueDate! < today }))
+    .map((item) => ({ item, dueDate: nextDueDate(item) }))
+    .filter((d): d is { item: BudgetItem; dueDate: string } => Boolean(d.dueDate && d.dueDate <= until))
+    .map(({ item, dueDate }) => ({ item, dueDate, pending: summarizeItem(item, ipc).pending, overdue: dueDate < today }))
     .filter((d) => d.pending > 0)
-    .sort((a, b) => a.item.dueDate!.localeCompare(b.item.dueDate!));
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
 }

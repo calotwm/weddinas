@@ -45,7 +45,8 @@ describe("additional charges to pay (S11)", () => {
     expect(summarizeItem(withCharge, null)).toMatchObject({ paid: 1000, pending: 300, total: 1300 });
     expect(budgetStage(withCharge, null)).toBe("pending");
     expect(summarizeBudget([withCharge], null, null)).toMatchObject({ totalArs: 1300, pendingArs: 300 });
-    expect(summarizeItem(item({ payments: [pay(), pay({ id: "p2", amount: 300, kind: "adicional" })], charges: [{ id: "c", concept: "", amount: 300 }] }), null).pending).toBe(0);
+    // Phase 10: a charge is paid with payBudgetCharge (budget-phase10.test.ts); a plain "saldo" payment also settles it.
+    expect(summarizeItem(item({ payments: [pay(), pay({ id: "p2", amount: 300, kind: "saldo" })], charges: [{ id: "c", concept: "", amount: 300 }] }), null).pending).toBe(0);
   });
 });
 

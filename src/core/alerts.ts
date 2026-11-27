@@ -42,8 +42,8 @@ export function coupleAlerts(couples: AlertCouple[], today: string, now: Date, i
   for (const c of couples) {
     const base = { coupleId: c.id, names: coupleNames(c) };
 
-    for (const { item, pending, overdue } of dueItems(c.budget.items, ipc, today, plusDays(today, PAYMENT_ALERT_DAYS))) {
-      payments.push({ kind: "payment", ...base, id: item.id, title: item.vendor || itemCategoryName(item), amount: pending, currency: item.currency, dueDate: item.dueDate!, overdue });
+    for (const { item, dueDate, pending, overdue } of dueItems(c.budget.items, ipc, today, plusDays(today, PAYMENT_ALERT_DAYS))) {
+      payments.push({ kind: "payment", ...base, id: item.id, title: item.vendor || itemCategoryName(item), amount: pending, currency: item.currency, dueDate, overdue });
     }
 
     for (const p of c.proposals) {

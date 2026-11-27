@@ -178,6 +178,7 @@ export function PaymentForm({ coupleId, item, today, arsPerUsd }: { coupleId: st
   const [state, action] = useActionState(addPayment, null);
   const ref = useResetOnSuccess(state);
   const [currency, setCurrency] = useState<Currency>(item.currency);
+  const [planned, setPlanned] = useState(false);
   const other = currency !== item.currency;
 
   return (
@@ -191,8 +192,8 @@ export function PaymentForm({ coupleId, item, today, arsPerUsd }: { coupleId: st
             <option key={value} value={value}>{label}</option>
           ))}
         </select>
-        <input name="date" type="date" required aria-label="Fecha del pago" defaultValue={today} className="field" />
-        <input name="amount" required inputMode="decimal" aria-label="Monto pagado" placeholder="Monto" className="field" />
+        <input name="date" type="date" required aria-label={planned ? "Fecha para pagarlo" : "Fecha del pago"} defaultValue={today} className="field" />
+        <input name="amount" required inputMode="decimal" aria-label="Monto" placeholder="Monto" className="field" />
         <select name="currency" aria-label="Moneda del pago" value={currency} onChange={(e) => setCurrency(e.target.value as Currency)} className="field">
           <option value="ARS">Pesos</option>
           <option value="USD">Dólares</option>
@@ -204,6 +205,11 @@ export function PaymentForm({ coupleId, item, today, arsPerUsd }: { coupleId: st
           <input id={`rate-${item.id}`} name="arsPerUsd" required inputMode="decimal" defaultValue={arsPerUsd ?? ""} className="field" />
         </div>
       )}
+      <label className="flex items-center gap-2 text-sm text-ink/80">
+        <input type="checkbox" name="planned" checked={planned} onChange={(e) => setPlanned(e.target.checked)} className="accent-forest" />
+        Es para más adelante (todavía no se pagó): la fecha es cuándo pagarlo
+      </label>
+      <p className="hint">Viáticos, Fletes y Adicional suman al total; los demás pagos se descuentan del monto acordado.</p>
       <input name="note" maxLength={300} aria-label="Nota del pago" placeholder="Nota (opcional): ej. transferencia, recibo n°…" className="field" />
       <div>
         <label htmlFor={`receipt-${item.id}`} className="label">Archivos de pago (opcional)</label>
@@ -211,7 +217,7 @@ export function PaymentForm({ coupleId, item, today, arsPerUsd }: { coupleId: st
         <p className="hint mt-1">Hasta 10 archivos (PDF, imagen, Word, Excel…), hasta {megabytes(MAX_DOCUMENT_BYTES)} cada uno (imágenes hasta 5 MB).</p>
       </div>
       <Feedback state={state} />
-      <SubmitButton className="btn-ghost btn-sm" doneText="¡Registrado!">Registrar pago</SubmitButton>
+      <SubmitButton className="btn-ghost btn-sm" doneText="¡Registrado!">{planned ? "Agendar pago" : "Registrar pago"}</SubmitButton>
     </form>
   );
 }
@@ -226,7 +232,7 @@ export function ChargeForm({ coupleId, item }: { coupleId: string; item: BudgetI
       <input type="hidden" name="coupleId" value={coupleId} />
       <input type="hidden" name="itemId" value={item.id} />
       <p className="text-sm font-semibold text-forest">Agregar adicional por pagar</p>
-      <p className="hint">No es un pago: suma al total y queda en el saldo hasta que lo registren como pago.</p>
+      <p className="hint">No es un pago: suma al total y queda en el saldo hasta que lo marquen «Pagado».</p>
       <div className="grid grid-cols-2 gap-3">
         <input name="concept" maxLength={200} aria-label="Concepto del adicional" placeholder="Concepto: ej. hora extra" className="field" />
         <input name="amount" required inputMode="decimal" aria-label={`Monto del adicional en ${item.currency === "USD" ? "dólares" : "pesos"}`} placeholder={`Monto en ${item.currency === "USD" ? "dólares" : "pesos"}`} className="field" />

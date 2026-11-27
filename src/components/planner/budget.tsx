@@ -3,7 +3,7 @@ import type { BriefBlock } from "@/core/couple";
 
 /** The couple's brief, so custom rubros show the name the team gave them. */
 type RubroNames = ReadonlyArray<Pick<BriefBlock, "key" | "name">>;
-import { budgetStage, dueItems, itemCategories, itemCategoryName, orderByStage, paidVsPending, paymentFiles, summarizeBudget, summarizeItem, type BudgetStage, type RubroReceipt } from "@/core/budget";
+import { budgetStage, dueItems, nextDueDate, itemCategories, itemCategoryName, orderByStage, paidVsPending, paymentFiles, summarizeBudget, summarizeItem, type BudgetStage, type RubroReceipt } from "@/core/budget";
 import type { Budget, BudgetCharge, BudgetItem, FreightIncluded, Payment, PaymentKind } from "@/core/couple";
 import type { IpcSeries, UsdQuote } from "@/core/money";
 import { addDays, formatDay, formatMoney, formatMonth } from "@/lib/format";
@@ -15,6 +15,8 @@ export const PAYMENT_KIND: Record<PaymentKind, string> = {
   saldo: "Saldo",
   adicional: "Adicional",
   iva: "IVA",
+  viaticos: "Viáticos",
+  fletes: "Fletes",
 };
 
 /** Flete/Viáticos: whether the vendor's price includes them; a missing value means nobody recorded it. */
@@ -127,12 +129,12 @@ export function DueAlert({ items, ipc, today, brief }: { items: BudgetItem[]; ip
       <div>
         <p className="font-semibold text-rust">{due.length === 1 ? "Hay un pago por realizar" : `Hay ${due.length} pagos por realizar`}</p>
         <ul className="mt-1 space-y-0.5 text-sm text-ink/80">
-          {due.map(({ item, pending, overdue }) => (
+          {due.map(({ item, dueDate, pending, overdue }) => (
             <li key={item.id}>
               <a href={`#${categoryAnchor(itemCategories(item).join("+"))}`} className="font-semibold text-forest underline-offset-4 hover:underline">
                 {item.vendor || itemCategoryName(item, brief)}
               </a>
-              : {formatMoney(pending, item.currency)} · {overdue ? "venció el" : "vence el"} {formatDay(item.dueDate!)}
+              : {formatMoney(pending, item.currency)} · {overdue ? "venció el" : "vence el"} {formatDay(dueDate)}
             </li>
           ))}
         </ul>
@@ -301,10 +303,10 @@ export function BudgetItemCard({
         </div>
       </div>
 
-      {item.dueDate && s.pending > 0 && (
+      {nextDueDate(item) && s.pending > 0 && (
         <p className="flex items-center gap-2 text-sm font-medium text-rust">
           <Icon name="calendar" className="h-4 w-4" />
-          Próximo vencimiento: {formatDay(item.dueDate)}
+          Próximo vencimiento: {formatDay(nextDueDate(item)!)}
         </p>
       )}
       <p className="text-sm text-ink/70">
@@ -338,9 +340,13 @@ export function BudgetItemCard({
             <li key={p.id} className="space-y-2 px-4 py-2.5 text-sm">
               <div className="flex items-center gap-3">
                 <span className="chip bg-sand text-ink/70">{PAYMENT_KIND[p.kind]}</span>
-                <span className="text-ink/60">{formatDay(p.date)}</span>
+                {p.planned ? (
+                  <span className="chip bg-amber-100 text-amber-900">A pagar el {formatDay(p.date)}</span>
+                ) : (
+                  <span className="text-ink/60">{formatDay(p.date)}</span>
+                )}
                 <span className="ml-auto text-right">
-                  <span className="font-semibold text-forest">{formatMoney(p.amount, p.currency)}</span>
+                  <span className={`font-semibold ${p.planned ? "text-amber-900" : "text-forest"}`}>{formatMoney(p.amount, p.currency)}</span>
                   {p.arsPerUsd && <span className="block text-xs text-ink/50">a {formatMoney(p.arsPerUsd, "ARS")} por dólar</span>}
                   {p.note && <span className="block text-xs text-ink/50">{p.note}</span>}
                   {paymentFiles(p).map((fileId, n, all) => (

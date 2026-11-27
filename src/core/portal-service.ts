@@ -216,7 +216,7 @@ function attachmentsOf(couple: Couple, target: AttachmentTarget): Attachment[] {
 const MAX_PAYMENT_FILES = 10;
 
 const BLOCK_STATUSES: BlockStatus[] = ["searching", "deciding", "confirmed", "na"];
-const PAYMENT_KINDS: PaymentKind[] = ["sena", "saldo", "adicional", "iva", "intermedio"];
+const PAYMENT_KINDS: PaymentKind[] = ["sena", "saldo", "adicional", "iva", "intermedio", "viaticos", "fletes"];
 const BRIEF_ORDER = BRIEF_CATALOG.map((b) => b.key);
 const COMMENT_AUTHORS: CommentAuthor[] = ["couple", "team"];
 
@@ -330,7 +330,7 @@ function checkBudgetCategory(category: string, brief: BriefBlock[], current?: st
 }
 
 function cleanBudgetItem(input: BudgetItemInput): BudgetItemInput {
-  if (!(input.amount > 0) || !Number.isFinite(input.amount)) throw new Error("Amount must be positive");
+  if (!(input.amount >= 0) || !Number.isFinite(input.amount)) throw new Error("Amount must not be negative");
   if (input.currency !== "ARS" && input.currency !== "USD") throw new Error("Unknown currency");
   if (input.adjustment !== "ipc" && input.adjustment !== "frozen") throw new Error("Unknown adjustment");
   if (!MONTH.test(input.baseMonth)) throw new Error("Base month must be YYYY-MM");
@@ -942,7 +942,7 @@ export class PortalService {
   }
 
   async addPayment(coupleId: string, itemId: string, input: PaymentInput): Promise<Payment> {
-    if (!(input.amount > 0) || !Number.isFinite(input.amount)) throw new Error("Amount must be positive");
+    if (!(input.amount >= 0) || !Number.isFinite(input.amount)) throw new Error("Amount must not be negative");
     if (!DAY.test(input.date)) throw new Error("Date must be YYYY-MM-DD");
     if (!PAYMENT_KINDS.includes(input.kind)) throw new Error("Unknown payment kind");
     checkReceiptId(input.receiptId);
@@ -950,6 +950,7 @@ export class PortalService {
     if (paymentFiles(input).length > MAX_PAYMENT_FILES) throw new Error("Too many payment files");
     const payment: Payment = { id: randomUUID(), ...input, note: input.note.trim() };
     if (!payment.receiptIds?.length) delete payment.receiptIds;
+    if (payment.planned !== true) delete payment.planned;
     await this.mutate(coupleId, (c) => {
       const item = c.budget.items.find((i) => i.id === itemId);
       if (!item) throw new Error("Budget item not found");
@@ -1002,6 +1003,33 @@ export class PortalService {
       else delete payment.receiptIds;
     });
     return removed;
+  }
+
+  /** A planned payment was made: it stops being planned and takes the day it was paid. */
+  async markPaymentPaid(coupleId: string, itemId: string, paymentId: string, date: string): Promise<void> {
+    if (!DAY.test(date)) throw new Error("Date must be YYYY-MM-DD");
+    await this.mutate(coupleId, (c) => {
+      const item = c.budget.items.find((i) => i.id === itemId);
+      const payment = item?.payments.find((p) => p.id === paymentId);
+      if (!item || !payment) throw new Error("Payment not found");
+      delete payment.planned;
+      payment.date = date;
+      item.payments.sort((a, b) => a.date.localeCompare(b.date));
+    });
+  }
+
+  /** An additional charge was paid: it becomes an "Adicional" payment of that day, so the total stays and the balance drops. */
+  async payBudgetCharge(coupleId: string, itemId: string, chargeId: string, date: string): Promise<void> {
+    if (!DAY.test(date)) throw new Error("Date must be YYYY-MM-DD");
+    await this.mutate(coupleId, (c) => {
+      const item = c.budget.items.find((i) => i.id === itemId);
+      const charge = item?.charges?.find((ch) => ch.id === chargeId);
+      if (!item || !charge) throw new Error("Charge not found");
+      item.charges = item.charges!.filter((ch) => ch.id !== chargeId);
+      if (item.charges.length === 0) delete item.charges;
+      item.payments.push({ id: randomUUID(), date, amount: charge.amount, currency: item.currency, arsPerUsd: null, kind: "adicional", note: charge.concept });
+      item.payments.sort((a, b) => a.date.localeCompare(b.date));
+    });
   }
 
   /** Adds an additional charge still to pay ("adicional por pagar") to a budget item, in the item's currency. */

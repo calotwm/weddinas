@@ -76,8 +76,8 @@ describe("planner workspace", () => {
       expect((await load()).budget.items[0].amount).toBe(2000);
     });
 
-    it("rejects non-positive amounts and unknown categories", async () => {
-      await expect(service.addBudgetItem(coupleId, { ...base, amount: 0 })).rejects.toThrow();
+    it("rejects negative amounts and unknown categories (0 is allowed since phase 10)", async () => {
+      await expect(service.addBudgetItem(coupleId, { ...base, amount: -1 })).rejects.toThrow();
       await expect(service.addBudgetItem(coupleId, { ...base, category: "nope" })).rejects.toThrow();
       expect((await load()).budget.items).toEqual([]);
     });
