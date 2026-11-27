@@ -43,7 +43,7 @@ Temas del mes
 - [x] T5 S11 inline · ee7a366
 - [ ] T6 S12 pending: question to the user (L4)
 - [x] T7 S14 inline · 4d414cb
-- [ ] T8 S2, S13: deploy phase 9 + 10 (user decision)
+- [x] T8 S2, S13: phase 9 + 10 deployed · 1d825db4
 
 Route evidence: no Writer trigger (all units share the couple model and service; inline in order).
 
@@ -54,3 +54,4 @@ Route evidence: no Writer trigger (all units share the couple model and service;
 - L3 Assumptions: S5/S7 Adicional, Viáticos and Fletes payments add to the total and count as paid (balance unchanged); an "adicional/flete por pagar" is settled with its «Pagado» button (becomes a payment of its kind); S9 planned payments count nothing as paid, planned extras add to the balance, their date feeds the next due date and alerts; S6 "+ Nuevo rubro…" in the item form creates (or reuses) a custom brief rubro; S8 fletes of a new item are "flete por pagar" charges with their purpose; S11 7 couples had a custom moment "Tandas" (Fiesta): it leaves the list and its text shows in the new Tandas field, moved into `tandas` on the next save (read-time, no stored rewrite).
 - L4 S12 unclear: which blocks/fields are out of order, and what "el modelo" is (no brief template exists; new couples get the catalog order). Asked the user.
 - L5 Checks: vitest 504 tests, tsc, eslint, next build OK. Not deployed. Independent verifier not run.
+- L6 (2026-11-27) user: "aaaaaa vos subi todo mano todo al main dsps que se fije". vitest 504 OK; main fast-forwarded to 3acb896 (phases 9 + 10) and pushed; Railway deploy 1d825db4 SUCCESS.
